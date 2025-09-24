@@ -1,40 +1,82 @@
+/* Formato.css - estilos principales */
 * { box-sizing: border-box; font-family: Arial, sans-serif; }
 body { margin: 16px; background:#f5f7fa; color:#111; }
 .card { background:#fff; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:1100px; margin:auto; }
 .page.oculto { display:none; }
 .page.activo { display:block; }
+
 .controls { margin:12px 0; display:flex; gap:8px; flex-wrap:wrap; }
+.actions { margin-top:12px; display:flex; gap:8px; }
+
+/* fila del nombre del hospital */
+.hospital-row {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin: 8px 0 12px;
+}
+.hospital-row label {
+  min-width:160px;
+  font-weight:600;
+}
+.hospital-row input[type="text"] {
+  flex: 1;
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #cbd5e1;
+}
+
+/* tabla y controles */
 table { width:100%; border-collapse:collapse; margin-top:12px; }
 th, td { border:1px solid #e2e8f0; padding:8px; text-align:left; vertical-align:middle; }
 select, input[type="text"], input[type="date"], input[type="number"] { width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:4px; }
 button { padding:8px 12px; border-radius:6px; border:0; background:#2563eb; color:#fff; cursor:pointer; }
 button:hover{ opacity:0.95; }
 
-/* Semáforo: tonos pastel pero con mayor presencia visual.
-   Usamos fondo suave + borde izquierdo para señalar claramente el estado. */
+/* Contenedor sticky en la parte inferior que moverá el script */
+#controls-bottom {
+  position: sticky;
+  bottom: 8px;
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  padding:8px 0;
+  margin-top: 12px;
+  background: linear-gradient(180deg, rgba(245,247,250,0), rgba(245,247,250,0.65));
+}
+
+/* Semáforo: tonos pastel pero con mayor presencia visual. */
 .expired {
-  background: rgba(244, 114, 128, 0.18);   /* pastel rojo - más visible */
+  background: rgba(244, 114, 128, 0.18);
   border-left: 4px solid rgba(244, 114, 128, 0.9);
   transition: background .18s, border-color .18s;
 }
 .warning-expiry {
-  background: rgba(250, 215, 103, 0.16);   /* pastel amarillo/ámbar */
+  background: rgba(250, 215, 103, 0.16);
   border-left: 4px solid rgba(250, 215, 103, 0.95);
   transition: background .18s, border-color .18s;
 }
 .valid-expiry {
-  background: rgba(167, 243, 208, 0.16);   /* pastel verde menta */
+  background: rgba(167, 243, 208, 0.16);
   border-left: 4px solid rgba(34, 197, 94, 0.95);
   transition: background .18s, border-color .18s;
 }
 
-/* Opcional: mejorar legibilidad del texto dentro de filas con semáforo */
+/* Mejor legibilidad del texto dentro de filas con semáforo */
 .expired td, .warning-expiry td, .valid-expiry td {
-  color: #0b1220; /* texto ligeramente más oscuro para contraste */
+  color: #0b1220;
 }
 
 /* Pequeño ajuste responsivo para tablas en pantallas pequeñas */
 @media (max-width: 700px) {
   th, td { font-size: 14px; padding:6px; }
   .controls { gap:6px; }
+  .hospital-row { flex-direction: column; align-items:stretch; }
+  .hospital-row label { min-width: auto; }
+}
+
+/* Accesibilidad: focus visible */
+button:focus, select:focus, input:focus {
+  outline: 3px solid rgba(37,99,235,0.18);
+  outline-offset: 2px;
 }
