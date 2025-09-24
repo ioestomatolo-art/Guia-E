@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Formulario Estomatologia</title>
+  <title>Formulario Estomatología</title>
   <link rel="stylesheet" href="Formato.css" />
 </head>
 <body>
@@ -11,7 +11,7 @@
   <div id="page1" class="page activo">
     <div class="card">
       <h2>Selecciona la categoría</h2>
-      <select id="categoria">
+      <select id="categoria" aria-label="Selecciona categoría">
         <option value="">--Seleccione--</option>
         <option value="insumos">Insumos</option>
         <option value="material">Material</option>
@@ -20,7 +20,8 @@
         <option value="bienesInformaticos">Bienes informáticos</option>
         <option value="instrumental">Instrumental</option>
       </select>
-      <div class="actions">
+
+      <div class="actions" style="margin-top:12px; display:flex; justify-content:flex-end;">
         <button id="btnSiguiente">Siguiente</button>
       </div>
     </div>
@@ -31,13 +32,19 @@
     <div class="card">
       <h2 id="tituloCategoria">Formulario</h2>
 
+      <!-- Nombre del hospital -->
+      <div class="hospital-row">
+        <label for="hospitalNombre">Nombre del hospital:</label>
+        <input id="hospitalNombre" type="text" placeholder="Escribe el nombre del hospital..." />
+      </div>
+
       <div class="controls">
         <button id="btnRegresar1">Regresar</button>
         <button id="btnAgregarFila">Agregar fila</button>
         <button id="btnEnviarInsumos">Enviar (consola)</button>
       </div>
 
-      <table id="tablaInsumos">
+      <table id="tablaInsumos" aria-label="Tabla de insumos">
         <thead>
           <tr>
             <th>No.</th>
@@ -48,6 +55,7 @@
             <th>Estado</th>
             <th>Caducidad</th>
             <th>Días restantes</th>
+            <!-- Observaciones será añadida dinámicamente por el script si no existe -->
           </tr>
         </thead>
         <tbody></tbody>
