@@ -1,13 +1,13 @@
-// Logica.js
+// Logica.js (con minimosDefinidos para 'material')
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
 
-  // ----------------------------- CATALOGO -----------------------------
-  // (pega aquí todo tu catálogo si falta)
+  const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
+
+  // ----------------------------- CATALOGO (usa tu catálogo completo aquí) -----------------------------
   const catalogo = {
-    
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
       { clave: "S/C", descripcion: "MEPIVACAÍNA 3% SIN VASOCONSTRICTOR. CAJA CON 50 CARTUCHOS DENTALES DE 1.8 ML CADA UNO.", stock: "", minimo: "", caducidad: "" },
@@ -18,19 +18,19 @@ document.addEventListener("DOMContentLoaded", () => {
       { clave: "070.707.0587", descripcion: "PELÍCULA RADIOGRÁFICA INFANTIL SENCILLA PERIAPICAL DE 2.2 * 3.5 CM. CAJA CON 100 PELÍCULAS1", stock: "", minimo: "", caducidad: "" }
     ],
     material: [
-      { clave: "060.016.0204", descripcion: "ACEITES . LUBRICANTE PARA PIEZA DE MANO DE BAJA VELOCIDAD. ENVASE CON APLICADOR CON 120 ML.", stock: "", minimo: "", caducidad: "" },
-      { clave: "060.016.0253", descripcion: "ACEITES. ACEITE LUBRICANTE PARA TURBINA DE PIEZA DE MANO DE ALTA VELOCIDAD. APLICADOR EN FORMA DE JERINGA. ENVASE CON 2 ML.", stock: "", minimo: "", caducidad: "" },
-      { clave: "S/C", descripcion: "ÁCIDO FOSFÓRICO AL 34% O 37% PARA GRABADO DE ESMALTE O DENTINA.", stock: "", minimo: "", caducidad: "" },
-      { clave: "060.031.0072", descripcion: "ADHESIVO. ADHESIVO DENTAL PARA RESINAS DIRECTAS AUTOPOLIMERIZABLE O FOTOPOLIMERIZABLE. FRASCO DE 5 ML.", stock: "", minimo: "", caducidad: "" },
-      { clave: "060.040.8058", descripcion: "AGUJAS DENTAL .TIPO CARPULE. DESECHABLE. LONGITUD. 25-42 MM CALIBRE. 27 G TAMAÑO. LARGA.", stock: "", minimo: "", caducidad: "" },
-      { clave: "060.040.8041", descripcion: "AGUJAS DENTALES. TIPO CARPULE. DESECHABLE. LONGITUD. 20-25 MM CALIBRE: 30 G TAMAÑO: CORTA.", stock: "", minimo: "", caducidad: "" },
-      { clave: "060.797.0019", descripcion: "ALGODONES. PARA USO DENTAL. MEDIDA: 3.8 X 0.8 CM. ENVASE CON 500 ROLLOS.", stock: "", minimo: "", caducidad: "" },
-      { clave: "S/C", descripcion: "ANTISÉPTICO BUCAL, SOLUCIÓN ELECTROLIZADA CON PH NEUTRO AL 0.0015% (15PPM) DE CL ACTIVO. CADA 100 ML. CONTIENE: IONES ACTIVOS: 7.5 - 9.5 MG. RANGO DE PH DE 6.4 A 7.5. ORP DE 650 A 900 MV", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.016.0204", descripcion: "ACEITES . LUBRICANTE PARA PIEZA DE MANO DE BAJA VELOCIDAD. ENVASE CON APLICADOR CON 120 ML.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.016.0253", descripcion: "ACEITES. ACEITE LUBRICANTE PARA TURBINA DE PIEZA DE MANO DE ALTA VELOCIDAD. APLICADOR EN FORMA DE JERINGA. ENVASE CON 2 ML.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "ÁCIDO FOSFÓRICO AL 34% O 37% PARA GRABADO DE ESMALTE O DENTINA.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.031.0072", descripcion: "ADHESIVO. ADHESIVO DENTAL PARA RESINAS DIRECTAS AUTOPOLIMERIZABLE O FOTOPOLIMERIZABLE. FRASCO DE 5 ML.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.040.8058", descripcion: "AGUJAS DENTAL .TIPO CARPULE. DESECHABLE. LONGITUD. 25-42 MM CALIBRE. 27 G TAMAÑO. LARGA.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.040.8041", descripcion: "AGUJAS DENTALES. TIPO CARPULE. DESECHABLE. LONGITUD. 20-25 MM CALIBRE: 30 G TAMAÑO: CORTA.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.797.0019", descripcion: "ALGODONES. PARA USO DENTAL. MEDIDA: 3.8 X 0.8 CM. ENVASE CON 500 ROLLOS.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "ANTISÉPTICO BUCAL, SOLUCIÓN ELECTROLIZADA CON PH NEUTRO AL 0.0015% (15PPM) DE CL ACTIVO. CADA 100 ML. CONTIENE: IONES ACTIVOS: 7.5 - 9.5 MG. RANGO DE PH DE 6.4 A 7.5. ORP DE 650 A 900 MV", stock: "", minimo: "1", caducidad: "" },
       { clave: "060.066.0401", descripcion: "ANTISÉPTICOS. EUGENOL.", stock: "", minimo: "", caducidad: "" },
       { clave: "S/C", descripcion: "APLICADORES MULTIPROPÓSITO (MICROBRUSH) CON PUNTAS DE FIBRA NO ABSORBENTE Y CUELLO FLEXIBLE. TAMAÑO: FINO, SUPERFINO O REGULAR.", stock: "", minimo: "", caducidad: "" },
       { clave: "060.111.0208", descripcion: "BARNICES. DE COPAL. PARA REVESTIMIENTO DE CAVIDADES.", stock: "", minimo: "", caducidad: "" },
-      { clave: "060.066.1078", descripcion: "BARNIZ DE FLUORURO DE SODIO AL 5% EN UNA CONCENTRACIÓN DE 22600 PPM AUTOPOLIMERIZABLE, EN UN VEHÍCULO DE RESINA MODIFICADO.", stock: "", minimo: "", caducidad: "" },
-      { clave: "S/C", descripcion: "CAMPO DESECHABLE. CUENTA CON DOS CAPAS DE PROTECCIÓN: 1 CAPA DE PAPEL Y UNA DE POLIETILENO. MED. 45 CM X 35 CM, DIFERENTES COLORES", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.066.1078", descripcion: "BARNIZ DE FLUORURO DE SODIO AL 5% EN UNA CONCENTRACIÓN DE 22600 PPM AUTOPOLIMERIZABLE, EN UN VEHÍCULO DE RESINA MODIFICADO.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "CAMPO DESECHABLE. CUENTA CON DOS CAPAS DE PROTECCIÓN: 1 CAPA DE PAPEL Y UNA DE POLIETILENO. MED. 45 CM X 35 CM, DIFERENTES COLORES", stock: "", minimo: "1", caducidad: "" },
       { clave: "060.182.0178", descripcion: "CEMENTO DE IONOMERO, DE VIDRIO RESTAURATIVO II. COLOR NO 21. POLVO 15 G. SILICATO DE ALUMINIO 95% - 97%. ACIDO POLIACRILICO 3% - 5%. LIQUIDO: 10 G, 8 ML. ACIDO POLIACRILICO 75%. ACIDO TARTÁRICO 10% - 15%. BARNIZ COMPATIBLE LIQUIDO 10 G.", stock: "", minimo: "", caducidad: "" },
       { clave: "S/C", descripcion: "CEMENTO DENTAL. PROTECTOR PULPAR PARA BASE. HIDRÓXIDO DE CALCIO COMPUESTO FOTOPOLIMERIZABLE.", stock: "", minimo: "", caducidad: "" },
       { clave: "060.182.0160", descripcion: `CEMENTO: IONÓMERO DE VIDRIO I.
@@ -118,20 +118,20 @@ document.addEventListener("DOMContentLoaded", () => {
     ],
     
     equipo: [
-      { clave: "S/C", descripcion: "TINA ULTRASÓNICA PARA ESTOMATOLOGÍA", stock: "", minimo: "", caducidad: "" },
-      { clave: "531.385.1080", descripcion: "ESTERILIZADOR CON VAPOR AUTOGENERADO PARA DENTAL Y MAXILOFACIAL", stock: "", minimo: "", caducidad: "" },
-      { clave: "531.291.0028", descripcion: "UNIDAD ESTOMATOLÓGICA CON MÓDULO INTEGRADO", stock: "", minimo: "", caducidad: "" },
-      { clave: "515.957.0109", descripcion: "UNIDAD ULTRASÓNICA ESTOMATOLÓGICA", stock: "", minimo: "", caducidad: "" },
-      { clave: "531.562.0020", descripcion: "LÁMPARA DE FOTOCURADO DE RESINAS Y CEMENTOS FOTOPOLIMERIZABLES", stock: "", minimo: "", caducidad: "" },
-      { clave: "531.291.0424", descripcion: "UNIDAD ESTOMATOLÓGICA PORTÁTIL *", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "TINA ULTRASÓNICA PARA ESTOMATOLOGÍA", stock: "", minimo: "0", caducidad: "" },
+      { clave: "531.385.1080", descripcion: "ESTERILIZADOR CON VAPOR AUTOGENERADO PARA DENTAL Y MAXILOFACIAL", stock: "", minimo: "0", caducidad: "" },
+      { clave: "531.291.0028", descripcion: "UNIDAD ESTOMATOLÓGICA CON MÓDULO INTEGRADO", stock: "", minimo: "1", caducidad: "" },
+      { clave: "515.957.0109", descripcion: "UNIDAD ULTRASÓNICA ESTOMATOLÓGICA", stock: "", minimo: "0", caducidad: "" },
+      { clave: "531.562.0020", descripcion: "LÁMPARA DE FOTOCURADO DE RESINAS Y CEMENTOS FOTOPOLIMERIZABLES", stock: "", minimo: "1", caducidad: "" },
+      { clave: "531.291.0424", descripcion: "UNIDAD ESTOMATOLÓGICA PORTÁTIL *", stock: "", minimo: "0", caducidad: "" },
       { clave: "531.032.0055", descripcion: "MEZCLADOR DE CÁPSULAS DENTALES, TIPO DOSIFICADOR-AMALGAMADOR (MEZCLA CÁPSULAS DE CEMENTO DE IONÓMERO DE VIDRIO Y OTROS CEMENTOS PREDOSIFICADOS EN CÁPSULAS) 4000 RPM", stock: "", minimo: "", caducidad: "" },
       { clave: "531.601.0056", descripcion: "MANDIL EMPLOMADO", stock: "", minimo: "", caducidad: "" },
       { clave: "531.695.0061", descripcion: "PORTA MANDIL", stock: "", minimo: "", caducidad: "" },
       { clave: "531.786.0079", descripcion: "REVELADOR MANUAL DE PLACAS DENTALES", stock: "", minimo: "", caducidad: "" },
-      { clave: "531.341.2305", descripcion: "UNIDAD RADIOLÓGICA DENTAL INCLUYE SENSOR DIGITAL INTRAORAL (RADIOVISIÓGRAFO)", stock: "", minimo: "", caducidad: "" },
+      { clave: "531.341.2305", descripcion: "UNIDAD RADIOLÓGICA DENTAL INCLUYE SENSOR DIGITAL INTRAORAL (RADIOVISIÓGRAFO)", stock: "", minimo: "1", caducidad: "" },
       { clave: "S/C", descripcion: "CÁMARA INTRAORAL DIGITAL.", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.480.0042", descripcion: "PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "", caducidad: "" },
-      { clave: "437.480.0034", descripcion: "PIEZA DE MANO DE BAJA VELOCIDAD CON CONTRAÁNGULO", stock: "", minimo: "", caducidad: "" }
+      { clave: "537.480.0042", descripcion: "PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "1", caducidad: "" },
+      { clave: "437.480.0034", descripcion: "PIEZA DE MANO DE BAJA VELOCIDAD CON CONTRAÁNGULO", stock: "", minimo: "1", caducidad: "" }
     ],
     mobiliario: [
       { clave: "511.232.0022", descripcion: "CESTO DE PAPELES", stock: "", minimo: "", caducidad: "" },
@@ -151,42 +151,42 @@ document.addEventListener("DOMContentLoaded", () => {
       { clave: "S/C", descripcion: "AIRE ACONDICIONADO", stock: "", minimo: "", caducidad: "" }
     ],
     bienesInformaticos: [
-      { clave: "S/C", descripcion: "COMPUTADORA DE ESCRITORIO MEDIO RENDIMIENTO WINDOWS", stock: "", minimo: "", caducidad: "" },
-      { clave: "S/C", descripcion: "UNIDAD DE ENERGÍA ININTERRUMPIDA TIPO 3. INTERACTIVO, CAPACIDAD DE 500 VA/300 WATSS.", stock: "", minimo: "", caducidad: "" },
-      { clave: "S/C", descripcion: "EQUIPO MULTIFUNCIONAL LÁSER MONOCROMÁTICO", stock: "", minimo: "", caducidad: "" }
+      { clave: "S/C", descripcion: "COMPUTADORA DE ESCRITORIO MEDIO RENDIMIENTO WINDOWS", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "UNIDAD DE ENERGÍA ININTERRUMPIDA TIPO 3. INTERACTIVO, CAPACIDAD DE 500 VA/300 WATSS.", stock: "", minimo: "0", caducidad: "" },
+      { clave: "S/C", descripcion: "EQUIPO MULTIFUNCIONAL LÁSER MONOCROMÁTICO", stock: "", minimo: "0", caducidad: "" }
     ],
     instrumental: [
-      { clave: "537.025.0069", descripcion: "ALVEOLOTOMO MEAD PINZA GUBIA LONGITUD 17CM", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.065.0052", descripcion: " APLICADOR DE HIDROXIDO DE CALCIO", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.079.0015", descripcion: " ARCO YOUNG PORTA DIQUE DE HULE", stock: "", minimo: "", caducidad: "" },
-      { clave: "535.137.0035", descripcion: "BISTURÍ QUIRÚRGICO. MANGO N° 3, CON ESCALA", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.105.0179", descripcion: "BISTURÍ GOLDMAN FOX. NO.7", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.151.0016", descripcion: "BOTA FRESA. BOTA FRESA BRODEN: ADITAMIENTO PARA PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.147.0017", descripcion: "BUDINERA DE ACERO INOXIDABLE 25 X 16 CM Y 700 ML.", stock: "", minimo: "", caducidad: "" },
-      { clave: "535.260.2154", descripcion: "CUCHARILLA LUCAS DE DOBLE EXTREMO 17CM DE LONGITUD", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.251.0098", descripcion: "CURETA. CURETA CK-6 DE DOBLE EXTREMO", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.251.0015", descripcion: "CURETA. CURETA MC CALL DERECHA E IZQUIERDA. JUEGO.", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.0452", descripcion: "ELEVADOR BEIN CON MANGO METALICO RECTO ACANALADO DE 2 O 3 MM ANCHO DE HOJA", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.0551", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR APICAL FLOHR CON MANGO METALICO CON BRAZO ANGULAR EXTREMO FINO Y CORTO DERECHO", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.0700", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR APLICAR FLOHR CON MANGO METALICO CON BRAZO ANGULAR EXTREMO FINO Y CORTO IZQUIERDO", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.2664", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR BEIN CON MANGO METALICO RECTO ACALANADO DE 4MM. ANCHO DE HOJA.", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.0957", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR TIPO CRYER WHITE DE BANDERA DERECHO CON MANGO METALICO EXTREMO EN ANGULO OBTUSO Y HOJA PEQUEÑA", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.1104", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR TIPO CRYER WHITE DE BANDERA IZQUIERDO CON MANGO METALICO EXTREMO EN ANGULO OBTUSO Y HOJA PEQUEÑA", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.1534", descripcion: "ELEVADOR SELDIN DE BANDERA DERECHO MANGO METALICO EXTREMO EN ANGULO RECTO HOJA GRANDE", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.1609", descripcion: "ELEVADOR SELDIN DE BANDERA IZQUIERDO MANGO METALICO EXTREMO EN ANGULO RECTO HOJA GRANDE", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.2805", descripcion: "ELEVADOR SELDIN, CON MANGO METÁLICO DE BANDERA, EXTREMO EN ÁNGULO RECTO, CON HOJA PEQUEÑA DERECHA.", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.327.2813", descripcion: "ELEVADOR SELDIN, CON MANGO METÁLICO DE BANDERA, EXTREMO EN ÁNGULO RECTO, CON HOJA PEQUEÑA IZQUIERDA", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.370.0029", descripcion: "ESPÁTULA METÁLICA DEL No.3 DE DOBLE EXTREMO UNO RECTANGULAR Y OTRO DE PUNTA DE LANZA", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.370.0128", descripcion: "ESPÁTULA PARA RESINA, DE PLÁSTICO, CON DOBLE PUNTA DE TRABAJO ", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.383.0081", descripcion: "ESPEJO DENTAL ROSCA SENCILLA PLANO SIN AUMENTO NO.5", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.397.0168", descripcion: "EXCAVADOR TIPO WHITE No.17", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.397.0150", descripcion: "EXCAVADOR TIPO WHITE No.5", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.409.0531", descripcion: "EXPLORADOR. EXPLORADOR DE UNA PIEZA CON DOBLE EXTREMO NO.5", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.426.0015", descripcion: "FÓRCEPS DENTAL TIPO KLEIN, INFANTIL No. 151 1/2 S ", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.426.0189", descripcion: "FÓRCEPS NO. 151", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.426.0221", descripcion: "FÓRCEPS NO.101", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.426.0197", descripcion: "FÓRCEPS NO.150", stock: "", minimo: "", caducidad: "" },
-      { clave: "537.426.0171", descripcion: "FÓRCEPS NO.17", stock: "", minimo: "", caducidad: "" },
+      { clave: "537.025.0069", descripcion: "ALVEOLOTOMO MEAD PINZA GUBIA LONGITUD 17CM", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.065.0052", descripcion: " APLICADOR DE HIDROXIDO DE CALCIO", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.079.0015", descripcion: " ARCO YOUNG PORTA DIQUE DE HULE", stock: "", minimo: "1", caducidad: "" },
+      { clave: "535.137.0035", descripcion: "BISTURÍ QUIRÚRGICO. MANGO N° 3, CON ESCALA", stock: "0", minimo: "", caducidad: "" },
+      { clave: "537.105.0179", descripcion: "BISTURÍ GOLDMAN FOX. NO.7", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.151.0016", descripcion: "BOTA FRESA. BOTA FRESA BRODEN: ADITAMIENTO PARA PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "0", caducidad: "" },
+      { clave: "537.147.0017", descripcion: "BUDINERA DE ACERO INOXIDABLE 25 X 16 CM Y 700 ML.", stock: "", minimo: "0", caducidad: "" },
+      { clave: "535.260.2154", descripcion: "CUCHARILLA LUCAS DE DOBLE EXTREMO 17CM DE LONGITUD", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.251.0098", descripcion: "CURETA. CURETA CK-6 DE DOBLE EXTREMO", stock: "", minimo: "", caducidad: "1" },
+      { clave: "537.251.0015", descripcion: "CURETA. CURETA MC CALL DERECHA E IZQUIERDA. JUEGO.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.327.0452", descripcion: "ELEVADOR BEIN CON MANGO METALICO RECTO ACANALADO DE 2 O 3 MM ANCHO DE HOJA", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.327.0551", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR APICAL FLOHR CON MANGO METALICO CON BRAZO ANGULAR EXTREMO FINO Y CORTO DERECHO", stock: "", minimo: "0", caducidad: "" },
+      { clave: "537.327.0700", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR APLICAR FLOHR CON MANGO METALICO CON BRAZO ANGULAR EXTREMO FINO Y CORTO IZQUIERDO", stock: "", minimo: "0", caducidad: "" },
+      { clave: "537.327.2664", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR BEIN CON MANGO METALICO RECTO ACALANADO DE 4MM. ANCHO DE HOJA.", stock: "", minimo: "0", caducidad: "" },
+      { clave: "537.327.0957", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR TIPO CRYER WHITE DE BANDERA DERECHO CON MANGO METALICO EXTREMO EN ANGULO OBTUSO Y HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.327.1104", descripcion: "ELEVADOR BUCO DENTOMAXILAR. ELEVADOR TIPO CRYER WHITE DE BANDERA IZQUIERDO CON MANGO METALICO EXTREMO EN ANGULO OBTUSO Y HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.327.1534", descripcion: "ELEVADOR SELDIN DE BANDERA DERECHO MANGO METALICO EXTREMO EN ANGULO RECTO HOJA GRANDE", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.327.1609", descripcion: "ELEVADOR SELDIN DE BANDERA IZQUIERDO MANGO METALICO EXTREMO EN ANGULO RECTO HOJA GRANDE", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.327.2805", descripcion: "ELEVADOR SELDIN, CON MANGO METÁLICO DE BANDERA, EXTREMO EN ÁNGULO RECTO, CON HOJA PEQUEÑA DERECHA.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.327.2813", descripcion: "ELEVADOR SELDIN, CON MANGO METÁLICO DE BANDERA, EXTREMO EN ÁNGULO RECTO, CON HOJA PEQUEÑA IZQUIERDA", stock: "", minimo: "0", caducidad: "" },
+      { clave: "537.370.0029", descripcion: "ESPÁTULA METÁLICA DEL No.3 DE DOBLE EXTREMO UNO RECTANGULAR Y OTRO DE PUNTA DE LANZA", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.370.0128", descripcion: "ESPÁTULA PARA RESINA, DE PLÁSTICO, CON DOBLE PUNTA DE TRABAJO ", stock: "", minimo: "0", caducidad: "" },
+      { clave: "537.383.0081", descripcion: "ESPEJO DENTAL ROSCA SENCILLA PLANO SIN AUMENTO NO.5", stock: "", minimo: "0", caducidad: "" },
+      { clave: "537.397.0168", descripcion: "EXCAVADOR TIPO WHITE No.17", stock: "", minimo: "5", caducidad: "" },
+      { clave: "537.397.0150", descripcion: "EXCAVADOR TIPO WHITE No.5", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.409.0531", descripcion: "EXPLORADOR. EXPLORADOR DE UNA PIEZA CON DOBLE EXTREMO NO.5", stock: "", minimo: "3", caducidad: "" },
+      { clave: "537.426.0015", descripcion: "FÓRCEPS DENTAL TIPO KLEIN, INFANTIL No. 151 1/2 S ", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.426.0189", descripcion: "FÓRCEPS NO. 151", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.426.0221", descripcion: "FÓRCEPS NO.101", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.426.0197", descripcion: "FÓRCEPS NO.150", stock: "", minimo: "1", caducidad: "" },
+      { clave: "537.426.0171", descripcion: "FÓRCEPS NO.17", stock: "", minimo: "1", caducidad: "" },
       { clave: "537.426.0460", descripcion: "FÓRCEPS NO.53 DERECHO", stock: "", minimo: "", caducidad: "" },
       { clave: "537.426.0270", descripcion: "FÓRCEPS NO.53 IZQUIERDO", stock: "", minimo: "", caducidad: "" },
       { clave: "537.426.0155", descripcion: "FÓRCEPS NO.65", stock: "", minimo: "", caducidad: "" },
@@ -219,7 +219,92 @@ document.addEventListener("DOMContentLoaded", () => {
       { clave: "513.887.0059", descripcion: "TORUNDERA CON TAPA, DE ACERO INOXIDABLE DE 250 ML. DE CAPACIDAD", stock: "", minimo: "", caducidad: "" }
     ]
   };
-  // --------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+
+  // ------------------ MINIMOS DEFINIDOS (categoria: material) ------------------
+  // Usé las claves y valores que me proporcionaste. Valores numéricos según lista.
+  const minimosDefinidos = {
+    "060.016.0204": 1,
+    "060.016.0253": 1,
+    "060.031.0072": 1,
+    "060.040.8058": 1,
+    "060.040.8041": 1,
+    "060.797.0019": 1,
+    "060.066.0401": 1,
+    "060.111.0208": 0,
+    "060.066.1078": 1,
+    "060.182.0178": 1,
+    "060.182.0160": 1,
+    "060.182.1366": 1,
+    "060.182.1150": 1,
+    "060.182.0236": 0,
+    "060.182.1176": 0,
+    "060.182.1275": 0,
+    "060.182.0194": 1,
+    "060.182.1424": 0,
+    "060.182.0186": 1,
+    "060.182.1440": 1,
+    "060.182.0228": 1,
+    "060.189.0254": 20,
+    "060.189.0106": 300,
+    "060.189.0015": 300,
+    "060.189.0023": 20,
+    "060.189.0031": 20,
+    "060.189.0205": 20,
+    "060.219.0068": 3,
+    "060.235.0019": 5,
+    "060.272.0039": 100,
+    "060.272.0047": 100,
+    "060.272.0013": 100,
+    "060.272.0021": 100,
+    "060.276.0050": 1,
+    "060.910.0011": 1,
+    "060.066.1086": 1,
+    "060.066.0500": 1,
+    "060.066.0112": 1,
+    "060.431.0037": 3,
+    "060.431.0672": 3,
+    "060.431.0656": 3,
+    "060.431.0664": 3,
+    "060.431.0433": 3,
+    "060.431.0631": 3,
+    "060.431.0649": 3,
+    "060.431.0409": 3,
+    "060.431.0466": 0,
+    "060.431.0318": 3,
+    "060.431.0334": 3,
+    "060.431.0342": 3,
+    "060.431.0011": 0,
+    "060.431.0581": 0,
+    "060.431.0599": 0,
+    "060.431.0540": 3,
+    "060.431.0557": 3,
+    "060.431.0565": 0,
+    "060.431.0573": 0,
+    "060.431.0524": 0,
+    "060.431.0532": 0,
+    "060.431.0615": 0,
+    "060.431.0623": 0,
+    "060.811.0078": 5,
+    "060.203.0439": 0,
+    "060.811.0060": 5,
+    "060.593.0106": 1,
+    "060.491.0018": 3,
+    "060.749.0703": 2,
+    "060.749.0836": 1,
+    "060.791.0106": 2,
+    "060.791.0122": 2,
+    "060.791.0114": 2,
+    "060.597.0037": 0,
+    "060.815.0058": 0,
+    "060.833.0197": 1,
+    "060.889.0158": 1,
+    "060.889.0224": 2,
+    "060.889.0232": 2,
+    "060.889.0208": 2
+    // si agregas más claves/valores para material o S/C con descripción única, agrégalos aquí
+  };
+  // -----------------------------------------------------------------------------------------------
 
   // DOM
   const selCategoria = document.getElementById("categoria");
@@ -230,11 +315,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const tituloCategoria = document.getElementById("tituloCategoria");
   const tabla = document.getElementById("tablaInsumos");
   const btnEnviar = document.getElementById("btnEnviarInsumos");
+  const inputHospital = document.getElementById("hospitalNombre"); // página1
 
-  // NUEVO: campo hospital
-  const inputHospital = document.getElementById("hospitalNombre");
-
-  // Asegurar encabezado: agregar columna "Observaciones" después de "Días restantes"
+  // Encabezado observaciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -270,7 +353,25 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   ensureObservacionesHeader();
 
-  // Mover botones al pie de la página 2 (sticky bottom)
+  function updateCaducidadHeader() {
+    if (!tabla) return;
+    const thead = tabla.querySelector("thead");
+    if (!thead) return;
+    const ths = Array.from(thead.querySelectorAll("th"));
+    const idx = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("caduc")));
+    const idxFecha = idx >= 0 ? idx : ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("fecha")));
+    const targetIndex = idx >= 0 ? idx : idxFecha;
+    if (targetIndex === -1) return;
+
+    const isAdq = adquisicionCats.has(categoriaActiva);
+    thead.querySelectorAll("th")[targetIndex].textContent = isAdq ? "Fecha de adquisición" : "Caducidad";
+
+    const diasIdx = targetIndex + 1;
+    if (thead.querySelectorAll("th")[diasIdx]) {
+      thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
+    }
+  }
+
   function moveButtonsToBottom() {
     const page2 = document.getElementById("page2");
     if (!page2) return;
@@ -293,63 +394,46 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-
   moveButtonsToBottom();
 
-  // ---------------- Navegación ----------------
+  // NAV
   btnSiguiente.onclick = (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
     if (!cat) return alert("Selecciona una categoría.");
+    const categoriaCambio = categoriaActiva && categoriaActiva !== cat;
+    if (categoriaCambio) limpiarTabla();
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
-    document.getElementById("page1").classList.remove("activo");
-    document.getElementById("page1").classList.add("oculto");
-    document.getElementById("page2").classList.remove("oculto");
-    document.getElementById("page2").classList.add("activo");
-    limpiarTabla();
-    agregarFila(); // fila inicial
+    document.getElementById("page1").classList.remove("activo"); document.getElementById("page1").classList.add("oculto");
+    document.getElementById("page2").classList.remove("oculto"); document.getElementById("page2").classList.add("activo");
+    updateCaducidadHeader();
+    if (!tbody.rows.length) agregarFila();
   };
 
   btnRegresar.onclick = (ev) => {
     ev && ev.preventDefault();
-    document.getElementById("page2").classList.remove("activo");
-    document.getElementById("page2").classList.add("oculto");
-    document.getElementById("page1").classList.remove("oculto");
-    document.getElementById("page1").classList.add("activo");
-    limpiarTabla();
-    categoriaActiva = null;
-    selCategoria.value = "";
-    if (inputHospital) inputHospital.value = "";
+    document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
+    document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+    updateCaducidadHeader();
   };
 
   function limpiarTabla() {
     if (tbody) tbody.innerHTML = "";
     filaContador = 0;
-    refreshDisabledOptions(); // limpiar deshabilitados
+    refreshDisabledOptions();
   }
 
-  // Evitar múltiples agregados
   btnAgregar.onclick = (ev) => {
     ev && ev.preventDefault();
-    if (!categoriaActiva) {
-      alert("Selecciona primero una categoría.");
-      return;
-    }
-    const now = Date.now();
-    if (now - lastAddTime < 250) return;
-    lastAddTime = now;
-    btnAgregar.disabled = true;
-    setTimeout(() => { btnAgregar.disabled = false; }, 300);
+    if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
+    const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
+    btnAgregar.disabled = true; setTimeout(() => { btnAgregar.disabled = false; }, 300);
     agregarFila();
   };
 
-  // Guarda todos los selects de la tabla para facilidad
-  function getAllSelects() {
-    return Array.from(tbody.querySelectorAll("select"));
-  }
+  function getAllSelects() { return Array.from(tbody.querySelectorAll("select")); }
 
-  // Desactiva (disabled) en selects las opciones ya elegidas en otras filas
   function refreshDisabledOptions() {
     const selects = getAllSelects();
     const selectedValues = selects.map(s => s.value).filter(v => v && v !== "");
@@ -366,27 +450,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // devuelve el mínimo conocido para una clave (o "" si no hay)
+  function getMinimoValue(clave, descripcion) {
+    if (!clave) return "";
+    // clave puede venir con formato "S/C" o con valor real; buscamos en minimosDefinidos
+    if (minimosDefinidos.hasOwnProperty(clave)) return String(minimosDefinidos[clave]);
+    // si no hay por clave, intentar buscar en catálogo por descripción exacta (opcional)
+    // (No forzamos asignar mínimos a items "S/C" sin mapeos explícitos)
+    return "";
+  }
+
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
 
     // No.
-    const tdNo = document.createElement("td");
-    tdNo.textContent = filaContador;
-    tr.appendChild(tdNo);
+    const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
 
     // Clave (select)
     const tdClave = document.createElement("td");
     const select = document.createElement("select");
-    const optDefault = document.createElement("option");
-    optDefault.value = "";
-    optDefault.textContent = "--Seleccione--";
-    select.appendChild(optDefault);
+    const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
 
     if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
       catalogo[categoriaActiva].forEach((p, idx) => {
         const o = document.createElement("option");
-        // usamos valor único: clave||idx
         o.value = `${p.clave}||${idx}`;
         o.textContent = p.clave;
         o.dataset.descripcion = p.descripcion || "";
@@ -400,80 +488,58 @@ document.addEventListener("DOMContentLoaded", () => {
     // Descripción (editable + datalist)
     const tdDesc = document.createElement("td");
     const inputDesc = document.createElement("input");
-    inputDesc.type = "text";
-    inputDesc.placeholder = "Escribe descripción o selecciona sugerencia";
-    inputDesc.tabIndex = 0;
-
+    inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
     const datalistId = `datalist-desc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
-    const dl = document.createElement("datalist");
-    dl.id = datalistId;
+    const dl = document.createElement("datalist"); dl.id = datalistId;
     if (catalogo[categoriaActiva]) {
-      catalogo[categoriaActiva].forEach(p => {
-        const opt = document.createElement("option");
-        opt.value = p.descripcion;
-        dl.appendChild(opt);
-      });
+      catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
     }
     inputDesc.setAttribute("list", datalistId);
-    tdDesc.appendChild(inputDesc);
-    tdDesc.appendChild(dl);
-    tr.appendChild(tdDesc);
+    tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
     // Stock
     const tdStock = document.createElement("td");
-    const inputStock = document.createElement("input");
-    inputStock.type = "number";
-    inputStock.min = 0;
-    tdStock.appendChild(inputStock);
-    tr.appendChild(tdStock);
+    const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
 
-    // Mínimo
+    // Mínimo (readonly)
     const tdMin = document.createElement("td");
-    const inputMin = document.createElement("input");
-    inputMin.type = "number";
-    inputMin.min = 0;
-    tdMin.appendChild(inputMin);
-    tr.appendChild(tdMin);
+    const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0;
+    inputMin.readOnly = true; inputMin.style.background = "#f3f4f6"; // indicación visual
+    tdMin.appendChild(inputMin); tr.appendChild(tdMin);
 
     // Estado
-    const tdEstado = document.createElement("td");
-    const spanEstado = document.createElement("span");
-    tdEstado.appendChild(spanEstado);
-    tr.appendChild(tdEstado);
+    const tdEstado = document.createElement("td"); const spanEstado = document.createElement("span"); tdEstado.appendChild(spanEstado); tr.appendChild(tdEstado);
 
-    // Caducidad
-    const tdCad = document.createElement("td");
-    const inputCad = document.createElement("input");
-    inputCad.type = "date";
-    tdCad.appendChild(inputCad);
-    tr.appendChild(tdCad);
+    // Caducidad / Fecha adquisición
+    const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date";
+    inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad"); tdCad.appendChild(inputCad); tr.appendChild(tdCad);
 
-    // Días restantes
-    const tdDias = document.createElement("td");
-    const inputDias = document.createElement("input");
-    inputDias.type = "text";
-    inputDias.readOnly = true;
-    inputDias.value = "";
-    tdDias.appendChild(inputDias);
-    tr.appendChild(tdDias);
+    // Días
+    const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type = "text"; inputDias.readOnly = true; inputDias.value = ""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
 
-    // Observaciones (editable)
-    const tdObs = document.createElement("td");
-    const inputObs = document.createElement("input");
-    inputObs.type = "text";
-    inputObs.placeholder = "Observaciones (texto libre)";
-    tdObs.appendChild(inputObs);
-    tr.appendChild(tdObs);
+    // Observaciones
+    const tdObs = document.createElement("td"); const inputObs = document.createElement("input"); inputObs.type = "text"; inputObs.placeholder = "Observaciones (texto libre)"; tdObs.appendChild(inputObs); tr.appendChild(tdObs);
 
     tbody.appendChild(tr);
 
-    // ------------------ Lógica de autocompletado ------------------
+    // --- fillProduct ahora usa getMinimoValue ---
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
       inputStock.value = producto.stock || "";
-      inputMin.value = producto.minimo || "";
+
+      // primero: si el producto tiene .minimo en el catalogo, lo usamos
+      if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") {
+        inputMin.value = producto.minimo;
+      } else {
+        // si no, intentamos con el mapa minimosDefinidos por clave
+        const clave = producto.clave || "";
+        const val = getMinimoValue(clave, producto.descripcion || "");
+        inputMin.value = val;
+      }
+
       inputCad.value = producto.caducidad || "";
+
       const lista = catalogo[categoriaActiva] || [];
       const idx = lista.indexOf(producto);
       if (idx >= 0) {
@@ -504,24 +570,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     inputDesc.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === "Tab") {
-        const v = (inputDesc.value || "").trim();
-        if (!v) return;
-        const lista = catalogo[categoriaActiva] || [];
-        const vLower = v.toLowerCase();
-
+        const v = (inputDesc.value || "").trim(); if (!v) return;
+        const lista = catalogo[categoriaActiva] || []; const vLower = v.toLowerCase();
         const matchesStarts = lista.filter(p => p.descripcion && p.descripcion.trim().toLowerCase().startsWith(vLower));
         const matchesContains = lista.filter(p => p.descripcion && p.descripcion.trim().toLowerCase().includes(vLower));
-
         let producto = null;
         if (matchesStarts.length === 1) producto = matchesStarts[0];
         else if (matchesStarts.length > 1) producto = matchesStarts[0];
         else if (matchesContains.length === 1) producto = matchesContains[0];
         else if (matchesContains.length > 1 && matchesContains[0].descripcion.trim().toLowerCase().startsWith(vLower)) producto = matchesContains[0];
-
-        if (producto) {
-          if (ev.key === "Enter") ev.preventDefault();
-          fillProduct(producto);
-        }
+        if (producto) { if (ev.key === "Enter") ev.preventDefault(); fillProduct(producto); }
       }
     });
 
@@ -534,7 +592,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (!producto) {
         const claveSimple = select.value ? select.value.split("||")[0] : "";
+        // intentar buscar por clave en catálogo
         producto = (catalogo[categoriaActiva] || []).find(p => p.clave === claveSimple) || null;
+        // si no está en catálogo, rellenar el mínimo desde minimosDefinidos por claveSimple
+        if (!producto && claveSimple) {
+          const val = getMinimoValue(claveSimple, "");
+          inputMin.value = val;
+        }
       }
       if (producto) fillProduct(producto);
       refreshDisabledOptions();
@@ -549,22 +613,8 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarFila(tr);
     });
 
-    inputMin.addEventListener("input", () => {
-      if (inputMin.value === "") return actualizarFila(tr);
-      let v = parseInt(inputMin.value, 10);
-      if (isNaN(v) || v < 0) v = 0;
-      inputMin.value = v;
-      actualizarFila(tr);
-    });
-
     inputCad.addEventListener("change", () => actualizarFila(tr));
-
-    [select, inputDesc].forEach(el => {
-      el.addEventListener("change", refreshDisabledOptions);
-      el.addEventListener("input", refreshDisabledOptions);
-      el.addEventListener("blur", refreshDisabledOptions);
-    });
-
+    [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
     refreshDisabledOptions();
   }
 
@@ -578,9 +628,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const stockVal = inputStock.value === "" ? null : Math.max(0, parseInt(inputStock.value || 0, 10));
     const minVal = inputMin.value === "" ? 0 : Math.max(0, parseInt(inputMin.value || 0, 10));
-    if (stockVal === null) {
-      estadoSpan.textContent = "";
-    } else {
+    if (stockVal === null) { estadoSpan.textContent = ""; } else {
       estadoSpan.textContent = (stockVal < minVal) ? "Bajo stock" : "Stock suficiente";
     }
 
@@ -588,29 +636,29 @@ document.addEventListener("DOMContentLoaded", () => {
     inputDias.value = "";
 
     if (inputCad.value) {
-      const hoy = new Date();
-      hoy.setHours(0,0,0,0);
-      const cad = new Date(inputCad.value);
-      const diffMs = cad - hoy;
-      const diasRest = Math.ceil(diffMs / (1000*60*60*24));
-      inputDias.value = diasRest < 0 ? "Caducado" : diasRest;
-
-      let meses = (cad.getFullYear() - hoy.getFullYear()) * 12 + (cad.getMonth() - hoy.getMonth());
-      if (cad.getDate() < hoy.getDate()) meses -= 1;
-
-      if (meses < 0) {
-        tr.classList.add("expired");
-      } else if (meses < 6) {
-        tr.classList.add("expired");
-      } else if (meses <= 12) {
-        tr.classList.add("warning-expiry");
+      const hoy = new Date(); hoy.setHours(0,0,0,0);
+      const fecha = new Date(inputCad.value);
+      const msPorDia = 1000*60*60*24;
+      const isAdq = adquisicionCats.has(categoriaActiva);
+      if (isAdq) {
+        const diffMs = hoy - fecha;
+        const diasDesde = Math.ceil(diffMs / msPorDia);
+        inputDias.value = diasDesde < 0 ? "En futuro" : String(diasDesde);
       } else {
-        tr.classList.add("valid-expiry");
+        const diffMs = fecha - hoy;
+        const diasRest = Math.ceil(diffMs / msPorDia);
+        inputDias.value = diasRest < 0 ? "Caducado" : String(diasRest);
+        let meses = (fecha.getFullYear() - hoy.getFullYear()) * 12 + (fecha.getMonth() - hoy.getMonth());
+        if (fecha.getDate() < hoy.getDate()) meses -= 1;
+        if (meses < 0) tr.classList.add("expired");
+        else if (meses < 6) tr.classList.add("expired");
+        else if (meses <= 12) tr.classList.add("warning-expiry");
+        else tr.classList.add("valid-expiry");
       }
     }
   }
 
-  // Botón enviar: recopila datos, incluye hospital, limpia la tabla y regresa a página inicial
+  // Enviar
   if (btnEnviar) {
     btnEnviar.onclick = (ev) => {
       ev && ev.preventDefault();
@@ -628,38 +676,33 @@ document.addEventListener("DOMContentLoaded", () => {
           descripcion,
           stock: row.cells[3].querySelector("input").value,
           minimo: row.cells[4].querySelector("input").value,
-          caducidad: row.cells[6].querySelector("input").value,
-          diasRestantes: row.cells[7].querySelector("input").value,
+          fecha: row.cells[6].querySelector("input").value,
+          dias: row.cells[7].querySelector("input").value,
           observaciones
         });
       }
 
       const hospital = inputHospital ? (inputHospital.value || "").trim() : "";
 
-      const payload = {
-        hospital,
-        categoria: categoriaActiva,
-        fecha: new Date().toISOString(),
-        items: datos
-      };
-
+      const payload = { hospital, categoria: categoriaActiva, fechaEnvio: new Date().toISOString(), items: datos };
       console.log("Payload a enviar:", payload);
       alert("Datos listos (ver consola).");
 
-      // limpieza y reset
+      // limpieza y reset (solo aquí)
       limpiarTabla();
       categoriaActiva = null;
       selCategoria.value = "";
       if (inputHospital) inputHospital.value = "";
-      // volver a la página 1
-      document.getElementById("page2").classList.remove("activo");
-      document.getElementById("page2").classList.add("oculto");
-      document.getElementById("page1").classList.remove("oculto");
-      document.getElementById("page1").classList.add("activo");
+      updateCaducidadHeader();
+      document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
+      document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
     };
   }
 
-  // Asegurarse de que botones estén abajo al iniciar
   moveButtonsToBottom();
   window.addEventListener("resize", moveButtonsToBottom);
 });
+
+
+
+

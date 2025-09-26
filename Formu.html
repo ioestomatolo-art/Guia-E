@@ -11,6 +11,13 @@
   <div id="page1" class="page activo">
     <div class="card">
       <h2>Selecciona la categoría</h2>
+
+      <!-- Nombre del hospital ahora en página 1 -->
+      <div class="hospital-row" style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
+        <label for="hospitalNombre" style="min-width:160px; font-weight:600;">Nombre del hospital:</label>
+        <input id="hospitalNombre" type="text" placeholder="Escribe el nombre del hospital..." aria-label="Nombre del hospital" style="flex:1; padding:8px; border-radius:6px; border:1px solid #cbd5e1;" />
+      </div>
+
       <select id="categoria" aria-label="Selecciona categoría">
         <option value="">--Seleccione--</option>
         <option value="insumos">Insumos</option>
@@ -32,11 +39,7 @@
     <div class="card">
       <h2 id="tituloCategoria">Formulario</h2>
 
-      <!-- Nombre del hospital -->
-      <div class="hospital-row">
-        <label for="hospitalNombre">Nombre del hospital:</label>
-        <input id="hospitalNombre" type="text" placeholder="Escribe el nombre del hospital..." />
-      </div>
+      <!-- (hospital ya está en la página 1, aquí no se repite) -->
 
       <div class="controls">
         <button id="btnRegresar1">Regresar</button>
