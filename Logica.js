@@ -1,4 +1,4 @@
-// Logica.js (con minimosDefinidos y descarga CSV)
+// Logica.js (con minimosDefinidos y descarga Excel-compatible (.xls) con colorización tipo semáforo)
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
@@ -7,7 +7,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
   // ----------------------------- CATALOGO (pega tu catálogo completo aquí) -----------------------------
-  // Puedes reemplazar el array de ejemplo por todo tu catálogo (la estructura: {clave, descripcion, stock, minimo, caducidad})
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -316,7 +315,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const tituloCategoria = document.getElementById("tituloCategoria");
   const tabla = document.getElementById("tablaInsumos");
   const btnEnviar = document.getElementById("btnEnviarInsumos");
-  const inputHospital = document.getElementById("hospitalNombre"); // está en page1 según tu HTML
+  const inputHospital = document.getElementById("hospitalNombre");
+
+  // El resto del código (ensureObservacionesHeader, updateCaducidadHeader, moveButtonsToBottom, navegación, agregar filas, actualizar fila)
+  // es el mismo que tenías — lo incluyo aquí completo para que funcione si pegas todo el archivo.
 
   // Asegurar encabezado Observaciones
   function ensureObservacionesHeader() {
@@ -354,7 +356,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   ensureObservacionesHeader();
 
-  // Ajusta el encabezado Caducidad <-> Fecha de adquisición según categoría
   function updateCaducidadHeader() {
     if (!tabla) return;
     const thead = tabla.querySelector("thead");
@@ -374,7 +375,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Mueve botones al bottom sticky (si no existe el contenedor lo crea)
   function moveButtonsToBottom() {
     const page2 = document.getElementById("page2");
     if (!page2) return;
@@ -399,13 +399,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   moveButtonsToBottom();
 
-  // NAV: siguiente -> mostrar page2
   btnSiguiente.onclick = (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
     if (!cat) return alert("Selecciona una categoría.");
     const categoriaCambio = categoriaActiva && categoriaActiva !== cat;
-    // si se cambia de categoría, limpiar la tabla (si regresas a la misma categoría, mantener lo ya capturado)
     if (categoriaCambio) limpiarTabla();
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
@@ -415,7 +413,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tbody.rows.length) agregarFila();
   };
 
-  // NAV: regresar -> volver a page1 (no limpiamos filas para preservar selección)
   btnRegresar.onclick = (ev) => {
     ev && ev.preventDefault();
     document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
@@ -429,7 +426,6 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshDisabledOptions();
   }
 
-  // Evitar clicks rapidos
   btnAgregar.onclick = (ev) => {
     ev && ev.preventDefault();
     if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
@@ -456,17 +452,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // devuelve el mínimo conocido para una clave (o "" si no hay)
   function getMinimoValue(clave, descripcion) {
     if (!clave) return "";
-    // clave puede venir como "S/C" o como valor limpio; buscamos en minimosDefinidos
     if (minimosDefinidos.hasOwnProperty(clave)) return String(minimosDefinidos[clave]);
-    // si no hay por clave, intentar buscar en catálogo por descripción exacta (opcional)
-    // (No forzamos asignar mínimos a items "S/C" sin mapeos explícitos)
     return "";
   }
 
-  // Construye una nueva fila en la tabla
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
@@ -530,25 +521,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.appendChild(tr);
 
-    // --- fillProduct usa getMinimoValue ---
+    // fillProduct
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
       inputStock.value = producto.stock || "";
-
-      // primer intento: mínimo declarado en el catálogo
       if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") {
         inputMin.value = producto.minimo;
       } else {
-        // segundo intento: buscar en minimosDefinidos por clave
-        const clave = producto.clave || "";
-        const val = getMinimoValue(clave, producto.descripcion || "");
+        const clave = produto ? produto.clave : producto.clave;
+        const val = getMinimoValue(producto.clave || "", producto.descripcion || "");
         inputMin.value = val;
       }
-
       inputCad.value = producto.caducidad || "";
 
-      // seleccionar opción en select si coincide con el producto del catálogo
       const lista = catalogo[categoriaActiva] || [];
       const idx = lista.indexOf(producto);
       if (idx >= 0) {
@@ -566,7 +552,6 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarFila(tr);
     }
 
-    // autocompletado por descripción
     inputDesc.addEventListener("input", () => {
       const v = (inputDesc.value || "").trim();
       if (!v) { refreshDisabledOptions(); actualizarFila(tr); return; }
@@ -574,12 +559,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const vLower = v.toLowerCase();
       const productoExact = lista.find(p => p.descripcion && p.descripcion.trim().toLowerCase() === vLower);
       if (productoExact) { fillProduct(productoExact); return; }
-      // si no hay exact match, no llenamos mínimo automáticamente (evitar contradicciones)
       refreshDisabledOptions();
       actualizarFila(tr);
     });
 
-    // autocompletado con Enter/Tab si hay coincidencias
     inputDesc.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === "Tab") {
         const v = (inputDesc.value || "").trim(); if (!v) return;
@@ -595,7 +578,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // seleccionar por clave en el select
     select.addEventListener("change", () => {
       const selectedOption = select.selectedOptions[0];
       let producto = null;
@@ -606,7 +588,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!producto) {
         const claveSimple = select.value ? select.value.split("||")[0] : "";
         producto = (catalogo[categoriaActiva] || []).find(p => p.clave === claveSimple) || null;
-        // si no está en catálogo pero tenemos mínimo definido por clave -> asignarlo
         if (!producto && claveSimple) {
           const val = getMinimoValue(claveSimple, "");
           inputMin.value = val;
@@ -654,13 +635,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const isAdq = adquisicionCats.has(categoriaActiva);
 
       if (isAdq) {
-        // días desde adquisición (edad)
         const diffMs = hoy - fecha;
         const diasDesde = Math.ceil(diffMs / msPorDia);
         inputDias.value = diasDesde < 0 ? "En futuro" : String(diasDesde);
-        // no aplicamos semáforo por adquisición (puedes ajustar si quieres)
       } else {
-        // días restantes hasta caducidad y semáforo
         const diffMs = fecha - hoy;
         const diasRest = Math.ceil(diffMs / msPorDia);
         inputDias.value = diasRest < 0 ? "Caducado" : String(diasRest);
@@ -676,25 +654,75 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- CSV helpers ---
-  function escapeCsv(val) {
-    if (val === null || val === undefined) return "";
-    const s = String(val);
-    if (/[",\r\n]/.test(s)) {
-      return '"' + s.replace(/"/g, '""') + '"';
-    }
-    return s;
-  }
+  // --- export helpers (Excel-compatible HTML) ---
   function pad(n){ return n<10 ? '0'+n : String(n); }
   function formatDateForFilename(d){
     return '' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
   }
 
-  // Enviar -> construir CSV y descargar
+  // Mapear clases a colores (hex)
+  const semaforoColor = {
+    expired: "#F47280",       // rojo pastel
+    "warning-expiry": "#FAD567", // amarillo pastel
+    "valid-expiry": "#A7F3D0", // verde pastel
+    default: "#FFFFFF"        // blanco / sin color
+  };
+
+  // Construye un archivo .xls (HTML) con inline styles para mantener colores en Excel
+  function exportTableToExcelHtml(hospital, categoria, fechaEnvio, filas) {
+    // filas: array de objetos con: clave, descripcion, stock, minimo, fecha, dias, observaciones, color (hex)
+    const styles = `
+      <style>
+        table{border-collapse:collapse;}
+        th,td{border:1px solid #ccc;padding:6px;vertical-align:middle;}
+        th{background:#f3f4f6;font-weight:600;}
+      </style>
+    `;
+    const headers = ["No.","Hospital","Categoría","Fecha envío","Clave","Descripción","Stock","Mínimo","Fecha","Días","Observaciones"];
+    let bodyRows = "";
+    filas.forEach((f, idx) => {
+      const bg = f.color || semaforoColor.default;
+      // coloreamos toda la fila con background inline
+      bodyRows += `<tr style="background:${bg};">`;
+      bodyRows += `<td>${idx+1}</td>`;
+      bodyRows += `<td>${escapeHtml(hospital)}</td>`;
+      bodyRows += `<td>${escapeHtml(categoria)}</td>`;
+      bodyRows += `<td>${escapeHtml(fechaEnvio)}</td>`;
+      bodyRows += `<td>${escapeHtml(f.clave || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.descripcion || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.stock || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.minimo || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.fecha || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.dias || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.observaciones || "")}</td>`;
+      bodyRows += `</tr>`;
+    });
+
+    const thead = `<tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">${styles}</head><body><table>${thead}${bodyRows}</table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const now = new Date();
+    const filename = `inventario_${categoria || 'general'}_${formatDateForFilename(now)}.xls`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // Enviar -> construir datos y exportar .xls coloreado
   if (btnEnviar) {
     btnEnviar.onclick = (ev) => {
       ev && ev.preventDefault();
-      const datos = [];
+      const filasExport = [];
       for (const row of tbody.rows) {
         const select = row.cells[1].querySelector("select");
         const raw = select ? select.value : "";
@@ -702,64 +730,47 @@ document.addEventListener("DOMContentLoaded", () => {
         const descripcion = (row.cells[2].querySelector("input").value || "").trim();
         const obsCellIndex = row.cells.length - 1;
         const observaciones = (row.cells[obsCellIndex].querySelector("input").value || "").trim();
-        // ignorar filas vacías
         if (!claveReal && !descripcion && !observaciones) continue;
-        datos.push({
+
+        // decidir color según clase (mantener la misma lógica de semáforo visual)
+        let color = semaforoColor.default;
+        if (adquisicionCats.has(categoriaActiva)) {
+          // para adquisiciones dejamos blanco (o podrías elegir otro color suave)
+          color = semaforoColor.default;
+        } else {
+          if (row.classList.contains("expired")) color = semaforoColor.expired;
+          else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
+          else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
+          else color = semaforoColor.default;
+        }
+
+        filasExport.push({
           clave: claveReal,
           descripcion,
           stock: row.cells[3].querySelector("input").value || "",
           minimo: row.cells[4].querySelector("input").value || "",
           fecha: row.cells[6].querySelector("input").value || "",
           dias: row.cells[7].querySelector("input").value || "",
-          observaciones
+          observaciones,
+          color
         });
       }
 
-      if (datos.length === 0) {
-        alert("No hay datos para enviar.");
+      if (filasExport.length === 0) {
+        alert("No hay datos para exportar.");
         return;
       }
 
       const hospital = inputHospital ? (inputHospital.value || "").trim() : "";
       const fechaEnvio = new Date().toISOString();
 
-      // Construcción CSV: repetimos metadatos por fila para facilidad de importación
-      const headers = ["hospital","categoria","fechaEnvio","clave","descripcion","stock","minimo","fecha","dias","observaciones"];
-      const csvRows = [headers.join(",")];
-      datos.forEach(item => {
-        const row = [
-          hospital,
-          categoriaActiva || "",
-          fechaEnvio,
-          item.clave,
-          item.descripcion,
-          item.stock,
-          item.minimo,
-          item.fecha,
-          item.dias,
-          item.observaciones
-        ];
-        csvRows.push(row.map(escapeCsv).join(","));
-      });
-      const csvContent = csvRows.join("\r\n");
+      // Exportar como archivo .xls (HTML)
+      exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
 
-      // crear blob y forzar descarga
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const now = new Date();
-      const filename = `inventario_${categoriaActiva || 'general'}_${formatDateForFilename(now)}.csv`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      console.log("Exportado .xls con colorización. Items:", filasExport);
+      alert("Archivo .xls generado (abrir con Excel/LibreOffice para ver la colorización).");
 
-      console.log("Payload a enviar (CSV descargado):", { hospital, categoria: categoriaActiva, fechaEnvio, items: datos });
-      alert("CSV generado y descargado. Revisa tu carpeta de descargas.");
-
-      // limpieza y reset (solo aquí)
+      // limpieza y reset
       limpiarTabla();
       categoriaActiva = null;
       selCategoria.value = "";
@@ -774,6 +785,7 @@ document.addEventListener("DOMContentLoaded", () => {
   moveButtonsToBottom();
   window.addEventListener("resize", moveButtonsToBottom);
 });
+
 
 
 
