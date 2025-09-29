@@ -1,14 +1,53 @@
+/* Header / Logo (full width) */
+.site-header {
+  width: 100%;
+  background: #f5f7fa; /* opcional: fondo similar al body para continuidad */
+  padding: 8px 0;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+}
+#logo-sesver {
+  display: block;
+  width: 100%;           /* ocupa todo el ancho disponible */
+  max-width: none;       /* permite estirarse hasta el ancho de la ventana */
+  height: auto;
+  object-fit: contain;   /* mantiene proporciones sin recortar */
+  margin: 0 auto;
+  /* opcional: limitar altura para que no sea gigantesco en pantallas muy altas */
+  max-height: 140px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
 /* Formato.css - estilos principales */
 * { box-sizing: border-box; font-family: Arial, sans-serif; }
-body { margin: 16px; background:#f5f7fa; color:#111; }
-.card { background:#fff; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:1100px; margin:auto; }
+body { margin: 0; padding: 16px; background:#f5f7fa; color:#111; }
+
+/* el .card mantiene el ancho máximo de contenido y centra */
+.card {
+  background:#fff;
+  padding:16px;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  max-width:1100px;
+  margin: 16px auto; /* separa del header y centra */
+}
+
+/* Título grande dentro del recuadro */
+.page-title {
+  margin: 0 0 12px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: left; /* si quieres al centro: center */
+}
+
+/* resto de estilos (mantengo tus reglas previas) */
 .page.oculto { display:none; }
 .page.activo { display:block; }
 
 .controls { margin:12px 0; display:flex; gap:8px; flex-wrap:wrap; }
 .actions { margin-top:12px; display:flex; gap:8px; }
 
-/* fila del nombre del hospital */
 .hospital-row {
   display:flex;
   gap:8px;
@@ -33,7 +72,7 @@ select, input[type="text"], input[type="date"], input[type="number"] { width:100
 button { padding:8px 12px; border-radius:6px; border:0; background:#2563eb; color:#fff; cursor:pointer; }
 button:hover{ opacity:0.95; }
 
-/* Contenedor sticky en la parte inferior que moverá el script */
+/* Contenedor sticky en la parte inferior */
 #controls-bottom {
   position: sticky;
   bottom: 8px;
@@ -45,37 +84,22 @@ button:hover{ opacity:0.95; }
   background: linear-gradient(180deg, rgba(245,247,250,0), rgba(245,247,250,0.65));
 }
 
-/* Semáforo: tonos pastel pero con mayor presencia visual. */
-.expired {
-  background: rgba(244, 114, 128, 0.18);
-  border-left: 4px solid rgba(244, 114, 128, 0.9);
-  transition: background .18s, border-color .18s;
-}
-.warning-expiry {
-  background: rgba(250, 215, 103, 0.16);
-  border-left: 4px solid rgba(250, 215, 103, 0.95);
-  transition: background .18s, border-color .18s;
-}
-.valid-expiry {
-  background: rgba(167, 243, 208, 0.16);
-  border-left: 4px solid rgba(34, 197, 94, 0.95);
-  transition: background .18s, border-color .18s;
-}
+/* Semáforo */
+.expired { background: rgba(244,114,128,0.18); border-left:4px solid rgba(244,114,128,0.9); }
+.warning-expiry { background: rgba(250,215,103,0.16); border-left:4px solid rgba(250,215,103,0.95); }
+.valid-expiry { background: rgba(167,243,208,0.16); border-left:4px solid rgba(34,197,94,0.95); }
+.expired td, .warning-expiry td, .valid-expiry td { color: #0b1220; }
 
-/* Mejor legibilidad del texto dentro de filas con semáforo */
-.expired td, .warning-expiry td, .valid-expiry td {
-  color: #0b1220;
-}
-
-/* Pequeño ajuste responsivo para tablas en pantallas pequeñas */
 @media (max-width: 700px) {
+  /* logo más pequeño en móvil; título y hospital en columna */
+  #logo-sesver { max-height: 90px; }
   th, td { font-size: 14px; padding:6px; }
   .controls { gap:6px; }
   .hospital-row { flex-direction: column; align-items:stretch; }
   .hospital-row label { min-width: auto; }
 }
 
-/* Accesibilidad: focus visible */
+/* focus visible para accesibilidad */
 button:focus, select:focus, input:focus {
   outline: 3px solid rgba(37,99,235,0.18);
   outline-offset: 2px;
