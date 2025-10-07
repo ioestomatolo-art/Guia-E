@@ -1,8 +1,13 @@
-// Logica.js (con minimosDefinidos y descarga Excel-compatible (.xls) con colorización tipo semáforo)
+// Logica.js (modificado para enviar al WebApp de Google Apps Script)
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
+
+  // URL del WebApp (pega la tuya)
+  const SERVER_URL = "https://script.google.com/macros/s/AKfycbyGfi0L4-iWTZbuRsNw9Cj9ny8IeTKbRBWl_-CBzwP-3AOsRYd0PBmceEyH-6o9IYsl8A/exec";
+  // Token opcional para que solo peticiones autorizadas lleguen a tu script (configúralo también en Apps Script).
+  const API_TOKEN = "";
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
@@ -304,9 +309,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0208": 2
     // puedes añadir más pares clave:valor según tu lista
   };
-  // -----------------------------------------------------------------------------------------------
 
-  // DOM
+  // ---------------- DOM ----------------
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
   const btnRegresar = document.getElementById("btnRegresar1");
@@ -317,10 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnEnviar = document.getElementById("btnEnviarInsumos");
   const inputHospital = document.getElementById("hospitalNombre");
 
-  // El resto del código (ensureObservacionesHeader, updateCaducidadHeader, moveButtonsToBottom, navegación, agregar filas, actualizar fila)
-  // es el mismo que tenías — lo incluyo aquí completo para que funcione si pegas todo el archivo.
-
-  // Asegurar encabezado Observaciones
+  // helpers para encabezado y cabecera
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -399,6 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   moveButtonsToBottom();
 
+  // NAV
   btnSiguiente.onclick = (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
@@ -458,14 +460,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
+  // Construye fila
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
 
-    // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
 
-    // Clave (select)
+    // Clave
     const tdClave = document.createElement("td");
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
@@ -483,7 +485,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tdClave.appendChild(select);
     tr.appendChild(tdClave);
 
-    // Descripción (editable + datalist)
+    // Descripción
     const tdDesc = document.createElement("td");
     const inputDesc = document.createElement("input");
     inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
@@ -499,7 +501,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tdStock = document.createElement("td");
     const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
 
-    // Mínimo (readonly)
+    // Minimo
     const tdMin = document.createElement("td");
     const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0;
     inputMin.readOnly = true; inputMin.style.background = "#f3f4f6"; inputMin.style.cursor = "not-allowed";
@@ -508,7 +510,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Estado
     const tdEstado = document.createElement("td"); const spanEstado = document.createElement("span"); tdEstado.appendChild(spanEstado); tr.appendChild(tdEstado);
 
-    // Caducidad / Fecha adquisición
+    // Caducidad / adquisición
     const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date";
     inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad");
     tdCad.appendChild(inputCad); tr.appendChild(tdCad);
@@ -517,20 +519,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type = "text"; inputDias.readOnly = true; inputDias.value = ""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
 
     // Observaciones
-    const tdObs = document.createElement("td"); const inputObs = document.createElement("input"); inputObs.type = "text"; inputObs.placeholder = "Observaciones (texto libre)"; tdObs.appendChild(inputObs); tr.appendChild(tdObs);
+    const tdObs = document.createElement("td"); const inputObs = document.createElement("input"); inputObs.type = "text"; inputObs.placeholder = "Observaciones"; tdObs.appendChild(inputObs); tr.appendChild(tdObs);
 
     tbody.appendChild(tr);
 
-    // fillProduct
+    // Rellena producto al elegir
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
       inputStock.value = producto.stock || "";
+
       if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") {
         inputMin.value = producto.minimo;
       } else {
-        const clave = produto ? produto.clave : producto.clave;
-        const val = getMinimoValue(producto.clave || "", producto.descripcion || "");
+        const clave = producto.clave || "";
+        const val = getMinimoValue(clave, producto.descripcion || "");
         inputMin.value = val;
       }
       inputCad.value = producto.caducidad || "";
@@ -611,7 +614,6 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshDisabledOptions();
   }
 
-  // Actualizar fila (estado + semáforo)
   function actualizarFila(tr) {
     const inputStock = tr.cells[3].querySelector("input");
     const inputMin = tr.cells[4].querySelector("input");
@@ -654,97 +656,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- export helpers (Excel-compatible HTML) ---
-  function pad(n){ return n<10 ? '0'+n : String(n); }
-  function formatDateForFilename(d){
-    return '' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-  }
-
-  // Mapear clases a colores (hex)
-  const semaforoColor = {
-    expired: "#F47280",       // rojo pastel
-    "warning-expiry": "#FAD567", // amarillo pastel
-    "valid-expiry": "#A7F3D0", // verde pastel
-    default: "#FFFFFF"        // blanco / sin color
-  };
-
-  // Construye un archivo .xls (HTML) con inline styles para mantener colores en Excel
-  function exportTableToExcelHtml(hospital, categoria, fechaEnvio, filas) {
-    // filas: array de objetos con: clave, descripcion, stock, minimo, fecha, dias, observaciones, color (hex)
-    const styles = `
-      <style>
-        table{border-collapse:collapse;}
-        th,td{border:1px solid #ccc;padding:6px;vertical-align:middle;}
-        th{background:#f3f4f6;font-weight:600;}
-      </style>
-    `;
-    const headers = ["No.","Hospital","Categoría","Fecha envío","Clave","Descripción","Stock","Mínimo","Fecha","Días","Observaciones"];
-    let bodyRows = "";
-    filas.forEach((f, idx) => {
-      const bg = f.color || semaforoColor.default;
-      // coloreamos toda la fila con background inline
-      bodyRows += `<tr style="background:${bg};">`;
-      bodyRows += `<td>${idx+1}</td>`;
-      bodyRows += `<td>${escapeHtml(hospital)}</td>`;
-      bodyRows += `<td>${escapeHtml(categoria)}</td>`;
-      bodyRows += `<td>${escapeHtml(fechaEnvio)}</td>`;
-      bodyRows += `<td>${escapeHtml(f.clave || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.descripcion || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.stock || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.minimo || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.fecha || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.dias || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.observaciones || "")}</td>`;
-      bodyRows += `</tr>`;
-    });
-
-    const thead = `<tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr>`;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">${styles}</head><body><table>${thead}${bodyRows}</table></body></html>`;
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-    const now = new Date();
-    const filename = `inventario_${categoria || 'general'}_${formatDateForFilename(now)}.xls`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function escapeHtml(str) {
-    if (str === null || str === undefined) return "";
-    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
-
-  // Enviar -> construir datos y exportar .xls coloreado
+  // ---------- Enviar AL SERVIDOR (Apps Script) ----------
   if (btnEnviar) {
-    btnEnviar.onclick = (ev) => {
+    btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
-      const filasExport = [];
+
+      // recolectar filas
+      const datos = [];
       for (const row of tbody.rows) {
         const select = row.cells[1].querySelector("select");
         const raw = select ? select.value : "";
         const claveReal = raw ? raw.split("||")[0] : "";
         const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-        const obsCellIndex = row.cells.length - 1;
-        const observaciones = (row.cells[obsCellIndex].querySelector("input").value || "").trim();
+        const observaciones = (row.cells[row.cells.length - 1].querySelector("input").value || "").trim();
         if (!claveReal && !descripcion && !observaciones) continue;
 
-        // decidir color según clase (mantener la misma lógica de semáforo visual)
-        let color = semaforoColor.default;
-        if (adquisicionCats.has(categoriaActiva)) {
-          // para adquisiciones dejamos blanco (o podrías elegir otro color suave)
-          color = semaforoColor.default;
-        } else {
-          if (row.classList.contains("expired")) color = semaforoColor.expired;
-          else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
-          else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
-          else color = semaforoColor.default;
-        }
+        // determinar semáforo por clase de fila
+        const clase = row.classList.contains("expired") ? "expired"
+                    : row.classList.contains("warning-expiry") ? "warning-expiry"
+                    : row.classList.contains("valid-expiry") ? "valid-expiry"
+                    : "";
 
-        filasExport.push({
+        datos.push({
           clave: claveReal,
           descripcion,
           stock: row.cells[3].querySelector("input").value || "",
@@ -752,32 +685,66 @@ document.addEventListener("DOMContentLoaded", () => {
           fecha: row.cells[6].querySelector("input").value || "",
           dias: row.cells[7].querySelector("input").value || "",
           observaciones,
-          color
+          semaforo: clase
         });
       }
 
-      if (filasExport.length === 0) {
-        alert("No hay datos para exportar.");
+      if (datos.length === 0) {
+        alert("No hay datos para enviar.");
         return;
       }
 
+      // construir payload
       const hospital = inputHospital ? (inputHospital.value || "").trim() : "";
       const fechaEnvio = new Date().toISOString();
+      const payload = {
+        hospital,
+        categoria: categoriaActiva || "",
+        fechaEnvio,
+        items: datos,
+        _token: API_TOKEN
+      };
 
-      // Exportar como archivo .xls (HTML)
-      exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
+      // UI: bloquear botón y mostrar que se está enviando
+      btnEnviar.disabled = true;
+      const originalText = btnEnviar.textContent;
+      btnEnviar.textContent = "Enviando...";
 
-      console.log("Exportado .xls con colorización. Items:", filasExport);
-      alert("Archivo .xls generado (abrir con Excel/LibreOffice para ver la colorización).");
+      try {
+        const resp = await fetch(SERVER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
 
-      // limpieza y reset
-      limpiarTabla();
-      categoriaActiva = null;
-      selCategoria.value = "";
-      if (inputHospital) inputHospital.value = "";
-      updateCaducidadHeader();
-      document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
-      document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => "");
+          throw new Error(`Error en servidor: ${resp.status} ${resp.statusText} ${text}`);
+        }
+
+        // intentar parsear JSON de respuesta (si tu Apps Script devuelve JSON)
+        let data;
+        try { data = await resp.json(); } catch(e) { data = null; }
+
+        // Éxito: puedes mostrar mensaje con datos devueltos por servidor
+        console.log("Respuesta del servidor:", data);
+        alert("Datos enviados correctamente al servidor central.");
+
+        // limpieza y reset
+        limpiarTabla();
+        categoriaActiva = null;
+        selCategoria.value = "";
+        if (inputHospital) inputHospital.value = "";
+        updateCaducidadHeader();
+        document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
+        document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+      } catch (err) {
+        console.error("Error enviando datos:", err);
+        alert("Error al enviar datos: " + (err.message || err));
+      } finally {
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = originalText;
+      }
     };
   }
 
@@ -785,7 +752,3 @@ document.addEventListener("DOMContentLoaded", () => {
   moveButtonsToBottom();
   window.addEventListener("resize", moveButtonsToBottom);
 });
-
-
-
-

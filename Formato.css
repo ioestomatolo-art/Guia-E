@@ -19,18 +19,45 @@
 }
 
 /* Formato.css - estilos principales */
-* { box-sizing: border-box; font-family: Arial, sans-serif; }
-body { margin: 0; padding: 16px; background:#f5f7fa; color:#111; }
-
-/* el .card mantiene el ancho máximo de contenido y centra */
-.card {
-  background:#fff;
-  padding:16px;
-  border-radius:8px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.06);
-  max-width:1100px;
-  margin: 16px auto; /* separa del header y centra */
+* /* Gradiente lineal sutil: vino -> blanco (vertical) */
+/* Gradiente descendente: vino marcado arriba → blanco abajo (más contraste) */
+/* Gradiente descendente: vino suave arriba → blanco abajo (sutil) */
+/* asegurar que el documento use todo el alto */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
+
+/* Gradiente descendente: vino marcado arriba → blanco abajo
+   fijo y sin repetir para que sea continuo sobre toda la página */
+body {
+  min-height: 100vh;
+  padding: 16px;
+  color: #0b1220;
+  background: linear-gradient(180deg,
+    rgba(128,0,32,0.85) 0%,
+    rgba(128,0,32,0.50) 30%,
+    rgba(245,240,245,0.65) 65%,
+    rgba(255,255,255,1) 100%);
+  background-attachment: fixed;   /* mantiene el degradado fijo al hacer scroll */
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-color: #ffffff; /* fallback */
+  box-sizing: border-box;
+}
+
+/* .card ligeramente translúcida para que el degradado siga visible debajo.
+   Si prefieres la tarjeta totalmente opaca deja `background: #fff;` */
+.card {
+  background: rgba(255,255,255,0.92); /* deja pasar un poco del degradado */
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  max-width: 1100px;
+  margin: 16px auto;
+}
+
 
 /* Título grande dentro del recuadro */
 .page-title {
@@ -104,3 +131,7 @@ button:focus, select:focus, input:focus {
   outline: 3px solid rgba(37,99,235,0.18);
   outline-offset: 2px;
 }
+
+
+
+
