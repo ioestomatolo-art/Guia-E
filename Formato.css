@@ -1,36 +1,31 @@
 /* Header / Logo (full width) */
 .site-header {
   width: 100%;
-  background: #f5f7fa; /* opcional: fondo similar al body para continuidad */
+  background: #f5f7fa;
   padding: 8px 0;
   box-shadow: 0 1px 0 rgba(0,0,0,0.03);
 }
 #logo-sesver {
   display: block;
-  width: 100%;           /* ocupa todo el ancho disponible */
-  max-width: none;       /* permite estirarse hasta el ancho de la ventana */
+  width: 100%;
+  max-width: none;
   height: auto;
-  object-fit: contain;   /* mantiene proporciones sin recortar */
+  object-fit: contain;
   margin: 0 auto;
-  /* opcional: limitar altura para que no sea gigantesco en pantallas muy altas */
   max-height: 140px;
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
-/* Formato.css - estilos principales */
-* /* Gradiente lineal sutil: vino -> blanco (vertical) */
-/* Gradiente descendente: vino marcado arriba → blanco abajo (más contraste) */
-/* Gradiente descendente: vino suave arriba → blanco abajo (sutil) */
-/* asegurar que el documento use todo el alto */
+/* Asegurar que el documento use todo el alto */
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
-/* Gradiente descendente: vino marcado arriba → blanco abajo
-   fijo y sin repetir para que sea continuo sobre toda la página */
+/* Fondo degradado descendente: color vino arriba -> blanco abajo */
 body {
   min-height: 100vh;
   padding: 16px;
@@ -40,98 +35,215 @@ body {
     rgba(128,0,32,0.50) 30%,
     rgba(245,240,245,0.65) 65%,
     rgba(255,255,255,1) 100%);
-  background-attachment: fixed;   /* mantiene el degradado fijo al hacer scroll */
+  background-attachment: fixed;
   background-repeat: no-repeat;
   background-size: cover;
-  background-color: #ffffff; /* fallback */
-  box-sizing: border-box;
+  background-color: #ffffff;
+  font-family: Arial, sans-serif;
 }
 
-/* .card ligeramente translúcida para que el degradado siga visible debajo.
-   Si prefieres la tarjeta totalmente opaca deja `background: #fff;` */
+/* Tarjeta principal: columna, no se estira demasiado */
 .card {
-  background: rgba(255,255,255,0.92); /* deja pasar un poco del degradado */
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   max-width: 1100px;
   margin: 16px auto;
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  max-height: 80vh;
 }
 
-
-/* Título grande dentro del recuadro */
-.page-title {
-  margin: 0 0 12px 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-  text-align: left; /* si quieres al centro: center */
-}
-
-/* resto de estilos (mantengo tus reglas previas) */
+/* Titulos */
+.page-title { margin: 0 0 12px 0; font-size: 1.5rem; font-weight: 700; color: #0f172a; }
 .page.oculto { display:none; }
 .page.activo { display:block; }
 
-.controls { margin:12px 0; display:flex; gap:8px; flex-wrap:wrap; }
-.actions { margin-top:12px; display:flex; gap:8px; }
+.hospital-row { display:flex; gap:8px; align-items:center; margin: 8px 0 12px; }
+.hospital-row label { min-width:160px; font-weight:600; }
+.hospital-row input[type="text"] { flex: 1; padding:8px; border-radius:6px; border:1px solid #cbd5e1; }
 
-.hospital-row {
-  display:flex;
-  gap:8px;
-  align-items:center;
-  margin: 8px 0 12px;
-}
-.hospital-row label {
-  min-width:160px;
-  font-weight:600;
-}
-.hospital-row input[type="text"] {
-  flex: 1;
-  padding:8px;
-  border-radius:6px;
-  border:1px solid #cbd5e1;
-}
-
-/* tabla y controles */
-table { width:100%; border-collapse:collapse; margin-top:12px; }
-th, td { border:1px solid #e2e8f0; padding:8px; text-align:left; vertical-align:middle; }
-select, input[type="text"], input[type="date"], input[type="number"] { width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:4px; }
-button { padding:8px 12px; border-radius:6px; border:0; background:#2563eb; color:#fff; cursor:pointer; }
-button:hover{ opacity:0.95; }
-
-/* Contenedor sticky en la parte inferior */
-#controls-bottom {
-  position: sticky;
-  bottom: 8px;
-  display:flex;
-  gap:8px;
-  justify-content:flex-end;
-  padding:8px 0;
+/* ----------------------- Tabla: casillas redondeadas y anchos ajustados ----------------------- */
+#tablaInsumos {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 8px;
   margin-top: 12px;
-  background: linear-gradient(180deg, rgba(245,247,250,0), rgba(245,247,250,0.65));
+  table-layout: fixed;
+  background: transparent;
+}
+
+/* Encabezado */
+#tablaInsumos thead th {
+  background: rgba(255,255,255,0.98);
+  padding: 10px 12px;
+  font-weight: 700;
+  color: #2b2b2b;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  text-align: left;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Celdas */
+#tablaInsumos tbody td {
+  background: rgba(255,255,255,0.98);
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  color: #0b1220;
+}
+
+/* Descripción puede ocupar varias líneas */
+#tablaInsumos tbody td:nth-child(3),
+#tablaInsumos thead th:nth-child(3) {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+/* Anchos por columna */
+#tablaInsumos th:nth-child(1), #tablaInsumos td:nth-child(1)  { width: 4%;  min-width: 36px;  text-align:center; } /* No */
+#tablaInsumos th:nth-child(2), #tablaInsumos td:nth-child(2)  { width: 12%; min-width: 90px; } /* Clave */
+#tablaInsumos th:nth-child(3), #tablaInsumos td:nth-child(3)  { width: 38%; min-width: 220px; } /* Descripción */
+#tablaInsumos th:nth-child(4), #tablaInsumos td:nth-child(4)  { width: 7%;  min-width: 64px;  text-align:center; } /* Stock */
+#tablaInsumos th:nth-child(5), #tablaInsumos td:nth-child(5)  { width: 7%;  min-width: 64px;  text-align:center; } /* Mínimo */
+#tablaInsumos th:nth-child(6), #tablaInsumos td:nth-child(6)  { width: 9%;  min-width: 80px; } /* Estado */
+#tablaInsumos th:nth-child(7), #tablaInsumos td:nth-child(7)  { width: 10%; min-width: 92px; } /* Caducidad */
+#tablaInsumos th:nth-child(8), #tablaInsumos td:nth-child(8)  { width: 5%;  min-width: 50px;  text-align:center; } /* Días */
+#tablaInsumos th:nth-child(9), #tablaInsumos td:nth-child(9)  { width: 18%; min-width: 140px; white-space: normal; } /* Observaciones */
+
+/* Inputs y selects */
+#tablaInsumos tbody td input,
+#tablaInsumos tbody td select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* Observaciones: textarea redondeado */
+#tablaInsumos tbody td:nth-child(9) textarea {
+  width: 100%;
+  min-height: 40px;
+  max-height: 120px;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  color: #0b1220;
+  box-sizing: border-box;
+  background: #fff;
+}
+#tablaInsumos tbody td:nth-child(9) textarea:focus {
+  outline: 3px solid rgba(37,99,235,0.15);
+  border-color: #2563eb;
+}
+
+/* Hover en fila */
+#tablaInsumos tbody tr:hover td {
+  transform: translateY(-3px);
+  transition: transform .12s ease;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.06);
 }
 
 /* Semáforo */
+#tablaInsumos tbody tr.expired td { background: rgba(244,114,128,0.12); }
+#tablaInsumos tbody tr.warning-expiry td { background: rgba(250,215,103,0.12); }
+#tablaInsumos tbody tr.valid-expiry td { background: rgba(167,243,208,0.12); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  #tablaInsumos th:nth-child(3), #tablaInsumos td:nth-child(3) { width: 34%; min-width: 160px; }
+  #tablaInsumos th:nth-child(9), #tablaInsumos td:nth-child(9) { min-width: 120px; }
+}
+
+@media (max-width: 480px) {
+  #tablaInsumos {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  #tablaInsumos thead, #tablaInsumos tbody, #tablaInsumos tr {
+    display: table;
+    width: auto;
+    min-width: 900px;
+  }
+  #tablaInsumos tbody td { white-space: nowrap; }
+}
+
+
+#tablaInsumos td:nth-child(3) { white-space: normal; } /* descripción puede quebrar */
+
+/* Controles (dentro del card, debajo de la tabla) */
+.controls { margin-top:12px; display:flex; gap:10px; justify-content:flex-end; align-items:center; }
+
+/* Botones apariencia */
+.controls button, .actions button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 110px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
+}
+
+/* Tonos vino/rosado */
+#btnEnviarInsumos {
+  background: linear-gradient(180deg, #b81a44 0%, #8d0f30 100%);
+  color: #fff;
+}
+#btnAgregarFila {
+  background: linear-gradient(180deg, #f07b98 0%, #d84a68 100%);
+  color: #fff;
+}
+#btnRegresar1 {
+  background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+  color: #fff;
+}
+#btnSiguiente {
+  background: linear-gradient(180deg, #9f213f 0%, #7a132b 100%);
+  color: #fff;
+}
+
+/* Hover/active */
+.controls button:hover, .actions button:hover { transform: translateY(-1px); opacity: 0.98; }
+.controls button:active, .actions button:active { transform: translateY(0); }
+
+/* Semáforo (filas) */
 .expired { background: rgba(244,114,128,0.18); border-left:4px solid rgba(244,114,128,0.9); }
 .warning-expiry { background: rgba(250,215,103,0.16); border-left:4px solid rgba(250,215,103,0.95); }
 .valid-expiry { background: rgba(167,243,208,0.16); border-left:4px solid rgba(34,197,94,0.95); }
 .expired td, .warning-expiry td, .valid-expiry td { color: #0b1220; }
 
 @media (max-width: 700px) {
-  /* logo más pequeño en móvil; título y hospital en columna */
   #logo-sesver { max-height: 90px; }
-  th, td { font-size: 14px; padding:6px; }
-  .controls { gap:6px; }
-  .hospital-row { flex-direction: column; align-items:stretch; }
-  .hospital-row label { min-width: auto; }
+  #tablaInsumos td, #tablaInsumos th { font-size: 13px; padding:6px; }
+  .controls { flex-direction: column; align-items: stretch; gap:8px; }
+  .controls button { width: 100%; min-width: 0; }
+  #tablaInsumos tbody { max-height: calc(90vh - 340px); }
 }
 
-/* focus visible para accesibilidad */
+/* accesibilidad focus */
 button:focus, select:focus, input:focus {
   outline: 3px solid rgba(37,99,235,0.18);
   outline-offset: 2px;
 }
-
-
-
-
