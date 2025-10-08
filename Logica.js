@@ -1,17 +1,18 @@
-// Logica.js (modificado para enviar al WebApp de Google Apps Script)
+
+// Logica.js - versión con export .xls y observaciones como textarea
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
 
-  // URL del WebApp (pega la tuya)
+  // Si usas WebApp en el futuro, pon aquí tu URL
   const SERVER_URL = "https://script.google.com/macros/s/AKfycbyGfi0L4-iWTZbuRsNw9Cj9ny8IeTKbRBWl_-CBzwP-3AOsRYd0PBmceEyH-6o9IYsl8A/exec";
-  // Token opcional para que solo peticiones autorizadas lleguen a tu script (configúralo también en Apps Script).
   const API_TOKEN = "";
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ----------------------------- CATALOGO (pega tu catálogo completo aquí) -----------------------------
+  // ------------------ CATALOGO (rellena con tu catálogo real) ------------------
+  // Por ahora dejo arrays vacíos para que el archivo sea compacto. Pegue aquí su catálogo completo.
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -309,6 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0208": 2
     // puedes añadir más pares clave:valor según tu lista
   };
+  // -----------------------------------------------------------------------------------------------
 
   // ---------------- DOM ----------------
   const selCategoria = document.getElementById("categoria");
@@ -321,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnEnviar = document.getElementById("btnEnviarInsumos");
   const inputHospital = document.getElementById("hospitalNombre");
 
-  // helpers para encabezado y cabecera
+  // Asegura que exista la cabecera y la columna Observaciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -341,10 +343,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const ths = Array.from(thead.querySelectorAll("th"));
     if (ths.some(t => (t.textContent || "").trim().toLowerCase() === "observaciones")) return;
 
-    let insertIndex = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("días") && (t.textContent || "").trim().toLowerCase().includes("restantes")));
-    if (insertIndex === -1) {
-      insertIndex = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("días") || (t.textContent || "").trim().toLowerCase().includes("dias")));
-    }
+    // Inserta después de la columna "Días" (si existe)
+    let insertIndex = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("días") || (t.textContent || "").trim().toLowerCase().includes("dias")));
     const thObs = document.createElement("th");
     thObs.textContent = "Observaciones";
     if (insertIndex >= 0) {
@@ -376,29 +376,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function moveButtonsToBottom() {
+  // Mueve los botones dentro del .card y los coloca debajo de la tabla
+  function moveButtonsToCardBottom() {
     const page2 = document.getElementById("page2");
-    if (!page2) return;
-    let bottom = document.getElementById("controls-bottom");
+    if (!page2 || !tabla) return;
+
+    // Encuentra la card dentro de page2
+    const card = page2.querySelector(".card") || page2;
+    // Si existe ya un contenedor lo reutilizamos
+    let bottom = card.querySelector("#controls-bottom");
     if (!bottom) {
       bottom = document.createElement("div");
       bottom.id = "controls-bottom";
-      bottom.style.position = "sticky";
-      bottom.style.bottom = "8px";
+      // usa display flex para alinear a la derecha
       bottom.style.display = "flex";
-      bottom.style.gap = "8px";
       bottom.style.justifyContent = "flex-end";
-      bottom.style.padding = "8px 0";
-      bottom.style.background = "transparent";
-      page2.appendChild(bottom);
+      bottom.style.gap = "8px";
+      bottom.style.marginTop = "12px";
+      // Insertar después de la tabla
+      // si la tabla está dentro de card, insertamos después; si no, añadimos al final
+      if (tabla.parentElement && tabla.parentElement === card) {
+        card.insertBefore(bottom, tabla.nextSibling);
+      } else {
+        card.appendChild(bottom);
+      }
     }
+
+    // Aseguramos que los botones existan en DOM y los movemos al contenedor bottom
     [btnRegresar, btnAgregar, btnEnviar].forEach(b => {
-      if (b && bottom && b.parentElement !== bottom) {
+      if (!b) return;
+      // si el botón está dentro de otro contenedor, lo movemos aquí
+      if (b.parentElement !== bottom) {
         bottom.appendChild(b);
+      }
+      // estilo básico para integrarlo con la estética (puedes ajustar en CSS)
+      b.style.borderRadius = "8px";
+      b.style.padding = "8px 14px";
+      b.style.fontSize = "0.95rem";
+      b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+      b.style.border = "none";
+      b.style.cursor = "pointer";
+      // tonos acordes: un gris/rosado suave para armonizar con el fondo (modifica en CSS si quieres)
+      if (b === btnEnviar) {
+        b.style.background = "#b91c6a"; // botón enviar con tono vino
+        b.style.color = "#fff";
+      } else {
+        b.style.background = "#f3f4f6"; // gris claro
+        b.style.color = "#0b1220";
       }
     });
   }
-  moveButtonsToBottom();
+
+  // inicial
+  moveButtonsToCardBottom();
 
   // NAV
   btnSiguiente.onclick = (ev) => {
@@ -413,6 +443,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("page2").classList.remove("oculto"); document.getElementById("page2").classList.add("activo");
     updateCaducidadHeader();
     if (!tbody.rows.length) agregarFila();
+    // reubicar botones (por si cambió el DOM)
+    moveButtonsToCardBottom();
   };
 
   btnRegresar.onclick = (ev) => {
@@ -454,7 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function getMinimoValue(clave, descripcion) {
+  function getMinimoValue(clave) {
     if (!clave) return "";
     if (minimosDefinidos.hasOwnProperty(clave)) return String(minimosDefinidos[clave]);
     return "";
@@ -465,9 +497,10 @@ document.addEventListener("DOMContentLoaded", () => {
     filaContador++;
     const tr = document.createElement("tr");
 
+    // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
 
-    // Clave
+    // Clave (select)
     const tdClave = document.createElement("td");
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
@@ -501,7 +534,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tdStock = document.createElement("td");
     const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
 
-    // Minimo
+    // Minimo (readonly)
     const tdMin = document.createElement("td");
     const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0;
     inputMin.readOnly = true; inputMin.style.background = "#f3f4f6"; inputMin.style.cursor = "not-allowed";
@@ -510,7 +543,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Estado
     const tdEstado = document.createElement("td"); const spanEstado = document.createElement("span"); tdEstado.appendChild(spanEstado); tr.appendChild(tdEstado);
 
-    // Caducidad / adquisición
+    // Caducidad / Fecha adquisición
     const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date";
     inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad");
     tdCad.appendChild(inputCad); tr.appendChild(tdCad);
@@ -518,8 +551,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Días
     const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type = "text"; inputDias.readOnly = true; inputDias.value = ""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
 
-    // Observaciones
-    const tdObs = document.createElement("td"); const inputObs = document.createElement("input"); inputObs.type = "text"; inputObs.placeholder = "Observaciones"; tdObs.appendChild(inputObs); tr.appendChild(tdObs);
+    // Observaciones: textarea para mejor UX
+    const tdObs = document.createElement("td");
+    const textareaObs = document.createElement("textarea");
+    textareaObs.placeholder = "Observaciones";
+    textareaObs.rows = 2;
+    textareaObs.style.resize = "vertical";
+    textareaObs.style.width = "100%";
+    textareaObs.style.boxSizing = "border-box";
+    tdObs.appendChild(textareaObs);
+    tr.appendChild(tdObs);
 
     tbody.appendChild(tr);
 
@@ -528,12 +569,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
       inputStock.value = producto.stock || "";
-
       if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") {
         inputMin.value = producto.minimo;
       } else {
         const clave = producto.clave || "";
-        const val = getMinimoValue(clave, producto.descripcion || "");
+        const val = getMinimoValue(clave);
         inputMin.value = val;
       }
       inputCad.value = producto.caducidad || "";
@@ -573,10 +613,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const matchesStarts = lista.filter(p => p.descripcion && p.descripcion.trim().toLowerCase().startsWith(vLower));
         const matchesContains = lista.filter(p => p.descripcion && p.descripcion.trim().toLowerCase().includes(vLower));
         let producto = null;
-        if (matchesStarts.length === 1) producto = matchesStarts[0];
-        else if (matchesStarts.length > 1) producto = matchesStarts[0];
+        if (matchesStarts.length >= 1) producto = matchesStarts[0];
         else if (matchesContains.length === 1) producto = matchesContains[0];
-        else if (matchesContains.length > 1 && matchesContains[0].descripcion.trim().toLowerCase().startsWith(vLower)) producto = matchesContains[0];
         if (producto) { if (ev.key === "Enter") ev.preventDefault(); fillProduct(producto); }
       }
     });
@@ -592,7 +630,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const claveSimple = select.value ? select.value.split("||")[0] : "";
         producto = (catalogo[categoriaActiva] || []).find(p => p.clave === claveSimple) || null;
         if (!producto && claveSimple) {
-          const val = getMinimoValue(claveSimple, "");
+          const val = getMinimoValue(claveSimple);
           inputMin.value = val;
         }
       }
@@ -656,28 +694,94 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------- Enviar AL SERVIDOR (Apps Script) ----------
-  if (btnEnviar) {
-    btnEnviar.onclick = async (ev) => {
-      ev && ev.preventDefault();
+  // --- export helpers (Excel-compatible HTML) ---
+  function pad(n){ return n<10 ? '0'+n : String(n); }
+  function formatDateForFilename(d){
+    return '' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  }
 
-      // recolectar filas
-      const datos = [];
+  const semaforoColor = {
+    expired: "#FDE2E5",        // rojo suave
+    "warning-expiry": "#FFF7E0", // amarillento suave
+    "valid-expiry": "#E8F9F0",   // verde suave
+    default: "#FFFFFF"
+  };
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function exportTableToExcelHtml(hospital, categoria, fechaEnvio, filas) {
+    const styles = `
+      <style>
+        table{border-collapse:collapse;}
+        th,td{border:1px solid #ccc;padding:6px;vertical-align:middle;}
+        th{background:#f3f4f6;font-weight:600;}
+      </style>
+    `;
+    const headers = ["No.","Hospital","Categoría","Fecha envío","Clave","Descripción","Stock","Mínimo","Fecha","Días","Observaciones"];
+    let bodyRows = "";
+    filas.forEach((f, idx) => {
+      const bg = f.color || semaforoColor.default;
+      bodyRows += `<tr style="background:${bg};">`;
+      bodyRows += `<td>${idx+1}</td>`;
+      bodyRows += `<td>${escapeHtml(hospital)}</td>`;
+      bodyRows += `<td>${escapeHtml(categoria)}</td>`;
+      bodyRows += `<td>${escapeHtml(fechaEnvio)}</td>`;
+      bodyRows += `<td>${escapeHtml(f.clave || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.descripcion || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.stock || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.minimo || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.fecha || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.dias || "")}</td>`;
+      bodyRows += `<td>${escapeHtml(f.observaciones || "")}</td>`;
+      bodyRows += `</tr>`;
+    });
+
+    const thead = `<tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">${styles}</head><body><table>${thead}${bodyRows}</table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const now = new Date();
+    const filename = `inventario_${categoria || 'general'}_${formatDateForFilename(now)}.xls`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Botón Enviar -> export .xls (si quieres enviar a servidor, reemplaza por fetch)
+  if (btnEnviar) {
+    btnEnviar.onclick = (ev) => {
+      ev && ev.preventDefault();
+      const filasExport = [];
       for (const row of tbody.rows) {
         const select = row.cells[1].querySelector("select");
         const raw = select ? select.value : "";
         const claveReal = raw ? raw.split("||")[0] : "";
         const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-        const observaciones = (row.cells[row.cells.length - 1].querySelector("input").value || "").trim();
+        const obsCellIndex = row.cells.length - 1;
+        // Observaciones ahora textarea
+        const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
+        const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
+
         if (!claveReal && !descripcion && !observaciones) continue;
 
-        // determinar semáforo por clase de fila
-        const clase = row.classList.contains("expired") ? "expired"
-                    : row.classList.contains("warning-expiry") ? "warning-expiry"
-                    : row.classList.contains("valid-expiry") ? "valid-expiry"
-                    : "";
+        let color = semaforoColor.default;
+        if (adquisicionCats.has(categoriaActiva)) {
+          color = semaforoColor.default;
+        } else {
+          if (row.classList.contains("expired")) color = semaforoColor.expired;
+          else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
+          else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
+          else color = semaforoColor.default;
+        }
 
-        datos.push({
+        filasExport.push({
           clave: claveReal,
           descripcion,
           stock: row.cells[3].querySelector("input").value || "",
@@ -685,70 +789,32 @@ document.addEventListener("DOMContentLoaded", () => {
           fecha: row.cells[6].querySelector("input").value || "",
           dias: row.cells[7].querySelector("input").value || "",
           observaciones,
-          semaforo: clase
+          color
         });
       }
 
-      if (datos.length === 0) {
-        alert("No hay datos para enviar.");
+      if (filasExport.length === 0) {
+        alert("No hay datos para exportar.");
         return;
       }
 
-      // construir payload
       const hospital = inputHospital ? (inputHospital.value || "").trim() : "";
       const fechaEnvio = new Date().toISOString();
-      const payload = {
-        hospital,
-        categoria: categoriaActiva || "",
-        fechaEnvio,
-        items: datos,
-        _token: API_TOKEN
-      };
 
-      // UI: bloquear botón y mostrar que se está enviando
-      btnEnviar.disabled = true;
-      const originalText = btnEnviar.textContent;
-      btnEnviar.textContent = "Enviando...";
+      exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
 
-      try {
-        const resp = await fetch(SERVER_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => "");
-          throw new Error(`Error en servidor: ${resp.status} ${resp.statusText} ${text}`);
-        }
-
-        // intentar parsear JSON de respuesta (si tu Apps Script devuelve JSON)
-        let data;
-        try { data = await resp.json(); } catch(e) { data = null; }
-
-        // Éxito: puedes mostrar mensaje con datos devueltos por servidor
-        console.log("Respuesta del servidor:", data);
-        alert("Datos enviados correctamente al servidor central.");
-
-        // limpieza y reset
-        limpiarTabla();
-        categoriaActiva = null;
-        selCategoria.value = "";
-        if (inputHospital) inputHospital.value = "";
-        updateCaducidadHeader();
-        document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
-        document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
-      } catch (err) {
-        console.error("Error enviando datos:", err);
-        alert("Error al enviar datos: " + (err.message || err));
-      } finally {
-        btnEnviar.disabled = false;
-        btnEnviar.textContent = originalText;
-      }
+      // limpieza y reset (opcional)
+      limpiarTabla();
+      categoriaActiva = null;
+      selCategoria.value = "";
+      if (inputHospital) inputHospital.value = "";
+      updateCaducidadHeader();
+      document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
+      document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
     };
   }
 
-  // asegurar botones al inicio
-  moveButtonsToBottom();
-  window.addEventListener("resize", moveButtonsToBottom);
+  // aseguramos la posición de botones al cargar/cambiar tamaño
+  moveButtonsToCardBottom();
+  window.addEventListener("resize", moveButtonsToCardBottom);
 });
