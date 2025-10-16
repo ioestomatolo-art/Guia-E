@@ -1,18 +1,16 @@
-
-// Logica.js - versión con export .xls y observaciones como textarea
+// Logica.js - versión que envía a server Render y ofrece .xls como fallback/descarga opcional
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
 
-  // Si usas WebApp en el futuro, pon aquí tu URL
-  const SERVER_URL = "https://script.google.com/macros/s/AKfycbyGfi0L4-iWTZbuRsNw9Cj9ny8IeTKbRBWl_-CBzwP-3AOsRYd0PBmceEyH-6o9IYsl8A/exec";
-  const API_TOKEN = "";
+  // <-- Cambia aquí si quieres otra URL -->
+  const SERVER_URL = "https://servidor-4wu6.onrender.com/submit";
+  const API_TOKEN = ""; // si configuraste token en el servidor ponlo aquí
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ------------------ CATALOGO (rellena con tu catálogo real) ------------------
-  // Por ahora dejo arrays vacíos para que el archivo sea compacto. Pegue aquí su catálogo completo.
+  // ------------------ CATALOGO  ------------------
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -308,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0224": 2,
     "060.889.0232": 2,
     "060.889.0208": 2
-    // puedes añadir más pares clave:valor según tu lista
+    // ... (mantén el resto como lo tienes)
   };
   // -----------------------------------------------------------------------------------------------
 
@@ -343,7 +341,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const ths = Array.from(thead.querySelectorAll("th"));
     if (ths.some(t => (t.textContent || "").trim().toLowerCase() === "observaciones")) return;
 
-    // Inserta después de la columna "Días" (si existe)
     let insertIndex = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("días") || (t.textContent || "").trim().toLowerCase().includes("dias")));
     const thObs = document.createElement("th");
     thObs.textContent = "Observaciones";
@@ -380,48 +377,37 @@ document.addEventListener("DOMContentLoaded", () => {
   function moveButtonsToCardBottom() {
     const page2 = document.getElementById("page2");
     if (!page2 || !tabla) return;
-
-    // Encuentra la card dentro de page2
     const card = page2.querySelector(".card") || page2;
-    // Si existe ya un contenedor lo reutilizamos
     let bottom = card.querySelector("#controls-bottom");
     if (!bottom) {
       bottom = document.createElement("div");
       bottom.id = "controls-bottom";
-      // usa display flex para alinear a la derecha
       bottom.style.display = "flex";
       bottom.style.justifyContent = "flex-end";
       bottom.style.gap = "8px";
       bottom.style.marginTop = "12px";
-      // Insertar después de la tabla
-      // si la tabla está dentro de card, insertamos después; si no, añadimos al final
       if (tabla.parentElement && tabla.parentElement === card) {
         card.insertBefore(bottom, tabla.nextSibling);
       } else {
         card.appendChild(bottom);
       }
     }
-
-    // Aseguramos que los botones existan en DOM y los movemos al contenedor bottom
     [btnRegresar, btnAgregar, btnEnviar].forEach(b => {
       if (!b) return;
-      // si el botón está dentro de otro contenedor, lo movemos aquí
       if (b.parentElement !== bottom) {
         bottom.appendChild(b);
       }
-      // estilo básico para integrarlo con la estética (puedes ajustar en CSS)
       b.style.borderRadius = "8px";
       b.style.padding = "8px 14px";
       b.style.fontSize = "0.95rem";
       b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
       b.style.border = "none";
       b.style.cursor = "pointer";
-      // tonos acordes: un gris/rosado suave para armonizar con el fondo (modifica en CSS si quieres)
       if (b === btnEnviar) {
-        b.style.background = "#b91c6a"; // botón enviar con tono vino
+        b.style.background = "#b91c6a";
         b.style.color = "#fff";
       } else {
-        b.style.background = "#f3f4f6"; // gris claro
+        b.style.background = "#f3f4f6";
         b.style.color = "#0b1220";
       }
     });
@@ -443,7 +429,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("page2").classList.remove("oculto"); document.getElementById("page2").classList.add("activo");
     updateCaducidadHeader();
     if (!tbody.rows.length) agregarFila();
-    // reubicar botones (por si cambió el DOM)
     moveButtonsToCardBottom();
   };
 
@@ -701,9 +686,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const semaforoColor = {
-    expired: "#FDE2E5",        // rojo suave
-    "warning-expiry": "#FFF7E0", // amarillento suave
-    "valid-expiry": "#E8F9F0",   // verde suave
+    expired: "#FDE2E5",
+    "warning-expiry": "#FFF7E0",
+    "valid-expiry": "#E8F9F0",
     default: "#FFFFFF"
   };
 
@@ -754,63 +739,134 @@ document.addEventListener("DOMContentLoaded", () => {
     URL.revokeObjectURL(url);
   }
 
-  // Botón Enviar -> export .xls (si quieres enviar a servidor, reemplaza por fetch)
-  if (btnEnviar) {
-    btnEnviar.onclick = (ev) => {
-      ev && ev.preventDefault();
-      const filasExport = [];
-      for (const row of tbody.rows) {
-        const select = row.cells[1].querySelector("select");
-        const raw = select ? select.value : "";
-        const claveReal = raw ? raw.split("||")[0] : "";
-        const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-        const obsCellIndex = row.cells.length - 1;
-        // Observaciones ahora textarea
-        const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
-        const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
+  // Construir payload (reutilizable)
+  function buildPayloadRows() {
+    const filasExport = [];
+    for (const row of tbody.rows) {
+      const select = row.cells[1].querySelector("select");
+      const raw = select ? select.value : "";
+      const claveReal = raw ? raw.split("||")[0] : "";
+      const descripcion = (row.cells[2].querySelector("input").value || "").trim();
+      const obsCellIndex = row.cells.length - 1;
+      const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
+      const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
 
-        if (!claveReal && !descripcion && !observaciones) continue;
+      if (!claveReal && !descripcion && !observaciones) continue;
 
-        let color = semaforoColor.default;
-        if (adquisicionCats.has(categoriaActiva)) {
-          color = semaforoColor.default;
-        } else {
-          if (row.classList.contains("expired")) color = semaforoColor.expired;
-          else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
-          else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
-          else color = semaforoColor.default;
-        }
-
-        filasExport.push({
-          clave: claveReal,
-          descripcion,
-          stock: row.cells[3].querySelector("input").value || "",
-          minimo: row.cells[4].querySelector("input").value || "",
-          fecha: row.cells[6].querySelector("input").value || "",
-          dias: row.cells[7].querySelector("input").value || "",
-          observaciones,
-          color
-        });
+      let color = semaforoColor.default;
+      if (adquisicionCats.has(categoriaActiva)) {
+        color = semaforoColor.default;
+      } else {
+        if (row.classList.contains("expired")) color = semaforoColor.expired;
+        else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
+        else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
+        else color = semaforoColor.default;
       }
 
+      filasExport.push({
+        clave: claveReal,
+        descripcion,
+        stock: row.cells[3].querySelector("input").value || "",
+        minimo: row.cells[4].querySelector("input").value || "",
+        fecha: row.cells[6].querySelector("input").value || "",
+        dias: row.cells[7].querySelector("input").value || "",
+        observaciones,
+        color
+      });
+    }
+    return filasExport;
+  }
+
+  // Botón Enviar -> intenta enviar al servidor; si falla, ofrece descargar .xls
+  if (btnEnviar) {
+    btnEnviar.onclick = async (ev) => {
+      ev && ev.preventDefault();
+
+      const filasExport = buildPayloadRows();
       if (filasExport.length === 0) {
-        alert("No hay datos para exportar.");
+        alert("No hay datos para enviar/exportar.");
         return;
       }
 
       const hospital = inputHospital ? (inputHospital.value || "").trim() : "";
       const fechaEnvio = new Date().toISOString();
 
-      exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
+      // Payload para servidor
+      const payload = {
+        hospital,
+        categoria: categoriaActiva || "",
+        fechaEnvio,
+        items: filasExport,
+        _token: API_TOKEN
+      };
 
-      // limpieza y reset (opcional)
-      limpiarTabla();
-      categoriaActiva = null;
-      selCategoria.value = "";
-      if (inputHospital) inputHospital.value = "";
-      updateCaducidadHeader();
-      document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
-      document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+      // UI bloqueo
+      btnEnviar.disabled = true;
+      const originalText = btnEnviar.textContent;
+      btnEnviar.textContent = "Enviando...";
+
+      // Si no hay SERVER_URL definido, bajamos archivo directamente
+      if (!SERVER_URL) {
+        exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = originalText;
+        // limpieza opcional
+        limpiarTabla();
+        categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = "";
+        updateCaducidadHeader();
+        document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
+        document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+        return;
+      }
+
+      try {
+        const resp = await fetch(SERVER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => "");
+          throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
+        }
+
+        let data;
+        try { data = await resp.json(); } catch(e) { data = null; }
+
+        console.log("Respuesta del servidor:", data);
+        alert("Datos enviados correctamente al servidor.");
+
+        // Pregunta si quieres descargar también el .xls
+        try {
+          if (confirm("¿Deseas descargar también una copia en .xls?")) {
+            exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
+          }
+        } catch (e) {}
+
+        // limpieza y reset
+        limpiarTabla();
+        categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = "";
+        updateCaducidadHeader();
+        document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
+        document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+      } catch (err) {
+        console.error("Error al enviar:", err);
+        // fallback: ofrecer descargar .xls
+        const usarExport = confirm("No fue posible enviar al servidor:\n\n" + (err.message || err) + "\n\n¿Quieres descargar el archivo .xls localmente como respaldo?");
+        if (usarExport) {
+          exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
+          // opcional: limpieza
+          limpiarTabla();
+          categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = "";
+          updateCaducidadHeader();
+          document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
+          document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+        }
+      } finally {
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = originalText;
+      }
     };
   }
 
@@ -818,3 +874,8 @@ document.addEventListener("DOMContentLoaded", () => {
   moveButtonsToCardBottom();
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
+
+
+
+
+
