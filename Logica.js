@@ -1,4 +1,4 @@
-// Logica.js - versión que envía a server Render y ofrece .xls como fallback/descarga opcional
+// Logica.js - versión SIN descarga .xls (solo envía al servidor)
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
@@ -321,7 +321,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnEnviar = document.getElementById("btnEnviarInsumos");
   const inputHospital = document.getElementById("hospitalNombre");
 
-  // Asegura que exista la cabecera y la columna Observaciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -373,7 +372,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Mueve los botones dentro del .card y los coloca debajo de la tabla
   function moveButtonsToCardBottom() {
     const page2 = document.getElementById("page2");
     if (!page2 || !tabla) return;
@@ -413,10 +411,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // inicial
   moveButtonsToCardBottom();
 
-  // NAV
   btnSiguiente.onclick = (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
@@ -477,15 +473,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
-  // Construye fila
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
 
-    // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
 
-    // Clave (select)
     const tdClave = document.createElement("td");
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
@@ -503,7 +496,6 @@ document.addEventListener("DOMContentLoaded", () => {
     tdClave.appendChild(select);
     tr.appendChild(tdClave);
 
-    // Descripción
     const tdDesc = document.createElement("td");
     const inputDesc = document.createElement("input");
     inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
@@ -515,28 +507,22 @@ document.addEventListener("DOMContentLoaded", () => {
     inputDesc.setAttribute("list", datalistId);
     tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
-    // Stock
     const tdStock = document.createElement("td");
     const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
 
-    // Minimo (readonly)
     const tdMin = document.createElement("td");
     const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0;
     inputMin.readOnly = true; inputMin.style.background = "#f3f4f6"; inputMin.style.cursor = "not-allowed";
     tdMin.appendChild(inputMin); tr.appendChild(tdMin);
 
-    // Estado
     const tdEstado = document.createElement("td"); const spanEstado = document.createElement("span"); tdEstado.appendChild(spanEstado); tr.appendChild(tdEstado);
 
-    // Caducidad / Fecha adquisición
     const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date";
     inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad");
     tdCad.appendChild(inputCad); tr.appendChild(tdCad);
 
-    // Días
     const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type = "text"; inputDias.readOnly = true; inputDias.value = ""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
 
-    // Observaciones: textarea para mejor UX
     const tdObs = document.createElement("td");
     const textareaObs = document.createElement("textarea");
     textareaObs.placeholder = "Observaciones";
@@ -549,7 +535,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.appendChild(tr);
 
-    // Rellena producto al elegir
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -679,12 +664,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- export helpers (Excel-compatible HTML) ---
-  function pad(n){ return n<10 ? '0'+n : String(n); }
-  function formatDateForFilename(d){
-    return '' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-  }
-
   const semaforoColor = {
     expired: "#FDE2E5",
     "warning-expiry": "#FFF7E0",
@@ -695,48 +674,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function escapeHtml(str) {
     if (str === null || str === undefined) return "";
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
-
-  function exportTableToExcelHtml(hospital, categoria, fechaEnvio, filas) {
-    const styles = `
-      <style>
-        table{border-collapse:collapse;}
-        th,td{border:1px solid #ccc;padding:6px;vertical-align:middle;}
-        th{background:#f3f4f6;font-weight:600;}
-      </style>
-    `;
-    const headers = ["No.","Hospital","Categoría","Fecha envío","Clave","Descripción","Stock","Mínimo","Fecha","Días","Observaciones"];
-    let bodyRows = "";
-    filas.forEach((f, idx) => {
-      const bg = f.color || semaforoColor.default;
-      bodyRows += `<tr style="background:${bg};">`;
-      bodyRows += `<td>${idx+1}</td>`;
-      bodyRows += `<td>${escapeHtml(hospital)}</td>`;
-      bodyRows += `<td>${escapeHtml(categoria)}</td>`;
-      bodyRows += `<td>${escapeHtml(fechaEnvio)}</td>`;
-      bodyRows += `<td>${escapeHtml(f.clave || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.descripcion || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.stock || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.minimo || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.fecha || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.dias || "")}</td>`;
-      bodyRows += `<td>${escapeHtml(f.observaciones || "")}</td>`;
-      bodyRows += `</tr>`;
-    });
-
-    const thead = `<tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr>`;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">${styles}</head><body><table>${thead}${bodyRows}</table></body></html>`;
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-    const now = new Date();
-    const filename = `inventario_${categoria || 'general'}_${formatDateForFilename(now)}.xls`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
   }
 
   // Construir payload (reutilizable)
@@ -777,21 +714,25 @@ document.addEventListener("DOMContentLoaded", () => {
     return filasExport;
   }
 
-  // Botón Enviar -> intenta enviar al servidor; si falla, ofrece descargar .xls
+  // Botón Enviar -> intenta enviar al servidor; si falla muestra alerta y deja los datos
   if (btnEnviar) {
     btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
 
       const filasExport = buildPayloadRows();
       if (filasExport.length === 0) {
-        alert("No hay datos para enviar/exportar.");
+        alert("No hay datos para enviar.");
+        return;
+      }
+
+      if (!SERVER_URL) {
+        alert("SERVER_URL no configurada. Configura SERVER_URL en Logica.js para habilitar el envío.");
         return;
       }
 
       const hospital = inputHospital ? (inputHospital.value || "").trim() : "";
       const fechaEnvio = new Date().toISOString();
 
-      // Payload para servidor
       const payload = {
         hospital,
         categoria: categoriaActiva || "",
@@ -800,29 +741,17 @@ document.addEventListener("DOMContentLoaded", () => {
         _token: API_TOKEN
       };
 
-      // UI bloqueo
       btnEnviar.disabled = true;
       const originalText = btnEnviar.textContent;
       btnEnviar.textContent = "Enviando...";
 
-      // Si no hay SERVER_URL definido, bajamos archivo directamente
-      if (!SERVER_URL) {
-        exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
-        btnEnviar.disabled = false;
-        btnEnviar.textContent = originalText;
-        // limpieza opcional
-        limpiarTabla();
-        categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = "";
-        updateCaducidadHeader();
-        document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
-        document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
-        return;
-      }
-
       try {
+        const headers = { "Content-Type": "application/json" };
+        if (API_TOKEN) headers["Authorization"] = "Bearer " + API_TOKEN;
+
         const resp = await fetch(SERVER_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload)
         });
 
@@ -837,32 +766,17 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Respuesta del servidor:", data);
         alert("Datos enviados correctamente al servidor.");
 
-        // Pregunta si quieres descargar también el .xls
-        try {
-          if (confirm("¿Deseas descargar también una copia en .xls?")) {
-            exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
-          }
-        } catch (e) {}
-
-        // limpieza y reset
+        // limpieza y reset solo después de éxito
         limpiarTabla();
         categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = "";
         updateCaducidadHeader();
         document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
         document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+
       } catch (err) {
         console.error("Error al enviar:", err);
-        // fallback: ofrecer descargar .xls
-        const usarExport = confirm("No fue posible enviar al servidor:\n\n" + (err.message || err) + "\n\n¿Quieres descargar el archivo .xls localmente como respaldo?");
-        if (usarExport) {
-          exportTableToExcelHtml(hospital, categoriaActiva || "", fechaEnvio, filasExport);
-          // opcional: limpieza
-          limpiarTabla();
-          categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = "";
-          updateCaducidadHeader();
-          document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
-          document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
-        }
+        alert("No fue posible enviar los datos al servidor:\n\n" + (err.message || err));
+        // no borra los datos, queda para reintentar
       } finally {
         btnEnviar.disabled = false;
         btnEnviar.textContent = originalText;
@@ -870,11 +784,9 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // aseguramos la posición de botones al cargar/cambiar tamaño
   moveButtonsToCardBottom();
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
-
 
 
 
