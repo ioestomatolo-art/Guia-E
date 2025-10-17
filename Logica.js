@@ -1,3 +1,4 @@
+
 // Logica.js - versión SIN descarga .xls (solo envía al servidor)
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
@@ -222,12 +223,12 @@ document.addEventListener("DOMContentLoaded", () => {
       { clave: "537.860.0018", descripcion: "TIRAPUENTE. TIRAPUENTE MILLER CON TRES PUNTAS DIFERENTES", stock: "", minimo: "", caducidad: "" },
       { clave: "513.887.0059", descripcion: "TORUNDERA CON TAPA, DE ACERO INOXIDABLE DE 250 ML. DE CAPACIDAD", stock: "", minimo: "", caducidad: "" }
     ]
-  };
-  // -----------------------------------------------------------------------------------------------
-
-  // ------------------ MINIMOS DEFINIDOS (categoria: material) ------------------
-  // Lista provista por ti; mantenida aquí como referencia para rellenar "mínimo" en 'material'.
-  const minimosDefinidos = {
+    };
+    // -----------------------------------------------------------------------------------------------
+    
+    // ------------------ MINIMOS DEFINIDOS (categoria: material) ------------------
+    // Lista provista por ti; mantenida aquí como referencia para rellenar "mínimo" en 'material'.
+    const minimosDefinidos = {
     "060.016.0204": 1,
     "060.016.0253": 1,
     "060.031.0072": 1,
@@ -307,7 +308,10 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0232": 2,
     "060.889.0208": 2
     // ... (mantén el resto como lo tienes)
-  };
+    };
+  // -----------------------------------------------------------------------------------------------
+
+  
   // -----------------------------------------------------------------------------------------------
 
   // ---------------- DOM ----------------
