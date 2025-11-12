@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="Formato.css" />
 </head>
 <body>
-  <!-- Encabezado con logo a lo ancho de la pantalla -->
+  <!-- Encabezado -->
   <header class="site-header" role="banner">
     <img id="logo-sesver" src="Logos/sesver.png" alt="Logo SESVER"
          onerror="this.style.display='none';" />
@@ -16,15 +16,17 @@
   <!-- Página 1 -->
   <div id="page1" class="page activo">
     <div class="card">
-      <!-- Título dentro del recuadro -->
       <h1 class="page-title">Formulario Estomatología</h1>
-
       <h2>Selecciona la categoría</h2>
 
-      <!-- Nombre del hospital ahora en página 1 -->
+      <!-- Campo con autocompletado -->
       <div class="hospital-row" style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
         <label for="hospitalNombre" style="min-width:160px; font-weight:600;">Nombre del hospital:</label>
-        <input id="hospitalNombre" type="text" placeholder="Escribe el nombre del hospital..." aria-label="Nombre del hospital" style="flex:1; padding:8px; border-radius:6px; border:1px solid #cbd5e1;" />
+        <input list="listaHospitales" id="hospitalNombre" name="hospitalNombre"
+               placeholder="Escribe o selecciona el hospital..."
+               aria-label="Nombre del hospital"
+               style="flex:1; padding:8px; border-radius:6px; border:1px solid #cbd5e1;" />
+        <datalist id="listaHospitales"></datalist>
       </div>
 
       <select id="categoria" aria-label="Selecciona categoría">
@@ -51,7 +53,7 @@
       <div class="controls">
         <button id="btnRegresar1">Regresar</button>
         <button id="btnAgregarFila">Agregar fila</button>
-        <button id="btnEnviarInsumos">Enviar </button>
+        <button id="btnEnviarInsumos">Enviar</button>
       </div>
 
       <table id="tablaInsumos" aria-label="Tabla de insumos">
@@ -65,13 +67,32 @@
             <th>Estado</th>
             <th>Caducidad</th>
             <th>Días restantes</th>
-            <!-- Observaciones se añade dinámicamente si hace falta -->
           </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
   </div>
+
+  <script>
+  // 🔹 Al cargar la página, obtenemos la lista de hospitales del servidor
+  document.addEventListener("DOMContentLoaded", async () => {
+    try {
+      const response = await fetch("http://localhost:3000/hospitales");
+      if (!response.ok) throw new Error("No se pudo obtener la lista de hospitales");
+      const hospitales = await response.json();
+
+      const lista = document.getElementById("listaHospitales");
+      hospitales.forEach(h => {
+        const option = document.createElement("option");
+        option.value = h.nombre;
+        lista.appendChild(option);
+      });
+    } catch (err) {
+      console.error("Error cargando hospitales:", err);
+    }
+  });
+  </script>
 
   <script src="Logica.js"></script>
 </body>

@@ -1,17 +1,19 @@
-
-// Logica.js - versión SIN descarga .xls (solo envía al servidor)
+// Logica.js - envía solamente al servidor (sin descarga .xls)
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
+  let hospitales = []; // lista cargada desde el servidor
+  let selectedHospitalClave = ""; // clave correspondiente al nombre escrito
 
-  // <-- Cambia aquí si quieres otra URL -->
+  // <-- configura aquí tu servidor -->
   const SERVER_URL = "https://servidor-4wu6.onrender.com/submit";
-  const API_TOKEN = ""; // si configuraste token en el servidor ponlo aquí
+  const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales"; // endpoint para autocompletar hospitales
+  const API_TOKEN = ""; // si tienes token, ponlo aquí
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ------------------ CATALOGO  ------------------
+  // ------------------ CATALOGO (mantén tu lista completa) ------------------
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -311,9 +313,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   // -----------------------------------------------------------------------------------------------
 
-  
-  // -----------------------------------------------------------------------------------------------
-
   // ---------------- DOM ----------------
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
@@ -324,7 +323,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const tabla = document.getElementById("tablaInsumos");
   const btnEnviar = document.getElementById("btnEnviarInsumos");
   const inputHospital = document.getElementById("hospitalNombre");
+  const datalistHospitales = document.getElementById("listaHospitales");
 
+  // Helpers
+  function safeEscapeCss(s) {
+    try { return CSS.escape(s); } catch (e) { return s.replace(/["'\\]/g, "\\$&"); }
+  }
+
+  // Asegura header Observaciones (por compatibilidad con versiones previas)
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -348,7 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const thObs = document.createElement("th");
     thObs.textContent = "Observaciones";
     if (insertIndex >= 0) {
-      const ref = ths[insertIndex].nextSibling;
+      const ref = thead.querySelectorAll("th")[insertIndex].nextSibling;
       if (ref) thead.querySelector("tr").insertBefore(thObs, ref);
       else thead.querySelector("tr").appendChild(thObs);
     } else {
@@ -359,17 +365,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateCaducidadHeader() {
     if (!tabla) return;
-    const thead = tabla.querySelector("thead");
-    if (!thead) return;
+    const thead = tabla.querySelector("thead"); if (!thead) return;
     const ths = Array.from(thead.querySelectorAll("th"));
     const idx = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("caduc")));
     const idxFecha = idx >= 0 ? idx : ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("fecha")));
     const targetIndex = idx >= 0 ? idx : idxFecha;
     if (targetIndex === -1) return;
-
     const isAdq = adquisicionCats.has(categoriaActiva);
     thead.querySelectorAll("th")[targetIndex].textContent = isAdq ? "Fecha de adquisición" : "Caducidad";
-
     const diasIdx = targetIndex + 1;
     if (thead.querySelectorAll("th")[diasIdx]) {
       thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
@@ -377,8 +380,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function moveButtonsToCardBottom() {
-    const page2 = document.getElementById("page2");
-    if (!page2 || !tabla) return;
+    const page2 = document.getElementById("page2"); if (!page2 || !tabla) return;
     const card = page2.querySelector(".card") || page2;
     let bottom = card.querySelector("#controls-bottom");
     if (!bottom) {
@@ -388,35 +390,26 @@ document.addEventListener("DOMContentLoaded", () => {
       bottom.style.justifyContent = "flex-end";
       bottom.style.gap = "8px";
       bottom.style.marginTop = "12px";
-      if (tabla.parentElement && tabla.parentElement === card) {
-        card.insertBefore(bottom, tabla.nextSibling);
-      } else {
-        card.appendChild(bottom);
-      }
+      if (tabla.parentElement && tabla.parentElement === card) card.insertBefore(bottom, tabla.nextSibling);
+      else card.appendChild(bottom);
     }
     [btnRegresar, btnAgregar, btnEnviar].forEach(b => {
       if (!b) return;
-      if (b.parentElement !== bottom) {
-        bottom.appendChild(b);
-      }
+      if (b.parentElement !== bottom) bottom.appendChild(b);
       b.style.borderRadius = "8px";
       b.style.padding = "8px 14px";
       b.style.fontSize = "0.95rem";
       b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
       b.style.border = "none";
       b.style.cursor = "pointer";
-      if (b === btnEnviar) {
-        b.style.background = "#b91c6a";
-        b.style.color = "#fff";
-      } else {
-        b.style.background = "#f3f4f6";
-        b.style.color = "#0b1220";
-      }
+      if (b === btnEnviar) { b.style.background = "#b91c6a"; b.style.color = "#fff"; }
+      else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
     });
   }
 
   moveButtonsToCardBottom();
 
+  // NAV
   btnSiguiente.onclick = (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
@@ -465,7 +458,7 @@ document.addEventListener("DOMContentLoaded", () => {
         opt.disabled = !!chosenElsewhere;
       });
       if (s.value) {
-        const selectedOption = s.querySelector(`option[value="${CSS.escape(s.value)}"]`);
+        const selectedOption = s.querySelector(`option[value="${safeEscapeCss(s.value)}"]`);
         if (selectedOption) selectedOption.disabled = false;
       }
     });
@@ -477,12 +470,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
+  // Construye fila
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
 
+    // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
 
+    // Clave (select)
     const tdClave = document.createElement("td");
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
@@ -500,6 +496,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tdClave.appendChild(select);
     tr.appendChild(tdClave);
 
+    // Descripción (input con datalist)
     const tdDesc = document.createElement("td");
     const inputDesc = document.createElement("input");
     inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
@@ -511,22 +508,28 @@ document.addEventListener("DOMContentLoaded", () => {
     inputDesc.setAttribute("list", datalistId);
     tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
+    // Stock
     const tdStock = document.createElement("td");
     const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
 
+    // Minimo (readonly)
     const tdMin = document.createElement("td");
     const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0;
     inputMin.readOnly = true; inputMin.style.background = "#f3f4f6"; inputMin.style.cursor = "not-allowed";
     tdMin.appendChild(inputMin); tr.appendChild(tdMin);
 
+    // Estado
     const tdEstado = document.createElement("td"); const spanEstado = document.createElement("span"); tdEstado.appendChild(spanEstado); tr.appendChild(tdEstado);
 
+    // Caducidad / Fecha adquisición
     const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date";
     inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad");
     tdCad.appendChild(inputCad); tr.appendChild(tdCad);
 
+    // Días
     const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type = "text"; inputDias.readOnly = true; inputDias.value = ""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
 
+    // Observaciones
     const tdObs = document.createElement("td");
     const textareaObs = document.createElement("textarea");
     textareaObs.placeholder = "Observaciones";
@@ -539,6 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.appendChild(tr);
 
+    // Rellena producto al elegir
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -718,7 +722,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return filasExport;
   }
 
-  // Botón Enviar -> intenta enviar al servidor; si falla muestra alerta y deja los datos
+  // Botón Enviar -> intenta enviar al servidor; si falla, muestra alerta y deja datos
   if (btnEnviar) {
     btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
@@ -734,11 +738,12 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const hospital = inputHospital ? (inputHospital.value || "").trim() : "";
+      const hospitalNombre = inputHospital ? (inputHospital.value || "").trim() : "";
       const fechaEnvio = new Date().toISOString();
 
       const payload = {
-        hospital,
+        hospitalNombre,
+        hospitalClave: selectedHospitalClave || "",
         categoria: categoriaActiva || "",
         fechaEnvio,
         items: filasExport,
@@ -772,7 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // limpieza y reset solo después de éxito
         limpiarTabla();
-        categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = "";
+        categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = ""; selectedHospitalClave = "";
         updateCaducidadHeader();
         document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
         document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
@@ -788,10 +793,54 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  moveButtonsToCardBottom();
+  // ---------------- HOSPITALES: carga y autocompletado ----------------
+  async function cargarHospitales() {
+    if (!datalistHospitales) return;
+    try {
+      const resp = await fetch(HOSPITALES_URL);
+      if (!resp.ok) throw new Error("No pudo obtenerse la lista de hospitales desde el servidor.");
+      const data = await resp.json();
+      // Esperamos un array de objetos { nombre: "...", clave: "VZIMxxxxx" } o strings
+      hospitales = Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
+
+      datalistHospitales.innerHTML = "";
+      hospitales.forEach(h => {
+        const opt = document.createElement("option");
+        opt.value = h.nombre;
+        if (h.clave) opt.dataset.clave = h.clave;
+        datalistHospitales.appendChild(opt);
+      });
+    } catch (e) {
+      console.warn("No se pudieron cargar hospitales:", e);
+      hospitales = [];
+      datalistHospitales.innerHTML = "";
+    }
+  }
+
+  // Cuando el usuario escribe o elige hospital, sincronizamos la clave si existe
+  function syncHospitalClave() {
+    const v = (inputHospital.value || "").trim();
+    if (!v) { selectedHospitalClave = ""; return; }
+    const found = hospitales.find(h => (h.nombre || "").toLowerCase() === v.toLowerCase());
+    selectedHospitalClave = found ? (found.clave || "") : "";
+  }
+
+  inputHospital && inputHospital.addEventListener("change", syncHospitalClave);
+  inputHospital && inputHospital.addEventListener("blur", syncHospitalClave);
+  inputHospital && inputHospital.addEventListener("input", () => {
+    // permitir escribir libremente, pero intentamos autocompletar si hay coincidencia exacta
+    const v = (inputHospital.value || "").trim().toLowerCase();
+    const found = hospitales.find(h => (h.nombre || "").toLowerCase() === v);
+    if (found) selectedHospitalClave = found.clave || "";
+    else selectedHospitalClave = "";
+  });
+
+  // carga inicial de hospitales
+  cargarHospitales().catch(() => { /* no crítico */ });
+
+  // reubicar botones al cambiar tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
-
 
 
 
