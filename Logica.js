@@ -1,19 +1,19 @@
-// Logica.js - envía solamente al servidor (sin descarga .xls)
+
+// Logica.js - versión con botón "Agregar manual" (producto no listado)
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
-  let hospitales = []; // lista cargada desde el servidor
-  let selectedHospitalClave = ""; // clave correspondiente al nombre escrito
+  let hospitales = [];
+  let selectedHospitalClave = "";
 
-  // <-- configura aquí tu servidor -->
   const SERVER_URL = "https://servidor-4wu6.onrender.com/submit";
-  const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales"; // endpoint para autocompletar hospitales
-  const API_TOKEN = ""; // si tienes token, ponlo aquí
+  const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
+  const API_TOKEN = "";
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ------------------ CATALOGO (mantén tu lista completa) ------------------
+  // ------------------ CATALOGO (tu lista completa) ------------------
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -311,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0208": 2
     // ... (mantén el resto como lo tienes)
     };
-  // -----------------------------------------------------------------------------------------------
 
   // ---------------- DOM ----------------
   const selCategoria = document.getElementById("categoria");
@@ -325,12 +324,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
 
-  // Helpers
+  // Nuevo botón: Agregar manual (producto no listado)
+  let btnAgregarManual = document.getElementById("btnAgregarManual");
+  if (!btnAgregarManual) {
+    btnAgregarManual = document.createElement("button");
+    btnAgregarManual.id = "btnAgregarManual";
+    btnAgregarManual.textContent = "Agregar (manual)";
+    // Lo agregamos luego dentro de moveButtonsToCardBottom()
+  }
+
   function safeEscapeCss(s) {
     try { return CSS.escape(s); } catch (e) { return s.replace(/["'\\]/g, "\\$&"); }
   }
 
-  // Asegura header Observaciones (por compatibilidad con versiones previas)
+  // Asegura header Observaciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -393,7 +400,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (tabla.parentElement && tabla.parentElement === card) card.insertBefore(bottom, tabla.nextSibling);
       else card.appendChild(bottom);
     }
-    [btnRegresar, btnAgregar, btnEnviar].forEach(b => {
+    // Añadir el nuevo botón manual a la lista
+    const controls = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar];
+    controls.forEach(b => {
       if (!b) return;
       if (b.parentElement !== bottom) bottom.appendChild(b);
       b.style.borderRadius = "8px";
@@ -443,7 +452,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
     const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
     btnAgregar.disabled = true; setTimeout(() => { btnAgregar.disabled = false; }, 300);
-    agregarFila();
+    agregarFila({ manual: false });
+  };
+
+  // Handler para agregar manual
+  btnAgregarManual.onclick = (ev) => {
+    ev && ev.preventDefault();
+    if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
+    const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
+    btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300);
+    agregarFila({ manual: true });
   };
 
   function getAllSelects() { return Array.from(tbody.querySelectorAll("select")); }
@@ -470,10 +488,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
-  // Construye fila
-  function agregarFila() {
+  // Genera clave única para productos manuales
+  function generateManualClave() {
+    return `MANUAL-${Date.now()}-${Math.floor(Math.random()*9000 + 1000)}`;
+  }
+
+  // Construye fila (opciones: { manual: boolean })
+  function agregarFila(options = { manual: false }) {
     filaContador++;
     const tr = document.createElement("tr");
+    if (options.manual) tr.dataset.manual = "true";
 
     // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
@@ -483,15 +507,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
 
-    if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
-      catalogo[categoriaActiva].forEach((p, idx) => {
-        const o = document.createElement("option");
-        o.value = `${p.clave}||${idx}`;
-        o.textContent = p.clave;
-        o.dataset.descripcion = p.descripcion || "";
-        o.dataset.idx = String(idx);
-        select.appendChild(o);
-      });
+    // Si es manual, creamos sólo la opción con clave generada y deshabilitamos select
+    if (options.manual) {
+      const claveGen = generateManualClave();
+      const o = document.createElement("option");
+      o.value = claveGen;
+      o.textContent = claveGen + " (manual)";
+      select.appendChild(o);
+      select.value = claveGen;
+      select.disabled = true;
+    } else {
+      if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
+        catalogo[categoriaActiva].forEach((p, idx) => {
+          const o = document.createElement("option");
+          o.value = `${p.clave}||${idx}`;
+          o.textContent = p.clave;
+          o.dataset.descripcion = p.descripcion || "";
+          o.dataset.idx = String(idx);
+          select.appendChild(o);
+        });
+      }
     }
     tdClave.appendChild(select);
     tr.appendChild(tdClave);
@@ -506,6 +541,12 @@ document.addEventListener("DOMContentLoaded", () => {
       catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
     }
     inputDesc.setAttribute("list", datalistId);
+    // Si es manual, descripción es obligatoria
+    if (options.manual) {
+      inputDesc.required = true;
+      inputDesc.placeholder = "Descripción (obligatoria para producto manual)";
+      inputDesc.style.border = "1px solid #c64"; // visual
+    }
     tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
     // Stock
@@ -542,7 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.appendChild(tr);
 
-    // Rellena producto al elegir
+    // Rellenar producto al elegir (función reutilizable)
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -573,6 +614,7 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarFila(tr);
     }
 
+    // Eventos
     inputDesc.addEventListener("input", () => {
       const v = (inputDesc.value || "").trim();
       if (!v) { refreshDisabledOptions(); actualizarFila(tr); return; }
@@ -582,6 +624,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (productoExact) { fillProduct(productoExact); return; }
       refreshDisabledOptions();
       actualizarFila(tr);
+      // si era fila manual y el campo ahora tiene texto, quitamos estilo de alerta
+      if (options.manual) {
+        if (v) { inputDesc.style.border = ""; inputDesc.required = false; }
+        else { inputDesc.style.border = "1px solid #c64"; inputDesc.required = true; }
+      }
     });
 
     inputDesc.addEventListener("keydown", (ev) => {
@@ -628,6 +675,11 @@ document.addEventListener("DOMContentLoaded", () => {
     inputCad.addEventListener("change", () => actualizarFila(tr));
     [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
     refreshDisabledOptions();
+
+    // enfocamos descripción al crear fila manual
+    if (options.manual) {
+      setTimeout(() => { try { inputDesc.focus(); } catch(e) {} }, 0);
+    }
   }
 
   function actualizarFila(tr) {
@@ -684,7 +736,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
-  // Construir payload (reutilizable)
+  // Construir payload (reutilizable) + validación de productos manuales
   function buildPayloadRows() {
     const filasExport = [];
     for (const row of tbody.rows) {
@@ -695,6 +747,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const obsCellIndex = row.cells.length - 1;
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
+
+      // si fila manual, descripción obligatoria
+      if (row.dataset && row.dataset.manual === "true") {
+        if (!descripcion) {
+          // Indicar error visual y lanzar excepción para que el caller lo detecte
+          const descInput = row.cells[2].querySelector("input");
+          descInput.style.border = "2px solid #c00";
+          descInput.focus();
+          throw new Error("Hay productos manuales sin descripción. Completa la descripción antes de enviar.");
+        }
+      }
 
       if (!claveReal && !descripcion && !observaciones) continue;
 
@@ -716,18 +779,26 @@ document.addEventListener("DOMContentLoaded", () => {
         fecha: row.cells[6].querySelector("input").value || "",
         dias: row.cells[7].querySelector("input").value || "",
         observaciones,
-        color
+        color,
+        manual: row.dataset && row.dataset.manual === "true"
       });
     }
     return filasExport;
   }
 
-  // Botón Enviar -> intenta enviar al servidor; si falla, muestra alerta y deja datos
+  // Botón Enviar -> intenta enviar al servidor; validaciones incluidas
   if (btnEnviar) {
     btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
 
-      const filasExport = buildPayloadRows();
+      let filasExport;
+      try {
+        filasExport = buildPayloadRows();
+      } catch (err) {
+        alert(err.message || "Error: valida los productos manuales.");
+        return;
+      }
+
       if (filasExport.length === 0) {
         alert("No hay datos para enviar.");
         return;
@@ -785,7 +856,6 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (err) {
         console.error("Error al enviar:", err);
         alert("No fue posible enviar los datos al servidor:\n\n" + (err.message || err));
-        // no borra los datos, queda para reintentar
       } finally {
         btnEnviar.disabled = false;
         btnEnviar.textContent = originalText;
@@ -800,7 +870,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const resp = await fetch(HOSPITALES_URL);
       if (!resp.ok) throw new Error("No pudo obtenerse la lista de hospitales desde el servidor.");
       const data = await resp.json();
-      // Esperamos un array de objetos { nombre: "...", clave: "VZIMxxxxx" } o strings
       hospitales = Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
 
       datalistHospitales.innerHTML = "";
@@ -817,7 +886,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Cuando el usuario escribe o elige hospital, sincronizamos la clave si existe
   function syncHospitalClave() {
     const v = (inputHospital.value || "").trim();
     if (!v) { selectedHospitalClave = ""; return; }
@@ -828,19 +896,17 @@ document.addEventListener("DOMContentLoaded", () => {
   inputHospital && inputHospital.addEventListener("change", syncHospitalClave);
   inputHospital && inputHospital.addEventListener("blur", syncHospitalClave);
   inputHospital && inputHospital.addEventListener("input", () => {
-    // permitir escribir libremente, pero intentamos autocompletar si hay coincidencia exacta
     const v = (inputHospital.value || "").trim().toLowerCase();
     const found = hospitales.find(h => (h.nombre || "").toLowerCase() === v);
     if (found) selectedHospitalClave = found.clave || "";
     else selectedHospitalClave = "";
   });
 
-  // carga inicial de hospitales
   cargarHospitales().catch(() => { /* no crítico */ });
 
-  // reubicar botones al cambiar tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
+
 
 
 
