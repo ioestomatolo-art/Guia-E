@@ -1,5 +1,4 @@
-
-// Logica.js - versión con botón "Agregar manual" (producto no listado)
+// Logica.js - frontend completo (carga/guarda inventario por hospital+categoria, botón "Agregar no listado")
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
@@ -7,13 +6,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let hospitales = [];
   let selectedHospitalClave = "";
 
-  const SERVER_URL = "https://servidor-4wu6.onrender.com/submit";
+  // --- CONFIG: ajusta esto a tu servidor real
+  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <-- cambia aquí a tu URL en Render
   const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
-  const API_TOKEN = "";
+  const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
+  const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
+  const SUBMIT_URL = `${SERVER_BASE}/submit`;
+  const CLIENT_API_TOKEN = ""; // si proteges POST /inventory con API_TOKEN, pon el token aquí (solo admin)
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ------------------ CATALOGO (tu lista completa) ------------------
+  // ------------------ CATALOGO (mantén tu lista completa) ------------------
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -324,20 +327,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
 
-  // Nuevo botón: Agregar manual (producto no listado)
-  let btnAgregarManual = document.getElementById("btnAgregarManual");
-  if (!btnAgregarManual) {
-    btnAgregarManual = document.createElement("button");
-    btnAgregarManual.id = "btnAgregarManual";
-    btnAgregarManual.textContent = "Agregar (manual)";
-    // Lo agregamos luego dentro de moveButtonsToCardBottom()
-  }
+  // botón "Agregar no listado" será creado dinámicamente (así no necesitas editar HTML)
+  let btnAgregarManual = null;
 
   function safeEscapeCss(s) {
     try { return CSS.escape(s); } catch (e) { return s.replace(/["'\\]/g, "\\$&"); }
   }
 
-  // Asegura header Observaciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -400,9 +396,24 @@ document.addEventListener("DOMContentLoaded", () => {
       if (tabla.parentElement && tabla.parentElement === card) card.insertBefore(bottom, tabla.nextSibling);
       else card.appendChild(bottom);
     }
-    // Añadir el nuevo botón manual a la lista
-    const controls = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar];
-    controls.forEach(b => {
+
+    // crear botón manual si no existe
+    if (!btnAgregarManual) {
+      btnAgregarManual = document.createElement("button");
+      btnAgregarManual.id = "btnAgregarManual";
+      btnAgregarManual.textContent = "Agregar no listado";
+      btnAgregarManual.title = "Agregar producto que no está en la lista (se genera clave automática)";
+      btnAgregarManual.addEventListener("click", (ev) => {
+        ev && ev.preventDefault();
+        if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
+        const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
+        btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300);
+        agregarFilaManual();
+      });
+    }
+
+    // reubicar botones (Regresar, Agregar, Agregar manual, Enviar)
+    [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar].forEach(b => {
       if (!b) return;
       if (b.parentElement !== bottom) bottom.appendChild(b);
       b.style.borderRadius = "8px";
@@ -419,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
   moveButtonsToCardBottom();
 
   // NAV
-  btnSiguiente.onclick = (ev) => {
+  btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
     if (!cat) return alert("Selecciona una categoría.");
@@ -427,6 +438,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (categoriaCambio) limpiarTabla();
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
+
+    // sincroniza clave hospital y carga inventario
+    syncHospitalClave();
+    const key = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
+    try {
+      await loadInventoryAndPopulate(key, categoriaActiva);
+    } catch (err) {
+      console.warn("No se pudo cargar inventario:", err);
+    }
+
     document.getElementById("page1").classList.remove("activo"); document.getElementById("page1").classList.add("oculto");
     document.getElementById("page2").classList.remove("oculto"); document.getElementById("page2").classList.add("activo");
     updateCaducidadHeader();
@@ -452,16 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
     const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
     btnAgregar.disabled = true; setTimeout(() => { btnAgregar.disabled = false; }, 300);
-    agregarFila({ manual: false });
-  };
-
-  // Handler para agregar manual
-  btnAgregarManual.onclick = (ev) => {
-    ev && ev.preventDefault();
-    if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
-    const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-    btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300);
-    agregarFila({ manual: true });
+    agregarFila();
   };
 
   function getAllSelects() { return Array.from(tbody.querySelectorAll("select")); }
@@ -488,16 +500,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
-  // Genera clave única para productos manuales
-  function generateManualClave() {
-    return `MANUAL-${Date.now()}-${Math.floor(Math.random()*9000 + 1000)}`;
-  }
-
-  // Construye fila (opciones: { manual: boolean })
-  function agregarFila(options = { manual: false }) {
+  // Construye fila estándar
+  function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
-    if (options.manual) tr.dataset.manual = "true";
 
     // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
@@ -507,26 +513,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
 
-    // Si es manual, creamos sólo la opción con clave generada y deshabilitamos select
-    if (options.manual) {
-      const claveGen = generateManualClave();
-      const o = document.createElement("option");
-      o.value = claveGen;
-      o.textContent = claveGen + " (manual)";
-      select.appendChild(o);
-      select.value = claveGen;
-      select.disabled = true;
-    } else {
-      if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
-        catalogo[categoriaActiva].forEach((p, idx) => {
-          const o = document.createElement("option");
-          o.value = `${p.clave}||${idx}`;
-          o.textContent = p.clave;
-          o.dataset.descripcion = p.descripcion || "";
-          o.dataset.idx = String(idx);
-          select.appendChild(o);
-        });
-      }
+    if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
+      catalogo[categoriaActiva].forEach((p, idx) => {
+        const o = document.createElement("option");
+        o.value = `${p.clave}||${idx}`;
+        o.textContent = p.clave;
+        o.dataset.descripcion = p.descripcion || "";
+        o.dataset.idx = String(idx);
+        select.appendChild(o);
+      });
     }
     tdClave.appendChild(select);
     tr.appendChild(tdClave);
@@ -541,12 +536,6 @@ document.addEventListener("DOMContentLoaded", () => {
       catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
     }
     inputDesc.setAttribute("list", datalistId);
-    // Si es manual, descripción es obligatoria
-    if (options.manual) {
-      inputDesc.required = true;
-      inputDesc.placeholder = "Descripción (obligatoria para producto manual)";
-      inputDesc.style.border = "1px solid #c64"; // visual
-    }
     tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
     // Stock
@@ -583,7 +572,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.appendChild(tr);
 
-    // Rellenar producto al elegir (función reutilizable)
+    // Rellena producto al elegir
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -614,7 +603,6 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarFila(tr);
     }
 
-    // Eventos
     inputDesc.addEventListener("input", () => {
       const v = (inputDesc.value || "").trim();
       if (!v) { refreshDisabledOptions(); actualizarFila(tr); return; }
@@ -624,11 +612,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (productoExact) { fillProduct(productoExact); return; }
       refreshDisabledOptions();
       actualizarFila(tr);
-      // si era fila manual y el campo ahora tiene texto, quitamos estilo de alerta
-      if (options.manual) {
-        if (v) { inputDesc.style.border = ""; inputDesc.required = false; }
-        else { inputDesc.style.border = "1px solid #c64"; inputDesc.required = true; }
-      }
     });
 
     inputDesc.addEventListener("keydown", (ev) => {
@@ -675,11 +658,32 @@ document.addEventListener("DOMContentLoaded", () => {
     inputCad.addEventListener("change", () => actualizarFila(tr));
     [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
     refreshDisabledOptions();
+  }
 
-    // enfocamos descripción al crear fila manual
-    if (options.manual) {
-      setTimeout(() => { try { inputDesc.focus(); } catch(e) {} }, 0);
-    }
+  // Agregar fila manual (no listado)
+  function agregarFilaManual() {
+    // crear fila estándar primero
+    agregarFila();
+    const tr = tbody.rows[tbody.rows.length - 1];
+    if (!tr) return;
+    const select = tr.cells[1].querySelector("select");
+    const inputDesc = tr.cells[2].querySelector("input");
+
+    // generar clave única y marcar manual
+    const gen = `MAN-${Date.now().toString(36).slice(-6)}`;
+    // crear opción y asignar
+    const opt = document.createElement("option");
+    opt.value = gen;
+    opt.textContent = gen + " (no listado)";
+    select.appendChild(opt);
+    select.value = gen;
+    select.disabled = true; // evita que el usuario seleccione otra clave preparada
+    tr.dataset.manual = "true";
+    // marcar descripción como obligatoria (visual)
+    inputDesc.required = true;
+    inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
+    inputDesc.focus();
+    refreshDisabledOptions();
   }
 
   function actualizarFila(tr) {
@@ -736,9 +740,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
-  // Construir payload (reutilizable) + validación de productos manuales
+  // Construir payload (reutilizable) - valida productos manuales con descripción
   function buildPayloadRows() {
     const filasExport = [];
+    const errors = [];
     for (const row of tbody.rows) {
       const select = row.cells[1].querySelector("select");
       const raw = select ? select.value : "";
@@ -747,19 +752,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const obsCellIndex = row.cells.length - 1;
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
+      const isManual = row.dataset && row.dataset.manual === "true";
 
-      // si fila manual, descripción obligatoria
-      if (row.dataset && row.dataset.manual === "true") {
-        if (!descripcion) {
-          // Indicar error visual y lanzar excepción para que el caller lo detecte
-          const descInput = row.cells[2].querySelector("input");
-          descInput.style.border = "2px solid #c00";
-          descInput.focus();
-          throw new Error("Hay productos manuales sin descripción. Completa la descripción antes de enviar.");
-        }
-      }
-
+      // Si no hay datos, saltar
       if (!claveReal && !descripcion && !observaciones) continue;
+
+      // validación: si fila manual, descripción obligatoria
+      if (isManual && !descripcion) {
+        errors.push(`Fila ${row.rowIndex}: Falta descripción para producto no listado (clave ${claveReal || "(sin clave)"}).`);
+        continue;
+      }
 
       let color = semaforoColor.default;
       if (adquisicionCats.has(categoriaActiva)) {
@@ -780,85 +782,78 @@ document.addEventListener("DOMContentLoaded", () => {
         dias: row.cells[7].querySelector("input").value || "",
         observaciones,
         color,
-        manual: row.dataset && row.dataset.manual === "true"
+        manual: !!isManual
       });
     }
-    return filasExport;
+    return { filasExport, errors };
   }
 
-  // Botón Enviar -> intenta enviar al servidor; validaciones incluidas
+  // Guardar inventario en servidor (POST /inventory)
+  async function saveInventoryToServer(hospitalNombre, hospitalClave, categoria, items) {
+    if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
+    const payload = {
+      hospitalNombre: hospitalNombre || "",
+      hospitalClave: hospitalClave || "",
+      categoria: categoria || "",
+      items
+    };
+    const headers = { "Content-Type": "application/json" };
+    if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+    const resp = await fetch(INVENTORY_POST_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => "");
+      throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
+    }
+    return resp.json();
+  }
+
+  // Botón Enviar -> intenta guardar inventario (POST /inventory); preserva comportamiento si deseas también /submit
   if (btnEnviar) {
     btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
 
-      let filasExport;
-      try {
-        filasExport = buildPayloadRows();
-      } catch (err) {
-        alert(err.message || "Error: valida los productos manuales.");
+      const { filasExport, errors } = buildPayloadRows();
+      if (errors.length) {
+        alert("Errores en el formulario:\n\n" + errors.join("\n"));
         return;
       }
-
       if (filasExport.length === 0) {
         alert("No hay datos para enviar.");
         return;
       }
-
-      if (!SERVER_URL) {
-        alert("SERVER_URL no configurada. Configura SERVER_URL en Logica.js para habilitar el envío.");
+      if (!INVENTORY_POST_URL) {
+        alert("INVENTORY_POST_URL no configurada. Ajusta Logica.js.");
         return;
       }
 
       const hospitalNombre = inputHospital ? (inputHospital.value || "").trim() : "";
       const fechaEnvio = new Date().toISOString();
 
-      const payload = {
-        hospitalNombre,
-        hospitalClave: selectedHospitalClave || "",
-        categoria: categoriaActiva || "",
-        fechaEnvio,
-        items: filasExport,
-        _token: API_TOKEN
-      };
-
-      btnEnviar.disabled = true;
-      const originalText = btnEnviar.textContent;
-      btnEnviar.textContent = "Enviando...";
-
       try {
-        const headers = { "Content-Type": "application/json" };
-        if (API_TOKEN) headers["Authorization"] = "Bearer " + API_TOKEN;
+        btnEnviar.disabled = true;
+        const originalText = btnEnviar.textContent;
+        btnEnviar.textContent = "Guardando...";
 
-        const resp = await fetch(SERVER_URL, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(payload)
-        });
+        // Guardar como inventory (reemplaza inventario del hospital/categoria)
+        await saveInventoryToServer(hospitalNombre, selectedHospitalClave || hospitalNombre, categoriaActiva, filasExport);
 
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => "");
-          throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
-        }
-
-        let data;
-        try { data = await resp.json(); } catch(e) { data = null; }
-
-        console.log("Respuesta del servidor:", data);
-        alert("Datos enviados correctamente al servidor.");
-
+        alert("Inventario guardado correctamente en el servidor.");
         // limpieza y reset solo después de éxito
         limpiarTabla();
         categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = ""; selectedHospitalClave = "";
         updateCaducidadHeader();
         document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
         document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
-
       } catch (err) {
-        console.error("Error al enviar:", err);
-        alert("No fue posible enviar los datos al servidor:\n\n" + (err.message || err));
+        console.error("Error al guardar inventario:", err);
+        alert("No fue posible guardar el inventario en el servidor:\n\n" + (err.message || err));
       } finally {
         btnEnviar.disabled = false;
-        btnEnviar.textContent = originalText;
+        btnEnviar.textContent = "Enviar";
       }
     };
   }
@@ -871,7 +866,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!resp.ok) throw new Error("No pudo obtenerse la lista de hospitales desde el servidor.");
       const data = await resp.json();
       hospitales = Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
-
       datalistHospitales.innerHTML = "";
       hospitales.forEach(h => {
         const opt = document.createElement("option");
@@ -904,6 +898,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
   cargarHospitales().catch(() => { /* no crítico */ });
 
+  // ---------------- INVENTORY: cargar y poblar ----------------
+  async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
+    if (!hospitalClaveOrName || !categoria) return;
+    try {
+      const qs = new URLSearchParams({ hospitalClave: hospitalClaveOrName, categoria }).toString();
+      const resp = await fetch(`${INVENTORY_GET_URL}?${qs}`, { method: "GET" });
+      if (!resp.ok) {
+        console.warn("No se pudo obtener inventory:", resp.status);
+        return;
+      }
+      const data = await resp.json();
+      // data puede ser [] o { items: [...] }
+      const items = Array.isArray(data) ? data : (data.items || []);
+      limpiarTabla();
+      if (!items || items.length === 0) {
+        // nada: deja una fila vacía
+        agregarFila();
+        return;
+      }
+      for (const it of items) {
+        agregarFila();
+        const tr = tbody.rows[tbody.rows.length - 1];
+        try {
+          const sel = tr.cells[1].querySelector("select");
+          if (it.clave) {
+            let found = false;
+            for (const opt of Array.from(sel.options)) {
+              if (opt.value && opt.value.split("||")[0] === it.clave) { sel.value = opt.value; found = true; break; }
+            }
+            if (!found) {
+              const opt2 = document.createElement("option");
+              opt2.value = it.clave;
+              opt2.textContent = it.clave + (it.manual ? " (manual)" : "");
+              sel.appendChild(opt2);
+              sel.value = it.clave;
+              if (it.manual) { sel.disabled = true; tr.dataset.manual = "true"; }
+            }
+          }
+        } catch(e){}
+        try { tr.cells[2].querySelector("input").value = it.descripcion || ""; } catch(e){}
+        try { tr.cells[3].querySelector("input").value = it.stock || ""; } catch(e){}
+        try { tr.cells[4].querySelector("input").value = it.minimo || ""; } catch(e){}
+        try { tr.cells[6].querySelector("input").value = it.fecha || ""; } catch(e){}
+        try { tr.cells[7].querySelector("input").value = it.dias || ""; } catch(e){}
+        try { tr.cells[tr.cells.length-1].querySelector("textarea").value = it.observaciones || ""; } catch(e){}
+        actualizarFila(tr);
+      }
+      refreshDisabledOptions();
+    } catch (err) {
+      console.error("loadInventoryAndPopulate error:", err);
+    }
+  }
+
+  // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
 
