@@ -334,6 +334,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Si el HTML ya incluye el botón "Agregar no listado" (id=btnAgregarManual), lo usamos.
   let btnAgregarManual = document.getElementById("btnAgregarManual") || null;
+
+  // ---------- AÑADIR INMEDIATAMENTE DESPUÉS DE: 
+// let btnAgregarManual = document.getElementById("btnAgregarManual") || null;
+
+(function ensureAgregarManualHandler() {
+  // handler central que usa la misma lógica que cuando el botón es creado dinámicamente
+  function handleAgregarManualClick(ev) {
+    ev && ev.preventDefault();
+    if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
+    const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
+    // bloquea brevemente el botón para evitar múltiples clicks
+    if (btnAgregarManual) { btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300); }
+    agregarFilaManual();
+  }
+
+  // Si ya existe el botón en el DOM, asegúrate de conectar el handler (una sola vez)
+  if (btnAgregarManual && !btnAgregarManual._attachAgregarManual) {
+    btnAgregarManual.addEventListener("click", handleAgregarManualClick);
+    btnAgregarManual._attachAgregarManual = true;
+  }
+
+  // Además, cuando el script cree el botón dinámicamente dentro de moveButtonsToCardBottom,
+  // reutiliza el mismo handler (esa función ya está disponible en el scope).
+})();
+
   // Si el HTML accidentalmente incluye un botón global 'btnEliminar', lo enlazamos (opcional)
   const btnEliminarGlobal = document.getElementById("btnEliminar") || null;
 
