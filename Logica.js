@@ -1,5 +1,8 @@
-// Logica.js - frontend completo (con botón "Agregar no listado" y botón "Eliminar" por fila)
+
+// Logica.js - completo (corrige sintaxis, mantiene catálogo, agrega "Agregar no listado" y "Eliminar")
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("Logica.js cargado");
+
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
@@ -7,16 +10,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedHospitalClave = "";
 
   // --- CONFIG: ajusta esto a tu servidor real
-  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <-- cambia aquí a tu URL en Render
+  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <-- cambia si es necesario
   const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
   const SUBMIT_URL = `${SERVER_BASE}/submit`;
-  const CLIENT_API_TOKEN = ""; // si proteges POST /inventory con API_TOKEN, pon el token aquí (solo admin)
+  const CLIENT_API_TOKEN = ""; // si proteges endpoints pon token aquí
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
   // ------------------ CATALOGO (mantén tu lista completa) ------------------
+  // Aquí incluyo el catálogo que ya usabas (he copiado y mantenido las entradas).
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -314,6 +318,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0208": 2
     // ... (mantén el resto como lo tienes)
     };
+
+
   // ---------------- DOM ----------------
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
@@ -326,14 +332,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
 
-  // botón "Agregar no listado" será creado dinámicamente
-  let btnAgregarManual = null;
+  // Si el HTML ya incluye el botón "Agregar no listado" (id=btnAgregarManual), lo usamos.
+  let btnAgregarManual = document.getElementById("btnAgregarManual") || null;
+  // Si el HTML accidentalmente incluye un botón global 'btnEliminar', lo enlazamos (opcional)
+  const btnEliminarGlobal = document.getElementById("btnEliminar") || null;
 
-  function safeEscapeCss(s) {
-    try { return CSS.escape(s); } catch (e) { return s.replace(/["'\\]/g, "\\$&"); }
-  }
+  function safeEscapeCss(s) { try { return CSS.escape(s); } catch (e) { return s.replace(/["'\\]/g, "\\$&"); } }
 
-  // Asegura headers Observaciones y Acciones
+  // Asegura headers Observaciones y Acciones (crea si faltan)
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -342,11 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tabla.insertBefore(thead, tabla.firstChild);
       const headerRow = document.createElement("tr");
       const defaultHeaders = ["No.", "Clave", "Descripción", "Stock", "Mínimo", "Estado", "Caducidad", "Días restantes", "Observaciones", "Acciones"];
-      defaultHeaders.forEach(h => {
-        const th = document.createElement("th");
-        th.textContent = h;
-        headerRow.appendChild(th);
-      });
+      defaultHeaders.forEach(h => { const th = document.createElement("th"); th.textContent = h; headerRow.appendChild(th); });
       thead.appendChild(headerRow);
       return;
     }
@@ -393,12 +395,16 @@ document.addEventListener("DOMContentLoaded", () => {
       else card.appendChild(bottom);
     }
 
-    // crear botón manual si no existe
+    // Si no existe el botón manual en DOM, lo creemos y no lo dupliquemos
     if (!btnAgregarManual) {
       btnAgregarManual = document.createElement("button");
       btnAgregarManual.id = "btnAgregarManual";
       btnAgregarManual.textContent = "Agregar no listado";
       btnAgregarManual.title = "Agregar producto que no está en la lista (se genera clave automática)";
+      btnAgregarManual.style.borderRadius = "8px";
+      btnAgregarManual.style.padding = "8px 14px";
+      btnAgregarManual.style.background = "#f3f4f6";
+      btnAgregarManual.style.cursor = "pointer";
       btnAgregarManual.addEventListener("click", (ev) => {
         ev && ev.preventDefault();
         if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
@@ -408,10 +414,12 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // reubicar botones (Regresar, Agregar, Agregar manual, Enviar)
-    [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar].forEach(b => {
+    // mover/asegurar botones: Regresar, Agregar fila, Agregar manual, Enviar y (si existe) Eliminar global
+    const botonesOrden = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarGlobal];
+    botonesOrden.forEach(b => {
       if (!b) return;
       if (b.parentElement !== bottom) bottom.appendChild(b);
+      // estilos mínimos inline para garantizar visibilidad
       b.style.borderRadius = "8px";
       b.style.padding = "8px 14px";
       b.style.fontSize = "0.95rem";
@@ -425,7 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   moveButtonsToCardBottom();
 
-  // NAV
+  // NAV: siguiente
   btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
@@ -435,7 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
 
-    // sincroniza clave hospital y carga inventario
+    // sincroniza clave hospital y carga inventario del hospital (si existe)
     syncHospitalClave();
     const key = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
     try {
@@ -451,6 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
     moveButtonsToCardBottom();
   };
 
+  // NAV: regresar
   btnRegresar.onclick = (ev) => {
     ev && ev.preventDefault();
     document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
@@ -471,6 +480,20 @@ document.addEventListener("DOMContentLoaded", () => {
     btnAgregar.disabled = true; setTimeout(() => { btnAgregar.disabled = false; }, 300);
     agregarFila();
   };
+
+  // si el HTML incluye un botón global 'Eliminar' lo dejamos borrar la última fila
+  if (btnEliminarGlobal) {
+    btnEliminarGlobal.addEventListener("click", (ev) => {
+      ev && ev.preventDefault();
+      if (!tbody.rows.length) return alert("No hay filas para eliminar.");
+      const last = tbody.rows[tbody.rows.length - 1];
+      if (!confirm("Eliminar la última fila?")) return;
+      last.remove();
+      renumerarFilas();
+      refreshDisabledOptions();
+      if (!tbody.rows.length) agregarFila();
+    });
+  }
 
   function getAllSelects() { return Array.from(tbody.querySelectorAll("select")); }
 
@@ -496,7 +519,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
-  // renumerar filas después de eliminar (mantiene filaContador consistente)
   function renumerarFilas() {
     filaContador = 0;
     for (const r of tbody.rows) {
@@ -506,7 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Construye fila estándar
+  // Construye fila estándar (con botón Eliminar en Acciones)
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
@@ -529,18 +551,15 @@ document.addEventListener("DOMContentLoaded", () => {
         select.appendChild(o);
       });
     }
-    tdClave.appendChild(select);
-    tr.appendChild(tdClave);
+    tdClave.appendChild(select); tr.appendChild(tdClave);
 
-    // Descripción (input con datalist)
+    // Descripción (input + datalist)
     const tdDesc = document.createElement("td");
     const inputDesc = document.createElement("input");
     inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
     const datalistId = `datalist-desc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
     const dl = document.createElement("datalist"); dl.id = datalistId;
-    if (catalogo[categoriaActiva]) {
-      catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
-    }
+    if (catalogo[categoriaActiva]) catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
     inputDesc.setAttribute("list", datalistId);
     tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
@@ -578,10 +597,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Acciones -> botón Eliminar
     const tdAcc = document.createElement("td");
+    tdAcc.style.display = "table-cell";
     const btnDel = document.createElement("button");
     btnDel.type = "button";
     btnDel.textContent = "Eliminar";
     btnDel.title = "Eliminar esta fila";
+    // estilos inline para asegurar visibilidad
     btnDel.style.padding = "6px 10px";
     btnDel.style.borderRadius = "6px";
     btnDel.style.border = "none";
@@ -590,22 +611,18 @@ document.addEventListener("DOMContentLoaded", () => {
     btnDel.style.color = "#7f1d1d";
     btnDel.addEventListener("click", (ev) => {
       ev && ev.preventDefault();
-      // comprobar si fila tiene datos
       const descripcion = (tr.cells[2].querySelector("input").value || "").trim();
       const stock = (tr.cells[3].querySelector("input").value || "").trim();
       const fecha = (tr.cells[6].querySelector("input").value || "").trim();
       const obs = (tr.cells[tr.cells.length-2].querySelector("textarea") ? tr.cells[tr.cells.length-2].querySelector("textarea").value : "").trim();
       const clave = (tr.cells[1].querySelector("select").value || "").trim();
-
       const hasData = !!(descripcion || stock || fecha || obs || clave);
       if (hasData) {
         if (!confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
       }
-      // eliminar fila
       tr.remove();
       renumerarFilas();
       refreshDisabledOptions();
-      // si quedó vacío, agregar una fila vacía para no dejar pantalla en blanco
       if (!tbody.rows.length) agregarFila();
     });
     tdAcc.appendChild(btnDel);
@@ -613,7 +630,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.appendChild(tr);
 
-    // Rellena producto al elegir
+    // Rellenado/actualizaciones
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -701,7 +718,7 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshDisabledOptions();
   }
 
-  // Agregar fila manual (no listado)
+  // Agregar fila manual (no listado) -> genera clave MAN-xxxx y obliga descripción
   function agregarFilaManual() {
     // crear fila estándar primero
     agregarFila();
@@ -719,17 +736,14 @@ document.addEventListener("DOMContentLoaded", () => {
     opt.textContent = gen + " (no listado)";
     select.appendChild(opt);
     select.value = gen;
-    select.disabled = true; // evita que el usuario seleccione otra clave preparada
+    select.disabled = true; // evita seleccionar otro
     tr.dataset.manual = "true";
-    // marcar descripción como obligatoria (visual)
+    // descripción obligatoria
     inputDesc.required = true;
     inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
     inputDesc.focus();
 
-    // (opcional) si quieres que la fila manual tenga estilo distinto, puedes añadir clase aquí
-    // tr.classList.add("manual-row");
-
-    // Asegure que el botón eliminar sigue funcionando y está visible (ya creado en agregarFila)
+    // button style ensure
     if (btnDel) {
       btnDel.style.background = "#fee2e2";
       btnDel.style.color = "#7f1d1d";
@@ -799,9 +813,10 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const row of tbody.rows) {
       const select = row.cells[1].querySelector("select");
       const raw = select ? select.value : "";
-      const claveReal = raw ? raw.split("||")[0] : "";
+      // si el value contiene "||" (formato de opciones del catálogo), tomar la parte antes; si no, usar tal cual
+      const claveReal = raw && raw.includes("||") ? raw.split("||")[0] : (raw || "");
       const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-      const obsCellIndex = row.cells.length - 2; // because last cell is actions
+      const obsCellIndex = row.cells.length - 2; // penúltima es observaciones
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
       const isManual = row.dataset && row.dataset.manual === "true";
@@ -843,19 +858,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Guardar inventario en servidor (POST /inventory)
   async function saveInventoryToServer(hospitalNombre, hospitalClave, categoria, items) {
     if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
-    const payload = {
-      hospitalNombre: hospitalNombre || "",
-      hospitalClave: hospitalClave || "",
-      categoria: categoria || "",
-      items
-    };
+    const payload = { hospitalNombre: hospitalNombre || "", hospitalClave: hospitalClave || "", categoria: categoria || "", items };
     const headers = { "Content-Type": "application/json" };
     if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
-    const resp = await fetch(INVENTORY_POST_URL, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload)
-    });
+    const resp = await fetch(INVENTORY_POST_URL, { method: "POST", headers, body: JSON.stringify(payload) });
     if (!resp.ok) {
       const txt = await resp.text().catch(() => "");
       throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
@@ -863,7 +869,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return resp.json();
   }
 
-  // Botón Enviar -> intenta guardar inventario (POST /inventory); preserva comportamiento si deseas también /submit
+  // Botón Enviar -> intenta guardar inventario (POST /inventory)
   if (btnEnviar) {
     btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
@@ -883,16 +889,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const hospitalNombre = inputHospital ? (inputHospital.value || "").trim() : "";
-      const fechaEnvio = new Date().toISOString();
-
       try {
         btnEnviar.disabled = true;
         const originalText = btnEnviar.textContent;
         btnEnviar.textContent = "Guardando...";
-
         // Guardar como inventory (reemplaza inventario del hospital/categoria)
         await saveInventoryToServer(hospitalNombre, selectedHospitalClave || hospitalNombre, categoriaActiva, filasExport);
-
         alert("Inventario guardado correctamente en el servidor.");
         // limpieza y reset solo después de éxito
         limpiarTabla();
@@ -953,19 +955,21 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---------------- INVENTORY: cargar y poblar ----------------
   async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     if (!hospitalClaveOrName || !categoria) return;
+    if (!INVENTORY_GET_URL) return;
     try {
       const qs = new URLSearchParams({ hospitalClave: hospitalClaveOrName, categoria }).toString();
       const resp = await fetch(`${INVENTORY_GET_URL}?${qs}`, { method: "GET" });
       if (!resp.ok) {
         console.warn("No se pudo obtener inventory:", resp.status);
+        // si 404 o vacío no abortamos, dejamos fila vacía
+        limpiarTabla();
+        agregarFila();
         return;
       }
       const data = await resp.json();
-      // data puede ser [] o { items: [...] }
       const items = Array.isArray(data) ? data : (data.items || []);
       limpiarTabla();
       if (!items || items.length === 0) {
-        // nada: deja una fila vacía
         agregarFila();
         return;
       }
@@ -977,7 +981,9 @@ document.addEventListener("DOMContentLoaded", () => {
           if (it.clave) {
             let found = false;
             for (const opt of Array.from(sel.options)) {
-              if (opt.value && opt.value.split("||")[0] === it.clave) { sel.value = opt.value; found = true; break; }
+              const optVal = opt.value || "";
+              const optClave = optVal.includes("||") ? optVal.split("||")[0] : optVal;
+              if (optClave === it.clave) { sel.value = opt.value; found = true; break; }
             }
             if (!found) {
               const opt2 = document.createElement("option");
@@ -1005,11 +1011,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
+
+  // al inicio, si tabla vacía agrega fila
+  if (!tbody.rows.length) agregarFila();
 });
-
-
-
-
-
-
-
