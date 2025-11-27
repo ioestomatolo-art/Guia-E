@@ -1,4 +1,4 @@
-// Logica.js - frontend completo (carga/guarda inventario por hospital+categoria, botón "Agregar no listado")
+// Logica.js - frontend completo (con botón "Agregar no listado" y botón "Eliminar" por fila)
 document.addEventListener("DOMContentLoaded", () => {
   let categoriaActiva = null;
   let filaContador = 0;
@@ -314,7 +314,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0208": 2
     // ... (mantén el resto como lo tienes)
     };
-
   // ---------------- DOM ----------------
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
@@ -327,13 +326,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
 
-  // botón "Agregar no listado" será creado dinámicamente (así no necesitas editar HTML)
+  // botón "Agregar no listado" será creado dinámicamente
   let btnAgregarManual = null;
 
   function safeEscapeCss(s) {
     try { return CSS.escape(s); } catch (e) { return s.replace(/["'\\]/g, "\\$&"); }
   }
 
+  // Asegura headers Observaciones y Acciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -341,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
       thead = document.createElement("thead");
       tabla.insertBefore(thead, tabla.firstChild);
       const headerRow = document.createElement("tr");
-      const defaultHeaders = ["No.", "Clave", "Descripción", "Stock", "Mínimo", "Estado", "Caducidad", "Días restantes", "Observaciones"];
+      const defaultHeaders = ["No.", "Clave", "Descripción", "Stock", "Mínimo", "Estado", "Caducidad", "Días restantes", "Observaciones", "Acciones"];
       defaultHeaders.forEach(h => {
         const th = document.createElement("th");
         th.textContent = h;
@@ -350,18 +350,14 @@ document.addEventListener("DOMContentLoaded", () => {
       thead.appendChild(headerRow);
       return;
     }
-    const ths = Array.from(thead.querySelectorAll("th"));
-    if (ths.some(t => (t.textContent || "").trim().toLowerCase() === "observaciones")) return;
-
-    let insertIndex = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("días") || (t.textContent || "").trim().toLowerCase().includes("dias")));
-    const thObs = document.createElement("th");
-    thObs.textContent = "Observaciones";
-    if (insertIndex >= 0) {
-      const ref = thead.querySelectorAll("th")[insertIndex].nextSibling;
-      if (ref) thead.querySelector("tr").insertBefore(thObs, ref);
-      else thead.querySelector("tr").appendChild(thObs);
-    } else {
+    const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent || "").trim().toLowerCase());
+    if (!ths.includes("observaciones")) {
+      const thObs = document.createElement("th"); thObs.textContent = "Observaciones";
       thead.querySelector("tr").appendChild(thObs);
+    }
+    if (!ths.includes("acciones")) {
+      const thAcc = document.createElement("th"); thAcc.textContent = "Acciones";
+      thead.querySelector("tr").appendChild(thAcc);
     }
   }
   ensureObservacionesHeader();
@@ -500,6 +496,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
+  // renumerar filas después de eliminar (mantiene filaContador consistente)
+  function renumerarFilas() {
+    filaContador = 0;
+    for (const r of tbody.rows) {
+      filaContador++;
+      const noCell = r.cells[0];
+      if (noCell) noCell.textContent = filaContador;
+    }
+  }
+
   // Construye fila estándar
   function agregarFila() {
     filaContador++;
@@ -569,6 +575,41 @@ document.addEventListener("DOMContentLoaded", () => {
     textareaObs.style.boxSizing = "border-box";
     tdObs.appendChild(textareaObs);
     tr.appendChild(tdObs);
+
+    // Acciones -> botón Eliminar
+    const tdAcc = document.createElement("td");
+    const btnDel = document.createElement("button");
+    btnDel.type = "button";
+    btnDel.textContent = "Eliminar";
+    btnDel.title = "Eliminar esta fila";
+    btnDel.style.padding = "6px 10px";
+    btnDel.style.borderRadius = "6px";
+    btnDel.style.border = "none";
+    btnDel.style.cursor = "pointer";
+    btnDel.style.background = "#fee2e2";
+    btnDel.style.color = "#7f1d1d";
+    btnDel.addEventListener("click", (ev) => {
+      ev && ev.preventDefault();
+      // comprobar si fila tiene datos
+      const descripcion = (tr.cells[2].querySelector("input").value || "").trim();
+      const stock = (tr.cells[3].querySelector("input").value || "").trim();
+      const fecha = (tr.cells[6].querySelector("input").value || "").trim();
+      const obs = (tr.cells[tr.cells.length-2].querySelector("textarea") ? tr.cells[tr.cells.length-2].querySelector("textarea").value : "").trim();
+      const clave = (tr.cells[1].querySelector("select").value || "").trim();
+
+      const hasData = !!(descripcion || stock || fecha || obs || clave);
+      if (hasData) {
+        if (!confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
+      }
+      // eliminar fila
+      tr.remove();
+      renumerarFilas();
+      refreshDisabledOptions();
+      // si quedó vacío, agregar una fila vacía para no dejar pantalla en blanco
+      if (!tbody.rows.length) agregarFila();
+    });
+    tdAcc.appendChild(btnDel);
+    tr.appendChild(tdAcc);
 
     tbody.appendChild(tr);
 
@@ -668,6 +709,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tr) return;
     const select = tr.cells[1].querySelector("select");
     const inputDesc = tr.cells[2].querySelector("input");
+    const btnDel = tr.cells[tr.cells.length - 1].querySelector("button");
 
     // generar clave única y marcar manual
     const gen = `MAN-${Date.now().toString(36).slice(-6)}`;
@@ -683,6 +725,16 @@ document.addEventListener("DOMContentLoaded", () => {
     inputDesc.required = true;
     inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
     inputDesc.focus();
+
+    // (opcional) si quieres que la fila manual tenga estilo distinto, puedes añadir clase aquí
+    // tr.classList.add("manual-row");
+
+    // Asegure que el botón eliminar sigue funcionando y está visible (ya creado en agregarFila)
+    if (btnDel) {
+      btnDel.style.background = "#fee2e2";
+      btnDel.style.color = "#7f1d1d";
+    }
+
     refreshDisabledOptions();
   }
 
@@ -749,7 +801,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const raw = select ? select.value : "";
       const claveReal = raw ? raw.split("||")[0] : "";
       const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-      const obsCellIndex = row.cells.length - 1;
+      const obsCellIndex = row.cells.length - 2; // because last cell is actions
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
       const isManual = row.dataset && row.dataset.manual === "true";
@@ -942,7 +994,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try { tr.cells[4].querySelector("input").value = it.minimo || ""; } catch(e){}
         try { tr.cells[6].querySelector("input").value = it.fecha || ""; } catch(e){}
         try { tr.cells[7].querySelector("input").value = it.dias || ""; } catch(e){}
-        try { tr.cells[tr.cells.length-1].querySelector("textarea").value = it.observaciones || ""; } catch(e){}
+        try { tr.cells[tr.cells.length-2].querySelector("textarea").value = it.observaciones || ""; } catch(e){}
         actualizarFila(tr);
       }
       refreshDisabledOptions();
@@ -954,6 +1006,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
+
+
+
 
 
 
