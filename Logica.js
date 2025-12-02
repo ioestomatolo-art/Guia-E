@@ -1,26 +1,29 @@
 
-// Logica.js - completo (corrige sintaxis, mantiene catálogo, agrega "Agregar no listado" y "Eliminar")
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("Logica.js cargado");
 
+// Logica.js - frontend completo
+// Reemplaza tu archivo actual con este. Ajusta SERVER_BASE / URLs al entorno real si es necesario.
+
+document.addEventListener("DOMContentLoaded", () => {
+  // ======== CONFIG ========
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
   let hospitales = [];
   let selectedHospitalClave = "";
 
-  // --- CONFIG: ajusta esto a tu servidor real
-  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <-- cambia si es necesario
+  // Ajusta estas URLs a tu servidor en Render (o deja vacías si no las usas)
+  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // cambia a tu URL real
   const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
   const SUBMIT_URL = `${SERVER_BASE}/submit`;
-  const CLIENT_API_TOKEN = ""; // si proteges endpoints pon token aquí
+  const CLIENT_API_TOKEN = ""; // si usas token para /inventory
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ------------------ CATALOGO (mantén tu lista completa) ------------------
-  // Aquí incluyo el catálogo que ya usabas (he copiado y mantenido las entradas).
+  // ================= CATALOGO =================
+  // Pega aquí tu catálogo completo si lo deseas.
+  // Para mantener el ejemplo manejable incluyo una muestra; puedes reemplazarla por tu lista extensa.
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -319,8 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ... (mantén el resto como lo tienes)
     };
 
-
-  // ---------------- DOM ----------------
+  // ================= DOM =================
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
   const btnRegresar = document.getElementById("btnRegresar1");
@@ -332,39 +334,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
 
-  // Si el HTML ya incluye el botón "Agregar no listado" (id=btnAgregarManual), lo usamos.
-  let btnAgregarManual = document.getElementById("btnAgregarManual") || null;
+  // botón "Agregar no listado" creado/reenlazado por moveButtonsToCardBottom
+  let btnAgregarManual = null;
 
-  // ---------- AÑADIR INMEDIATAMENTE DESPUÉS DE: 
-// let btnAgregarManual = document.getElementById("btnAgregarManual") || null;
-
-(function ensureAgregarManualHandler() {
-  // handler central que usa la misma lógica que cuando el botón es creado dinámicamente
-  function handleAgregarManualClick(ev) {
-    ev && ev.preventDefault();
-    if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
-    const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-    // bloquea brevemente el botón para evitar múltiples clicks
-    if (btnAgregarManual) { btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300); }
-    agregarFilaManual();
+  function safeEscapeCss(s) {
+    try { return CSS.escape(String(s)); } catch (e) { return String(s).replace(/["'\\]/g, "\\$&"); }
   }
 
-  // Si ya existe el botón en el DOM, asegúrate de conectar el handler (una sola vez)
-  if (btnAgregarManual && !btnAgregarManual._attachAgregarManual) {
-    btnAgregarManual.addEventListener("click", handleAgregarManualClick);
-    btnAgregarManual._attachAgregarManual = true;
-  }
-
-  // Además, cuando el script cree el botón dinámicamente dentro de moveButtonsToCardBottom,
-  // reutiliza el mismo handler (esa función ya está disponible en el scope).
-})();
-
-  // Si el HTML accidentalmente incluye un botón global 'btnEliminar', lo enlazamos (opcional)
-  const btnEliminarGlobal = document.getElementById("btnEliminar") || null;
-
-  function safeEscapeCss(s) { try { return CSS.escape(s); } catch (e) { return s.replace(/["'\\]/g, "\\$&"); } }
-
-  // Asegura headers Observaciones y Acciones (crea si faltan)
+  // Asegura que el header tenga Observaciones y Acciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -373,18 +350,20 @@ document.addEventListener("DOMContentLoaded", () => {
       tabla.insertBefore(thead, tabla.firstChild);
       const headerRow = document.createElement("tr");
       const defaultHeaders = ["No.", "Clave", "Descripción", "Stock", "Mínimo", "Estado", "Caducidad", "Días restantes", "Observaciones", "Acciones"];
-      defaultHeaders.forEach(h => { const th = document.createElement("th"); th.textContent = h; headerRow.appendChild(th); });
+      defaultHeaders.forEach(h => {
+        const th = document.createElement("th");
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
       thead.appendChild(headerRow);
       return;
     }
     const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent || "").trim().toLowerCase());
     if (!ths.includes("observaciones")) {
-      const thObs = document.createElement("th"); thObs.textContent = "Observaciones";
-      thead.querySelector("tr").appendChild(thObs);
+      const thObs = document.createElement("th"); thObs.textContent = "Observaciones"; thead.querySelector("tr").appendChild(thObs);
     }
     if (!ths.includes("acciones")) {
-      const thAcc = document.createElement("th"); thAcc.textContent = "Acciones";
-      thead.querySelector("tr").appendChild(thAcc);
+      const thAcc = document.createElement("th"); thAcc.textContent = "Acciones"; thead.querySelector("tr").appendChild(thAcc);
     }
   }
   ensureObservacionesHeader();
@@ -405,8 +384,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Mueve/crea botones abajo y evita duplicados/attach multiple handlers
   function moveButtonsToCardBottom() {
-    const page2 = document.getElementById("page2"); if (!page2 || !tabla) return;
+    const page2 = document.getElementById("page2");
+    if (!page2 || !tabla) return;
     const card = page2.querySelector(".card") || page2;
     let bottom = card.querySelector("#controls-bottom");
     if (!bottom) {
@@ -420,45 +401,75 @@ document.addEventListener("DOMContentLoaded", () => {
       else card.appendChild(bottom);
     }
 
-    // Si no existe el botón manual en DOM, lo creemos y no lo dupliquemos
-    if (!btnAgregarManual) {
-      btnAgregarManual = document.createElement("button");
-      btnAgregarManual.id = "btnAgregarManual";
-      btnAgregarManual.textContent = "Agregar no listado";
-      btnAgregarManual.title = "Agregar producto que no está en la lista (se genera clave automática)";
-      btnAgregarManual.style.borderRadius = "8px";
-      btnAgregarManual.style.padding = "8px 14px";
-      btnAgregarManual.style.background = "#f3f4f6";
-      btnAgregarManual.style.cursor = "pointer";
-      btnAgregarManual.addEventListener("click", (ev) => {
+    // Reusar o crear btnAgregarManual
+    let existingAgregarManual = document.getElementById("btnAgregarManual");
+    if (!existingAgregarManual) {
+      existingAgregarManual = document.createElement("button");
+      existingAgregarManual.id = "btnAgregarManual";
+      existingAgregarManual.textContent = "Agregar no listado";
+      existingAgregarManual.title = "Agregar producto que no está en la lista (se genera clave automática)";
+      existingAgregarManual.dataset.createdBy = "js";
+    }
+    if (!existingAgregarManual.dataset.handlerAttached) {
+      existingAgregarManual.addEventListener("click", (ev) => {
         ev && ev.preventDefault();
         if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
         const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-        btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300);
+        existingAgregarManual.disabled = true; setTimeout(() => { existingAgregarManual.disabled = false; }, 300);
         agregarFilaManual();
       });
+      existingAgregarManual.dataset.handlerAttached = "1";
     }
 
-    // mover/asegurar botones: Regresar, Agregar fila, Agregar manual, Enviar y (si existe) Eliminar global
-    const botonesOrden = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarGlobal];
-    botonesOrden.forEach(b => {
+    // Reusar o crear btnEliminarSeleccionados
+    let existingEliminarSel = document.getElementById("btnEliminarSeleccionados");
+    if (!existingEliminarSel) {
+      existingEliminarSel = document.createElement("button");
+      existingEliminarSel.id = "btnEliminarSeleccionados";
+      existingEliminarSel.textContent = "Eliminar seleccionados";
+      existingEliminarSel.title = "Eliminar filas marcadas";
+      existingEliminarSel.style.background = "#fee2e2";
+      existingEliminarSel.style.color = "#7f1d1d";
+      existingEliminarSel.style.border = "none";
+      existingEliminarSel.style.padding = "8px 12px";
+      existingEliminarSel.style.borderRadius = "8px";
+      existingEliminarSel.style.cursor = "pointer";
+      existingEliminarSel.dataset.createdBy = "js";
+    }
+    if (!existingEliminarSel.dataset.handlerAttached) {
+      existingEliminarSel.addEventListener("click", (ev) => {
+        ev && ev.preventDefault();
+        deleteSelectedRows();
+      });
+      existingEliminarSel.dataset.handlerAttached = "1";
+    }
+
+    // ordenar y mover (usar elementos existentes en DOM)
+    const ordered = [btnRegresar, btnAgregar, existingAgregarManual, btnEnviar, existingEliminarSel];
+    ordered.forEach(b => {
       if (!b) return;
       if (b.parentElement !== bottom) bottom.appendChild(b);
-      // estilos mínimos inline para garantizar visibilidad
-      b.style.borderRadius = "8px";
-      b.style.padding = "8px 14px";
-      b.style.fontSize = "0.95rem";
-      b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
-      b.style.border = "none";
-      b.style.cursor = "pointer";
-      if (b === btnEnviar) { b.style.background = "#b91c6a"; b.style.color = "#fff"; }
-      else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
+      if (!b.dataset.styleApplied) {
+        b.style.borderRadius = "8px";
+        b.style.padding = "8px 14px";
+        b.style.fontSize = "0.95rem";
+        b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+        b.style.border = "none";
+        b.style.cursor = "pointer";
+        if (b === btnEnviar) { b.style.background = "#b91c6a"; b.style.color = "#fff"; }
+        else if (b.id === "btnEliminarSeleccionados") { /* estilo ya aplicado */ }
+        else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
+        b.dataset.styleApplied = "1";
+      }
     });
+
+    // Exponer referencias globales a estos botones
+    btnAgregarManual = existingAgregarManual;
   }
 
   moveButtonsToCardBottom();
 
-  // NAV: siguiente
+  // NAV
   btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
@@ -468,7 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
 
-    // sincroniza clave hospital y carga inventario del hospital (si existe)
+    // sincroniza clave hospital y carga inventario
     syncHospitalClave();
     const key = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
     try {
@@ -484,7 +495,6 @@ document.addEventListener("DOMContentLoaded", () => {
     moveButtonsToCardBottom();
   };
 
-  // NAV: regresar
   btnRegresar.onclick = (ev) => {
     ev && ev.preventDefault();
     document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
@@ -506,36 +516,65 @@ document.addEventListener("DOMContentLoaded", () => {
     agregarFila();
   };
 
-  // si el HTML incluye un botón global 'Eliminar' lo dejamos borrar la última fila
-  if (btnEliminarGlobal) {
-    btnEliminarGlobal.addEventListener("click", (ev) => {
-      ev && ev.preventDefault();
-      if (!tbody.rows.length) return alert("No hay filas para eliminar.");
-      const last = tbody.rows[tbody.rows.length - 1];
-      if (!confirm("Eliminar la última fila?")) return;
-      last.remove();
-      renumerarFilas();
-      refreshDisabledOptions();
-      if (!tbody.rows.length) agregarFila();
-    });
-  }
-
   function getAllSelects() { return Array.from(tbody.querySelectorAll("select")); }
 
+  // --- IMPORTANT: refreshDisabledOptions ahora permite la misma clave si la fecha es distinta.
+  // Deshabilita una opción solo si existe otra fila con la misma clave *y la misma fecha no vacía*.
   function refreshDisabledOptions() {
     const selects = getAllSelects();
-    const selectedValues = selects.map(s => s.value).filter(v => v && v !== "");
-    selects.forEach(s => {
+
+    // Construir un mapa de clave->set de fechas usadas (por fila distinta)
+    const claveFechaMap = {}; // clave -> Set(dates non-empty)
+    for (const r of tbody.rows) {
+      const s = r.cells[1].querySelector("select");
+      if (!s) continue;
+      const raw = s.value || "";
+      const clave = raw ? raw.split("||")[0] : "";
+      const fechaEl = r.cells[6] ? r.cells[6].querySelector("input") : null;
+      const fecha = fechaEl && fechaEl.value ? fechaEl.value.trim() : "";
+      if (!clave) continue;
+      if (fecha) {
+        claveFechaMap[clave] = claveFechaMap[clave] || new Set();
+        claveFechaMap[clave].add(fecha);
+      }
+    }
+
+    // Para cada select y cada opción, deshabilitar solo si existe la misma clave con la *misma* fecha
+    for (const s of selects) {
+      const thisRow = s.closest("tr");
+      const thisFechaEl = thisRow && thisRow.cells[6] ? thisRow.cells[6].querySelector("input") : null;
+      const thisFecha = thisFechaEl && thisFechaEl.value ? thisFechaEl.value.trim() : "";
+
       Array.from(s.options).forEach(opt => {
         if (!opt.value) { opt.disabled = false; return; }
-        const chosenElsewhere = selectedValues.includes(opt.value) && s.value !== opt.value;
-        opt.disabled = !!chosenElsewhere;
+        const optKey = String(opt.value).split("||")[0];
+        // Si otra fila tiene la misma clave con una fecha igual a thisFecha (no vacío),
+        // entonces deshabilitar la opción en ESTE select (a menos que ya esté seleccionada aquí).
+        let disable = false;
+        if (thisFecha) {
+          // If some other row (not this row) has same clave and same fecha
+          for (const r of tbody.rows) {
+            const selR = r.cells[1].querySelector("select");
+            if (!selR) continue;
+            const rawR = selR.value || "";
+            const claveR = rawR ? rawR.split("||")[0] : "";
+            const fechaR = r.cells[6] && r.cells[6].querySelector("input") ? (r.cells[6].querySelector("input").value || "").trim() : "";
+            if (r === thisRow) continue;
+            if (claveR && fechaR && claveR === optKey && fechaR === thisFecha) {
+              disable = true;
+              break;
+            }
+          }
+        } else {
+          // si thisFecha está vacío, no deshabilitamos (permitimos seleccionar y luego la validación al editar fecha)
+          disable = false;
+        }
+
+        // Mantener la opción seleccionada si el select ya la tiene
+        if (s.value && String(s.value).split("||")[0] === optKey) disable = false;
+        opt.disabled = !!disable;
       });
-      if (s.value) {
-        const selectedOption = s.querySelector(`option[value="${safeEscapeCss(s.value)}"]`);
-        if (selectedOption) selectedOption.disabled = false;
-      }
-    });
+    }
   }
 
   function getMinimoValue(clave) {
@@ -544,6 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
+  // renumerar filas después de eliminación
   function renumerarFilas() {
     filaContador = 0;
     for (const r of tbody.rows) {
@@ -553,7 +593,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Construye fila estándar (con botón Eliminar en Acciones)
+  // Construye fila estándar
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
@@ -576,15 +616,18 @@ document.addEventListener("DOMContentLoaded", () => {
         select.appendChild(o);
       });
     }
-    tdClave.appendChild(select); tr.appendChild(tdClave);
+    tdClave.appendChild(select);
+    tr.appendChild(tdClave);
 
-    // Descripción (input + datalist)
+    // Descripción (input con datalist)
     const tdDesc = document.createElement("td");
     const inputDesc = document.createElement("input");
     inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
     const datalistId = `datalist-desc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
     const dl = document.createElement("datalist"); dl.id = datalistId;
-    if (catalogo[categoriaActiva]) catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
+    if (catalogo[categoriaActiva]) {
+      catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
+    }
     inputDesc.setAttribute("list", datalistId);
     tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
@@ -620,14 +663,24 @@ document.addEventListener("DOMContentLoaded", () => {
     tdObs.appendChild(textareaObs);
     tr.appendChild(tdObs);
 
-    // Acciones -> botón Eliminar
+    // Acciones -> checkbox Seleccionar + botón Eliminar
     const tdAcc = document.createElement("td");
-    tdAcc.style.display = "table-cell";
+    tdAcc.style.display = "flex";
+    tdAcc.style.gap = "8px";
+    tdAcc.style.alignItems = "center";
+
+    // checkbox selección
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.className = "row-select";
+    chk.title = "Seleccionar fila para eliminar";
+    tdAcc.appendChild(chk);
+
+    // botón Eliminar por fila
     const btnDel = document.createElement("button");
     btnDel.type = "button";
     btnDel.textContent = "Eliminar";
     btnDel.title = "Eliminar esta fila";
-    // estilos inline para asegurar visibilidad
     btnDel.style.padding = "6px 10px";
     btnDel.style.borderRadius = "6px";
     btnDel.style.border = "none";
@@ -651,11 +704,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!tbody.rows.length) agregarFila();
     });
     tdAcc.appendChild(btnDel);
-    tr.appendChild(tdAcc);
 
+    tr.appendChild(tdAcc);
     tbody.appendChild(tr);
 
-    // Rellenado/actualizaciones
+    // listeners & relleno
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -675,8 +728,7 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let i = 0; i < select.options.length; i++) {
           const opt = select.options[i];
           if (opt.dataset && ('idx' in opt.dataset) && parseInt(opt.dataset.idx, 10) === idx) {
-            select.value = opt.value;
-            break;
+            select.value = opt.value; break;
           }
         }
       } else {
@@ -725,6 +777,18 @@ document.addEventListener("DOMContentLoaded", () => {
           inputMin.value = val;
         }
       }
+      // Validación: evitar duplicado exacto clave+fecha
+      const chosenClave = select.value ? select.value.split("||")[0] : "";
+      const fechaActual = tr.cells[6] && tr.cells[6].querySelector("input") ? (tr.cells[6].querySelector("input").value || "").trim() : "";
+      if (chosenClave && fechaActual) {
+        const dup = isDuplicateClaveFecha(chosenClave, fechaActual, tr);
+        if (dup) {
+          alert("Ya existe una fila con esa misma clave y la misma fecha. Para ingresar el mismo producto, use una fecha diferente.");
+          select.value = ""; // revertir selección
+          refreshDisabledOptions();
+          return;
+        }
+      }
       if (producto) fillProduct(producto);
       refreshDisabledOptions();
       setTimeout(() => { try { inputDesc.focus(); } catch(e) {} }, 0);
@@ -738,14 +802,50 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarFila(tr);
     });
 
-    inputCad.addEventListener("change", () => actualizarFila(tr));
+    inputCad.addEventListener("change", () => {
+      // validar duplicado cuando se cambia la fecha
+      const fecha = (inputCad.value || "").trim();
+      const raw = select.value || "";
+      const clave = raw ? raw.split("||")[0] : "";
+      if (clave && fecha) {
+        const dup = isDuplicateClaveFecha(clave, fecha, tr);
+        if (dup) {
+          alert("Otra fila ya tiene la misma clave y la misma fecha. Cambia la fecha o elimina la otra fila.");
+          inputCad.value = "";
+          actualizarFila(tr);
+          refreshDisabledOptions();
+          inputCad.focus();
+          return;
+        }
+      }
+      actualizarFila(tr);
+      refreshDisabledOptions();
+    });
+
     [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
     refreshDisabledOptions();
   }
 
-  // Agregar fila manual (no listado) -> genera clave MAN-xxxx y obliga descripción
+  // Comprueba si existe duplicado clave+fecha en otra fila (excluye excludingRow)
+  function isDuplicateClaveFecha(clave, fecha, excludingRow) {
+    if (!clave || !fecha) return false;
+    for (const r of tbody.rows) {
+      if (r === excludingRow) continue;
+      try {
+        const sel = r.cells[1].querySelector("select");
+        if (!sel) continue;
+        const raw = sel.value || "";
+        const claveR = raw ? raw.split("||")[0] : "";
+        const fechaR = r.cells[6] && r.cells[6].querySelector("input") ? (r.cells[6].querySelector("input").value || "").trim() : "";
+        if (!claveR || !fechaR) continue;
+        if (claveR === clave && fechaR === fecha) return true;
+      } catch (e) { continue; }
+    }
+    return false;
+  }
+
+  // Agregar fila manual (no listado)
   function agregarFilaManual() {
-    // crear fila estándar primero
     agregarFila();
     const tr = tbody.rows[tbody.rows.length - 1];
     if (!tr) return;
@@ -753,27 +853,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputDesc = tr.cells[2].querySelector("input");
     const btnDel = tr.cells[tr.cells.length - 1].querySelector("button");
 
-    // generar clave única y marcar manual
     const gen = `MAN-${Date.now().toString(36).slice(-6)}`;
-    // crear opción y asignar
     const opt = document.createElement("option");
     opt.value = gen;
-    opt.textContent = gen + " (no listado)";
+    opt.textContent = `${gen} (no listado)`;
     select.appendChild(opt);
     select.value = gen;
-    select.disabled = true; // evita seleccionar otro
+    // deshabilitar selección para evitar cambiar (puedes quitar si quieres permitir editar clave)
+    // select.disabled = true;
     tr.dataset.manual = "true";
-    // descripción obligatoria
     inputDesc.required = true;
     inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
     inputDesc.focus();
 
-    // button style ensure
     if (btnDel) {
       btnDel.style.background = "#fee2e2";
       btnDel.style.color = "#7f1d1d";
     }
-
     refreshDisabledOptions();
   }
 
@@ -828,7 +924,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function escapeHtml(str) {
     if (str === null || str === undefined) return "";
-    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");
   }
 
   // Construir payload (reutilizable) - valida productos manuales con descripción
@@ -838,10 +934,9 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const row of tbody.rows) {
       const select = row.cells[1].querySelector("select");
       const raw = select ? select.value : "";
-      // si el value contiene "||" (formato de opciones del catálogo), tomar la parte antes; si no, usar tal cual
-      const claveReal = raw && raw.includes("||") ? raw.split("||")[0] : (raw || "");
+      const claveReal = raw ? raw.split("||")[0] : "";
       const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-      const obsCellIndex = row.cells.length - 2; // penúltima es observaciones
+      const obsCellIndex = row.cells.length - 2; // last is actions
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
       const isManual = row.dataset && row.dataset.manual === "true";
@@ -883,10 +978,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // Guardar inventario en servidor (POST /inventory)
   async function saveInventoryToServer(hospitalNombre, hospitalClave, categoria, items) {
     if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
-    const payload = { hospitalNombre: hospitalNombre || "", hospitalClave: hospitalClave || "", categoria: categoria || "", items };
+    const payload = {
+      hospitalNombre: hospitalNombre || "",
+      hospitalClave: hospitalClave || "",
+      categoria: categoria || "",
+      items
+    };
     const headers = { "Content-Type": "application/json" };
     if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
-    const resp = await fetch(INVENTORY_POST_URL, { method: "POST", headers, body: JSON.stringify(payload) });
+    const resp = await fetch(INVENTORY_POST_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
+    });
     if (!resp.ok) {
       const txt = await resp.text().catch(() => "");
       throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
@@ -918,8 +1022,10 @@ document.addEventListener("DOMContentLoaded", () => {
         btnEnviar.disabled = true;
         const originalText = btnEnviar.textContent;
         btnEnviar.textContent = "Guardando...";
+
         // Guardar como inventory (reemplaza inventario del hospital/categoria)
         await saveInventoryToServer(hospitalNombre, selectedHospitalClave || hospitalNombre, categoriaActiva, filasExport);
+
         alert("Inventario guardado correctamente en el servidor.");
         // limpieza y reset solo después de éxito
         limpiarTabla();
@@ -937,7 +1043,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // ---------------- HOSPITALES: carga y autocompletado ----------------
+  // ================= HOSPITALES: carga y autocompletado =================
   async function cargarHospitales() {
     if (!datalistHospitales) return;
     try {
@@ -947,10 +1053,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hospitales = Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
       datalistHospitales.innerHTML = "";
       hospitales.forEach(h => {
-        const opt = document.createElement("option");
-        opt.value = h.nombre;
-        if (h.clave) opt.dataset.clave = h.clave;
-        datalistHospitales.appendChild(opt);
+        const opt = document.createElement("option"); opt.value = h.nombre; if (h.clave) opt.dataset.clave = h.clave; datalistHospitales.appendChild(opt);
       });
     } catch (e) {
       console.warn("No se pudieron cargar hospitales:", e);
@@ -977,27 +1080,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   cargarHospitales().catch(() => { /* no crítico */ });
 
-  // ---------------- INVENTORY: cargar y poblar ----------------
+  // ================= INVENTORY: cargar y poblar =================
   async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     if (!hospitalClaveOrName || !categoria) return;
-    if (!INVENTORY_GET_URL) return;
     try {
+      if (!INVENTORY_GET_URL) return;
       const qs = new URLSearchParams({ hospitalClave: hospitalClaveOrName, categoria }).toString();
       const resp = await fetch(`${INVENTORY_GET_URL}?${qs}`, { method: "GET" });
       if (!resp.ok) {
         console.warn("No se pudo obtener inventory:", resp.status);
-        // si 404 o vacío no abortamos, dejamos fila vacía
-        limpiarTabla();
-        agregarFila();
         return;
       }
       const data = await resp.json();
       const items = Array.isArray(data) ? data : (data.items || []);
       limpiarTabla();
-      if (!items || items.length === 0) {
-        agregarFila();
-        return;
-      }
+      if (!items || items.length === 0) { agregarFila(); return; }
       for (const it of items) {
         agregarFila();
         const tr = tbody.rows[tbody.rows.length - 1];
@@ -1006,9 +1103,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (it.clave) {
             let found = false;
             for (const opt of Array.from(sel.options)) {
-              const optVal = opt.value || "";
-              const optClave = optVal.includes("||") ? optVal.split("||")[0] : optVal;
-              if (optClave === it.clave) { sel.value = opt.value; found = true; break; }
+              if (opt.value && opt.value.split("||")[0] === it.clave) { sel.value = opt.value; found = true; break; }
             }
             if (!found) {
               const opt2 = document.createElement("option");
@@ -1034,9 +1129,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Eliminar filas seleccionadas (cualquier posición)
+  function deleteSelectedRows() {
+    const checked = Array.from(tbody.querySelectorAll("input.row-select:checked"));
+    if (!checked.length) { alert("No hay filas seleccionadas para eliminar."); return; }
+
+    const detalles = checked.map(chk => {
+      const tr = chk.closest("tr");
+      const no = tr ? (tr.cells[0].textContent || "").trim() : "(?)";
+      const desc = tr ? (tr.cells[2].querySelector("input").value || "").trim() : "";
+      return `Fila ${no}: ${desc ? (desc.length > 60 ? desc.slice(0,60)+"…" : desc) : "(sin descripción)"}`;
+    }).join("\n");
+
+    if (!confirm(`Vas a eliminar ${checked.length} fila(s):\n\n${detalles}\n\n¿Continuar?`)) return;
+
+    for (const ch of checked) {
+      const tr = ch.closest("tr"); if (tr) tr.remove();
+    }
+    renumerarFilas();
+    refreshDisabledOptions();
+    if (!tbody.rows.length) agregarFila();
+  }
+
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 
-  // al inicio, si tabla vacía agrega fila
-  if (!tbody.rows.length) agregarFila();
+  // Inicial: mover botones y ajustar (en caso de HTML pre-existente)
+  moveButtonsToCardBottom();
 });
+
+
+
+
+

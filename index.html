@@ -19,7 +19,6 @@
       <h1 class="page-title">Formulario Estomatología</h1>
       <h2>Selecciona la categoría</h2>
 
-      <!-- Campo con autocompletado -->
       <div class="hospital-row" style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
         <label for="hospitalNombre" style="min-width:160px; font-weight:600;">Nombre del hospital:</label>
         <input list="listaHospitales" id="hospitalNombre" name="hospitalNombre"
@@ -45,19 +44,14 @@
     </div>
   </div>
 
-  <!-- Página 2 -->
+  <!-- Página 2 (sin botones superiores duplicados) -->
   <div id="page2" class="page oculto">
     <div class="card">
       <h2 id="tituloCategoria">Formulario</h2>
 
-      <div class="controls">
-        <button id="btnRegresar1">Regresar</button>
-        <button id="btnAgregarFila">Agregar fila</button>
-        <button id="btnAgregarManual">Agregar Inventario</button>  <!-- <- nuevo -->
-        <button id="btnEnviarInsumos">Enviar</button>
-        <button id="btnEliminar">Eliminar</button>
-      </div>
-      
+      <!-- NOTA: removí los botones duplicados que estaban arriba para evitar confusión.
+           Los botones funcionales (Regresar, Agregar fila, Agregar no listado, Enviar)
+           los dejamos aquí debajo de la tabla para que sean únicos. -->
 
       <table id="tablaInsumos" aria-label="Tabla de insumos">
         <thead>
@@ -70,15 +64,27 @@
             <th>Estado</th>
             <th>Caducidad</th>
             <th>Días restantes</th>
+            <th>Observaciones</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
+
+      <!-- controles REALES (abajo) -->
+      <div class="controls" style="margin-top:12px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+        <button id="btnRegresar1">Regresar</button>
+        <button id="btnAgregarFila">Agregar fila</button>
+        <button id="btnAgregarManual">Agregar no listado</button>
+        <button id="btnEnviarInsumos">Enviar</button>
+        <!-- El botón "Eliminar seleccionados" será creado por JS si no existe; pero lo incluyo también aquí por si prefieres -->
+        <button id="btnEliminarSeleccionados" style="background:#fee2e2; color:#7f1d1d; border:none; padding:8px 12px; border-radius:8px;">Eliminar seleccionados</button>
+      </div>
     </div>
   </div>
 
   <script>
-  // 🔹 Al cargar la página, obtenemos la lista de hospitales del servidor
+  // 🔹 Al cargar la página, obtenemos la lista de hospitales del servidor (tu script original)
   document.addEventListener("DOMContentLoaded", async () => {
     try {
       const response = await fetch("http://localhost:3000/hospitales");
@@ -100,5 +106,3 @@
   <script src="Logica.js"></script>
 </body>
 </html>
-
-
