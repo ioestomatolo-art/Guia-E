@@ -19,6 +19,7 @@
       <h1 class="page-title">Formulario Estomatología</h1>
       <h2>Selecciona la categoría</h2>
 
+      <!-- Campo con autocompletado -->
       <div class="hospital-row" style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
         <label for="hospitalNombre" style="min-width:160px; font-weight:600;">Nombre del hospital:</label>
         <input list="listaHospitales" id="hospitalNombre" name="hospitalNombre"
@@ -38,20 +39,25 @@
         <option value="instrumental">Instrumental</option>
       </select>
 
-      <div class="actions" style="margin-top:12px; display:flex; justify-content:flex-end;">
+      <div class="actions" style="margin-top:12px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
         <button id="btnSiguiente">Siguiente</button>
+        <!-- Botón admin para descargar reporte -->
+        <button id="btnDescargarReporte" title="Descargar reporte (admin)">Descargar reporte (admin)</button>
       </div>
     </div>
   </div>
 
-  <!-- Página 2 (sin botones superiores duplicados) -->
+  <!-- Página 2 -->
   <div id="page2" class="page oculto">
     <div class="card">
       <h2 id="tituloCategoria">Formulario</h2>
 
-      <!-- NOTA: removí los botones duplicados que estaban arriba para evitar confusión.
-           Los botones funcionales (Regresar, Agregar fila, Agregar no listado, Enviar)
-           los dejamos aquí debajo de la tabla para que sean únicos. -->
+      <div class="controls">
+        <button id="btnRegresar1">Regresar</button>
+        <button id="btnAgregarFila">Agregar fila</button>
+        <button id="btnEnviarInsumos">Enviar</button>
+        <!-- btnEliminarSeleccionados se creará dinámicamente por el script -->
+      </div>
 
       <table id="tablaInsumos" aria-label="Tabla de insumos">
         <thead>
@@ -70,27 +76,16 @@
         </thead>
         <tbody></tbody>
       </table>
-
-      <!-- controles REALES (abajo) -->
-      <div class="controls" style="margin-top:12px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
-        <button id="btnRegresar1">Regresar</button>
-        <button id="btnAgregarFila">Agregar fila</button>
-        <button id="btnAgregarManual">Agregar no listado</button>
-        <button id="btnEnviarInsumos">Enviar</button>
-        <!-- El botón "Eliminar seleccionados" será creado por JS si no existe; pero lo incluyo también aquí por si prefieres -->
-        <button id="btnEliminarSeleccionados" style="background:#fee2e2; color:#7f1d1d; border:none; padding:8px 12px; border-radius:8px;">Eliminar seleccionados</button>
-      </div>
     </div>
   </div>
 
   <script>
-  // 🔹 Al cargar la página, obtenemos la lista de hospitales del servidor (tu script original)
+  // 🔹 Al cargar la página, obtenemos la lista de hospitales del servidor (local dev fallback)
   document.addEventListener("DOMContentLoaded", async () => {
     try {
       const response = await fetch("http://localhost:3000/hospitales");
       if (!response.ok) throw new Error("No se pudo obtener la lista de hospitales");
       const hospitales = await response.json();
-
       const lista = document.getElementById("listaHospitales");
       hospitales.forEach(h => {
         const option = document.createElement("option");

@@ -1,10 +1,10 @@
+// Logica.js - frontend completo (con botón "Agregar no listado", "Eliminar seleccionados", y descarga de reportes admin)
+// Incluye: carga hospitales, navegación entre pantallas, agregar fila, agregar manual, eliminar por fila, eliminar seleccionados,
+// carga/guardado de inventory (GET/POST), y botón admin para descargar /report.
 
-
-// Logica.js - frontend completo
-// Reemplaza tu archivo actual con este. Ajusta SERVER_BASE / URLs al entorno real si es necesario.
-
+// Nota: ajusta SERVER_BASE si tu API no está en la misma origen.
 document.addEventListener("DOMContentLoaded", () => {
-  // ======== CONFIG ========
+  // ======== Config ========
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
@@ -12,18 +12,18 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedHospitalClave = "";
 
   // Ajusta estas URLs a tu servidor en Render (o deja vacías si no las usas)
-  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // cambia a tu URL real
-  const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
+  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // cambia a tu URL
+  const HOSPITALES_URL ="https://servidor-4wu6.onrender.com/hospitales"
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
   const SUBMIT_URL = `${SERVER_BASE}/submit`;
-  const CLIENT_API_TOKEN = ""; // si usas token para /inventory
+  const REPORT_URL = `${SERVER_BASE}/report`;
+  const CLIENT_API_TOKEN = "mexico"; // si usas token para /inventory (solo admins)
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
   // ================= CATALOGO =================
-  // Pega aquí tu catálogo completo si lo deseas.
-  // Para mantener el ejemplo manejable incluyo una muestra; puedes reemplazarla por tu lista extensa.
+  // Mantén aquí tu listado completo; para brevedad en este archivo dejamos un ejemplo reducido.
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -333,15 +333,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnEnviar = document.getElementById("btnEnviarInsumos");
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
+  const btnDescargarReporte = document.getElementById("btnDescargarReporte");
 
-  // botón "Agregar no listado" creado/reenlazado por moveButtonsToCardBottom
+  // botón "Agregar no listado" creado dinámicamente
   let btnAgregarManual = null;
 
   function safeEscapeCss(s) {
-    try { return CSS.escape(String(s)); } catch (e) { return String(s).replace(/["'\\]/g, "\\$&"); }
+    try { return CSS.escape(s); } catch (e) { return String(s).replace(/[[\\\]"']/g, "\\$&"); }
   }
 
-  // Asegura que el header tenga Observaciones y Acciones
+  // Asegura headers Observaciones y Acciones
   function ensureObservacionesHeader() {
     if (!tabla) return;
     let thead = tabla.querySelector("thead");
@@ -384,10 +385,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Mueve/crea botones abajo y evita duplicados/attach multiple handlers
   function moveButtonsToCardBottom() {
-    const page2 = document.getElementById("page2");
-    if (!page2 || !tabla) return;
+    const page2 = document.getElementById("page2"); if (!page2 || !tabla) return;
     const card = page2.querySelector(".card") || page2;
     let bottom = card.querySelector("#controls-bottom");
     if (!bottom) {
@@ -401,70 +400,55 @@ document.addEventListener("DOMContentLoaded", () => {
       else card.appendChild(bottom);
     }
 
-    // Reusar o crear btnAgregarManual
-    let existingAgregarManual = document.getElementById("btnAgregarManual");
-    if (!existingAgregarManual) {
-      existingAgregarManual = document.createElement("button");
-      existingAgregarManual.id = "btnAgregarManual";
-      existingAgregarManual.textContent = "Agregar no listado";
-      existingAgregarManual.title = "Agregar producto que no está en la lista (se genera clave automática)";
-      existingAgregarManual.dataset.createdBy = "js";
-    }
-    if (!existingAgregarManual.dataset.handlerAttached) {
-      existingAgregarManual.addEventListener("click", (ev) => {
+    // crear botón manual si no existe
+    if (!btnAgregarManual) {
+      btnAgregarManual = document.createElement("button");
+      btnAgregarManual.id = "btnAgregarManual";
+      btnAgregarManual.textContent = "Agregar no listado";
+      btnAgregarManual.title = "Agregar producto que no está en la lista (se genera clave automática)";
+      btnAgregarManual.addEventListener("click", (ev) => {
         ev && ev.preventDefault();
         if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
         const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-        existingAgregarManual.disabled = true; setTimeout(() => { existingAgregarManual.disabled = false; }, 300);
+        btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300);
         agregarFilaManual();
       });
-      existingAgregarManual.dataset.handlerAttached = "1";
     }
 
-    // Reusar o crear btnEliminarSeleccionados
-    let existingEliminarSel = document.getElementById("btnEliminarSeleccionados");
-    if (!existingEliminarSel) {
-      existingEliminarSel = document.createElement("button");
-      existingEliminarSel.id = "btnEliminarSeleccionados";
-      existingEliminarSel.textContent = "Eliminar seleccionados";
-      existingEliminarSel.title = "Eliminar filas marcadas";
-      existingEliminarSel.style.background = "#fee2e2";
-      existingEliminarSel.style.color = "#7f1d1d";
-      existingEliminarSel.style.border = "none";
-      existingEliminarSel.style.padding = "8px 12px";
-      existingEliminarSel.style.borderRadius = "8px";
-      existingEliminarSel.style.cursor = "pointer";
-      existingEliminarSel.dataset.createdBy = "js";
-    }
-    if (!existingEliminarSel.dataset.handlerAttached) {
-      existingEliminarSel.addEventListener("click", (ev) => {
+    // crear botón "Eliminar seleccionados" si no existe
+    let btnEliminarSeleccionados = document.getElementById("btnEliminarSeleccionados");
+    if (!btnEliminarSeleccionados) {
+      btnEliminarSeleccionados = document.createElement("button");
+      btnEliminarSeleccionados.id = "btnEliminarSeleccionados";
+      btnEliminarSeleccionados.textContent = "Eliminar seleccionados";
+      btnEliminarSeleccionados.title = "Eliminar filas marcadas";
+      btnEliminarSeleccionados.style.background = "#fee2e2";
+      btnEliminarSeleccionados.style.color = "#7f1d1d";
+      btnEliminarSeleccionados.style.border = "none";
+      btnEliminarSeleccionados.style.padding = "8px 12px";
+      btnEliminarSeleccionados.style.borderRadius = "8px";
+      btnEliminarSeleccionados.addEventListener("click", (ev) => {
         ev && ev.preventDefault();
         deleteSelectedRows();
       });
-      existingEliminarSel.dataset.handlerAttached = "1";
+      bottom.appendChild(btnEliminarSeleccionados);
     }
 
-    // ordenar y mover (usar elementos existentes en DOM)
-    const ordered = [btnRegresar, btnAgregar, existingAgregarManual, btnEnviar, existingEliminarSel];
-    ordered.forEach(b => {
+    // reubicar botones (Regresar, Agregar, Agregar manual, Enviar, Eliminar seleccionados)
+    const btns = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarSeleccionados];
+    btns.forEach(b => {
       if (!b) return;
       if (b.parentElement !== bottom) bottom.appendChild(b);
-      if (!b.dataset.styleApplied) {
-        b.style.borderRadius = "8px";
-        b.style.padding = "8px 14px";
-        b.style.fontSize = "0.95rem";
-        b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
-        b.style.border = "none";
-        b.style.cursor = "pointer";
-        if (b === btnEnviar) { b.style.background = "#b91c6a"; b.style.color = "#fff"; }
-        else if (b.id === "btnEliminarSeleccionados") { /* estilo ya aplicado */ }
-        else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
-        b.dataset.styleApplied = "1";
-      }
+      b.style.borderRadius = "8px";
+      b.style.padding = "8px 14px";
+      b.style.fontSize = "0.95rem";
+      b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+      b.style.border = "none";
+      b.style.cursor = "pointer";
+      if (b === btnEnviar) { b.style.background = "#b91c6a"; b.style.color = "#fff"; }
+      else if (b.id === "btnEliminarSeleccionados") { /* estilo ya aplicado */ }
+      else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
     });
-
-    // Exponer referencias globales a estos botones
-    btnAgregarManual = existingAgregarManual;
   }
 
   moveButtonsToCardBottom();
@@ -518,72 +502,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function getAllSelects() { return Array.from(tbody.querySelectorAll("select")); }
 
-  // --- IMPORTANT: refreshDisabledOptions ahora permite la misma clave si la fecha es distinta.
-  // Deshabilita una opción solo si existe otra fila con la misma clave *y la misma fecha no vacía*.
   function refreshDisabledOptions() {
     const selects = getAllSelects();
-
-    // Construir un mapa de clave->set de fechas usadas (por fila distinta)
-    const claveFechaMap = {}; // clave -> Set(dates non-empty)
-    for (const r of tbody.rows) {
-      const s = r.cells[1].querySelector("select");
-      if (!s) continue;
-      const raw = s.value || "";
-      const clave = raw ? raw.split("||")[0] : "";
-      const fechaEl = r.cells[6] ? r.cells[6].querySelector("input") : null;
-      const fecha = fechaEl && fechaEl.value ? fechaEl.value.trim() : "";
-      if (!clave) continue;
-      if (fecha) {
-        claveFechaMap[clave] = claveFechaMap[clave] || new Set();
-        claveFechaMap[clave].add(fecha);
-      }
-    }
-
-    // Para cada select y cada opción, deshabilitar solo si existe la misma clave con la *misma* fecha
-    for (const s of selects) {
-      const thisRow = s.closest("tr");
-      const thisFechaEl = thisRow && thisRow.cells[6] ? thisRow.cells[6].querySelector("input") : null;
-      const thisFecha = thisFechaEl && thisFechaEl.value ? thisFechaEl.value.trim() : "";
-
+    const selectedValues = selects.map(s => s.value).filter(v => v && v !== "");
+    selects.forEach(s => {
       Array.from(s.options).forEach(opt => {
         if (!opt.value) { opt.disabled = false; return; }
-        const optKey = String(opt.value).split("||")[0];
-        // Si otra fila tiene la misma clave con una fecha igual a thisFecha (no vacío),
-        // entonces deshabilitar la opción en ESTE select (a menos que ya esté seleccionada aquí).
-        let disable = false;
-        if (thisFecha) {
-          // If some other row (not this row) has same clave and same fecha
-          for (const r of tbody.rows) {
-            const selR = r.cells[1].querySelector("select");
-            if (!selR) continue;
-            const rawR = selR.value || "";
-            const claveR = rawR ? rawR.split("||")[0] : "";
-            const fechaR = r.cells[6] && r.cells[6].querySelector("input") ? (r.cells[6].querySelector("input").value || "").trim() : "";
-            if (r === thisRow) continue;
-            if (claveR && fechaR && claveR === optKey && fechaR === thisFecha) {
-              disable = true;
-              break;
-            }
-          }
-        } else {
-          // si thisFecha está vacío, no deshabilitamos (permitimos seleccionar y luego la validación al editar fecha)
-          disable = false;
-        }
-
-        // Mantener la opción seleccionada si el select ya la tiene
-        if (s.value && String(s.value).split("||")[0] === optKey) disable = false;
-        opt.disabled = !!disable;
+        // Allow same product if different date: we only disable exact same select value (which includes '||idx')
+        const chosenElsewhere = selectedValues.includes(opt.value) && s.value !== opt.value;
+        opt.disabled = !!chosenElsewhere;
       });
-    }
+      if (s.value) {
+        const selectedOption = s.querySelector(`option[value="${safeEscapeCss(s.value)}"]`);
+        if (selectedOption) selectedOption.disabled = false;
+      }
+    });
   }
 
   function getMinimoValue(clave) {
     if (!clave) return "";
-    if (minimosDefinidos.hasOwnProperty(clave)) return String(minimosDefinidos[clave]);
+    if (typeof minimosDefinidos !== "undefined" && minimosDefinidos.hasOwnProperty(clave)) return String(minimosDefinidos[clave]);
     return "";
   }
 
-  // renumerar filas después de eliminación
+  // renumerar filas después de eliminar
   function renumerarFilas() {
     filaContador = 0;
     for (const r of tbody.rows) {
@@ -777,18 +719,6 @@ document.addEventListener("DOMContentLoaded", () => {
           inputMin.value = val;
         }
       }
-      // Validación: evitar duplicado exacto clave+fecha
-      const chosenClave = select.value ? select.value.split("||")[0] : "";
-      const fechaActual = tr.cells[6] && tr.cells[6].querySelector("input") ? (tr.cells[6].querySelector("input").value || "").trim() : "";
-      if (chosenClave && fechaActual) {
-        const dup = isDuplicateClaveFecha(chosenClave, fechaActual, tr);
-        if (dup) {
-          alert("Ya existe una fila con esa misma clave y la misma fecha. Para ingresar el mismo producto, use una fecha diferente.");
-          select.value = ""; // revertir selección
-          refreshDisabledOptions();
-          return;
-        }
-      }
       if (producto) fillProduct(producto);
       refreshDisabledOptions();
       setTimeout(() => { try { inputDesc.focus(); } catch(e) {} }, 0);
@@ -802,50 +732,14 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarFila(tr);
     });
 
-    inputCad.addEventListener("change", () => {
-      // validar duplicado cuando se cambia la fecha
-      const fecha = (inputCad.value || "").trim();
-      const raw = select.value || "";
-      const clave = raw ? raw.split("||")[0] : "";
-      if (clave && fecha) {
-        const dup = isDuplicateClaveFecha(clave, fecha, tr);
-        if (dup) {
-          alert("Otra fila ya tiene la misma clave y la misma fecha. Cambia la fecha o elimina la otra fila.");
-          inputCad.value = "";
-          actualizarFila(tr);
-          refreshDisabledOptions();
-          inputCad.focus();
-          return;
-        }
-      }
-      actualizarFila(tr);
-      refreshDisabledOptions();
-    });
-
+    inputCad.addEventListener("change", () => actualizarFila(tr));
     [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
     refreshDisabledOptions();
   }
 
-  // Comprueba si existe duplicado clave+fecha en otra fila (excluye excludingRow)
-  function isDuplicateClaveFecha(clave, fecha, excludingRow) {
-    if (!clave || !fecha) return false;
-    for (const r of tbody.rows) {
-      if (r === excludingRow) continue;
-      try {
-        const sel = r.cells[1].querySelector("select");
-        if (!sel) continue;
-        const raw = sel.value || "";
-        const claveR = raw ? raw.split("||")[0] : "";
-        const fechaR = r.cells[6] && r.cells[6].querySelector("input") ? (r.cells[6].querySelector("input").value || "").trim() : "";
-        if (!claveR || !fechaR) continue;
-        if (claveR === clave && fechaR === fecha) return true;
-      } catch (e) { continue; }
-    }
-    return false;
-  }
-
   // Agregar fila manual (no listado)
   function agregarFilaManual() {
+    // crear fila estándar primero
     agregarFila();
     const tr = tbody.rows[tbody.rows.length - 1];
     if (!tr) return;
@@ -853,15 +747,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputDesc = tr.cells[2].querySelector("input");
     const btnDel = tr.cells[tr.cells.length - 1].querySelector("button");
 
+    // generar clave única y marcar manual
     const gen = `MAN-${Date.now().toString(36).slice(-6)}`;
+    // crear opción y asignar
     const opt = document.createElement("option");
     opt.value = gen;
-    opt.textContent = `${gen} (no listado)`;
+    opt.textContent = gen + " (no listado)";
     select.appendChild(opt);
     select.value = gen;
-    // deshabilitar selección para evitar cambiar (puedes quitar si quieres permitir editar clave)
-    // select.disabled = true;
+    select.disabled = true; // evita que el usuario seleccione otra clave preparada
     tr.dataset.manual = "true";
+    // marcar descripción como obligatoria (visual)
     inputDesc.required = true;
     inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
     inputDesc.focus();
@@ -870,6 +766,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btnDel.style.background = "#fee2e2";
       btnDel.style.color = "#7f1d1d";
     }
+
     refreshDisabledOptions();
   }
 
@@ -1154,9 +1051,76 @@ document.addEventListener("DOMContentLoaded", () => {
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 
-  // Inicial: mover botones y ajustar (en caso de HTML pre-existente)
-  moveButtonsToCardBottom();
-});
+  // ================= REPORT (admin) - descarga con token solicitado en prompt =================
+  (function initReportButton(){
+    const btnReport = btnDescargarReporte;
+    if (!btnReport) return;
+    btnReport.style.background = "#0b74de";
+    btnReport.style.color = "#fff";
+    btnReport.style.borderRadius = "8px";
+    btnReport.style.padding = "8px 12px";
+    btnReport.style.border = "none";
+    btnReport.style.cursor = "pointer";
+
+    btnReport.addEventListener("click", async (ev) => {
+      ev && ev.preventDefault();
+      // pedir token solo en el momento (no lo guardamos)
+      const token = prompt("Introduce tu API token de admin para descargar el reporte (se enviará solo una vez):");
+      if (!token) return alert("Token requerido para descargar el reporte.");
+
+      // elegir formato
+      const fmt = prompt("Formato de reporte: escribe 'csv' o 'json' (por defecto csv):", "csv") || "csv";
+      const url = `${REPORT_URL}?format=${encodeURIComponent(fmt)}`;
+
+      try {
+        btnReport.disabled = true;
+        const originalText = btnReport.textContent;
+        btnReport.textContent = "Descargando...";
+        const resp = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Accept": fmt === "json" ? "application/json" : "text/csv",
+            "Authorization": "Bearer " + token
+          }
+        });
+        if (!resp.ok) {
+          const txt = await resp.text().catch(()=>"");
+          throw new Error(`Error ${resp.status} ${resp.statusText} ${txt}`);
+        }
+        const disposition = resp.headers.get("Content-Disposition") || "";
+        let filename = "";
+        const m = /filename="([^"]+)"/.exec(disposition);
+        if (m && m[1]) filename = m[1];
+        else filename = `reporte_submissions.${fmt === "json" ? "json" : "csv"}`;
+
+        const blob = await resp.blob();
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+        btnReport.textContent = originalText;
+      } catch (err) {
+        console.error("Error descargando reporte:", err);
+        alert("No fue posible descargar el reporte:\n" + (err.message || err));
+      } finally {
+        btnReport.disabled = false;
+        btnReport.textContent = "Descargar reporte (admin)";
+      }
+    });
+  })();
+
+  // ====================================================================================
+  // (Opcional) definiciones de minimosDefinidos si las necesitas en este script.
+  // Puedes inyectar la lista completa que ya tenías en tu proyecto.
+  
+    // añade el resto según tu archivo original...
+  } 
+  // ====================================================================================
+
+);
 
 
 
