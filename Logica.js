@@ -1,8 +1,5 @@
-// Logica.js - frontend completo (con botón "Agregar no listado", "Eliminar seleccionados", y descarga de reportes admin)
-// Incluye: carga hospitales, navegación entre pantallas, agregar fila, agregar manual, eliminar por fila, eliminar seleccionados,
-// carga/guardado de inventory (GET/POST), y botón admin para descargar /report.
 
-// Nota: ajusta SERVER_BASE si tu API no está en la misma origen.
+// Logica.js - versión final (botón "Descargar reporte" en la primera pantalla, sin prompt en Enviar)
 document.addEventListener("DOMContentLoaded", () => {
   // ======== Config ========
   let categoriaActiva = null;
@@ -11,19 +8,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let hospitales = [];
   let selectedHospitalClave = "";
 
-  // Ajusta estas URLs a tu servidor en Render (o deja vacías si no las usas)
-  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // cambia a tu URL
-  const HOSPITALES_URL ="https://servidor-4wu6.onrender.com/hospitales"
+  // Ajusta estas URLs a tu servidor en Render (o local para pruebas)
+  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <--- CAMBIA a tu URL real
+  const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
-  const SUBMIT_URL = `${SERVER_BASE}/submit`;
-  const REPORT_URL = `${SERVER_BASE}/report`;
-  const CLIENT_API_TOKEN = "mexico"; // si usas token para /inventory (solo admins)
+  const CLIENT_API_TOKEN = ""; // si quieres que el cliente envíe un token (opcional). Si lo dejas vacío, no se enviará.
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ================= CATALOGO =================
-  // Mantén aquí tu listado completo; para brevedad en este archivo dejamos un ejemplo reducido.
+  // ================= CATALOGO (placeholder) =================
+  // Sustituye con tu catálogo real; debe ser { insumos: [ {clave:'XXX', descripcion:'...', minimo: 2, caducidad:'2025-01-01', stock:0}, ... ], material: [...], ... }
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -322,6 +317,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // ... (mantén el resto como lo tienes)
     };
 
+  // fallback hospitals si no se puede fetch
+  const fallbackHospitals = [
+    { nombre: "Hospital General Boca del Río", clave: "VZIM010212" },
+    { nombre: "Hospital General Martínez de la Torre", clave: "VZIM003361" }
+  ];
+
   // ================= DOM =================
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
@@ -333,58 +334,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnEnviar = document.getElementById("btnEnviarInsumos");
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
-  const btnDescargarReporte = document.getElementById("btnDescargarReporte");
 
-  // botón "Agregar no listado" creado dinámicamente
-  let btnAgregarManual = null;
+  let btnAgregarManual = null; // creado dinámicamente
+  let btnDescargarPage1 = null; // botón de descarga en la primera pantalla
 
-  function safeEscapeCss(s) {
-    try { return CSS.escape(s); } catch (e) { return String(s).replace(/[[\\\]"']/g, "\\$&"); }
-  }
+  function safeEscapeCss(s) { try { return CSS.escape(s); } catch(e) { return String(s).replace(/[[\\\]"']/g,"\\$&"); } }
 
   // Asegura headers Observaciones y Acciones
-  function ensureObservacionesHeader() {
+  function ensureHeaders() {
     if (!tabla) return;
-    let thead = tabla.querySelector("thead");
-    if (!thead) {
-      thead = document.createElement("thead");
-      tabla.insertBefore(thead, tabla.firstChild);
-      const headerRow = document.createElement("tr");
-      const defaultHeaders = ["No.", "Clave", "Descripción", "Stock", "Mínimo", "Estado", "Caducidad", "Días restantes", "Observaciones", "Acciones"];
-      defaultHeaders.forEach(h => {
-        const th = document.createElement("th");
-        th.textContent = h;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-      return;
-    }
-    const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent || "").trim().toLowerCase());
+    const thead = tabla.querySelector("thead");
+    if (!thead) return;
+    const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent||"").trim().toLowerCase());
     if (!ths.includes("observaciones")) {
-      const thObs = document.createElement("th"); thObs.textContent = "Observaciones"; thead.querySelector("tr").appendChild(thObs);
+      const th = document.createElement("th"); th.textContent = "Observaciones"; thead.querySelector("tr").appendChild(th);
     }
     if (!ths.includes("acciones")) {
-      const thAcc = document.createElement("th"); thAcc.textContent = "Acciones"; thead.querySelector("tr").appendChild(thAcc);
+      const th = document.createElement("th"); th.textContent = "Acciones"; thead.querySelector("tr").appendChild(th);
     }
   }
-  ensureObservacionesHeader();
+  ensureHeaders();
 
   function updateCaducidadHeader() {
     if (!tabla) return;
     const thead = tabla.querySelector("thead"); if (!thead) return;
     const ths = Array.from(thead.querySelectorAll("th"));
-    const idx = ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("caduc")));
-    const idxFecha = idx >= 0 ? idx : ths.findIndex(t => ((t.textContent || "").trim().toLowerCase().includes("fecha")));
+    const idx = ths.findIndex(t => ((t.textContent||"").trim().toLowerCase().includes("caduc")));
+    const idxFecha = idx >= 0 ? idx : ths.findIndex(t => ((t.textContent||"").trim().toLowerCase().includes("fecha")));
     const targetIndex = idx >= 0 ? idx : idxFecha;
     if (targetIndex === -1) return;
     const isAdq = adquisicionCats.has(categoriaActiva);
     thead.querySelectorAll("th")[targetIndex].textContent = isAdq ? "Fecha de adquisición" : "Caducidad";
     const diasIdx = targetIndex + 1;
-    if (thead.querySelectorAll("th")[diasIdx]) {
-      thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
-    }
+    if (thead.querySelectorAll("th")[diasIdx]) thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
   }
 
+  // mueve/crea botones en page2 y crea el botón de descarga en page1
   function moveButtonsToCardBottom() {
     const page2 = document.getElementById("page2"); if (!page2 || !tabla) return;
     const card = page2.querySelector(".card") || page2;
@@ -410,12 +395,12 @@ document.addEventListener("DOMContentLoaded", () => {
         ev && ev.preventDefault();
         if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
         const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-        btnAgregarManual.disabled = true; setTimeout(() => { btnAgregarManual.disabled = false; }, 300);
+        btnAgregarManual.disabled = true; setTimeout(()=>btnAgregarManual.disabled=false,300);
         agregarFilaManual();
       });
     }
 
-    // crear botón "Eliminar seleccionados" si no existe
+    // crear botón eliminar seleccionados si no existe
     let btnEliminarSeleccionados = document.getElementById("btnEliminarSeleccionados");
     if (!btnEliminarSeleccionados) {
       btnEliminarSeleccionados = document.createElement("button");
@@ -427,14 +412,10 @@ document.addEventListener("DOMContentLoaded", () => {
       btnEliminarSeleccionados.style.border = "none";
       btnEliminarSeleccionados.style.padding = "8px 12px";
       btnEliminarSeleccionados.style.borderRadius = "8px";
-      btnEliminarSeleccionados.addEventListener("click", (ev) => {
-        ev && ev.preventDefault();
-        deleteSelectedRows();
-      });
-      bottom.appendChild(btnEliminarSeleccionados);
+      btnEliminarSeleccionados.addEventListener("click", (ev) => { ev&&ev.preventDefault(); deleteSelectedRows(); });
     }
 
-    // reubicar botones (Regresar, Agregar, Agregar manual, Enviar, Eliminar seleccionados)
+    // reubicar botones en page2 (Regresar, Agregar, Agregar manual, Enviar, Eliminar seleccionados)
     const btns = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarSeleccionados];
     btns.forEach(b => {
       if (!b) return;
@@ -446,9 +427,41 @@ document.addEventListener("DOMContentLoaded", () => {
       b.style.border = "none";
       b.style.cursor = "pointer";
       if (b === btnEnviar) { b.style.background = "#b91c6a"; b.style.color = "#fff"; }
-      else if (b.id === "btnEliminarSeleccionados") { /* estilo ya aplicado */ }
       else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
     });
+
+    // --- CREAR BOTÓN "Descargar reporte" EN LA PRIMERA PANTALLA ---
+    try {
+      const page1 = document.getElementById("page1");
+      const card1 = page1.querySelector(".card");
+      // busca área de acciones; si no existe, crea una
+      let actions = card1.querySelector(".actions");
+      if (!actions) {
+        actions = document.createElement("div");
+        actions.className = "actions";
+        actions.style.marginTop = "12px";
+        actions.style.display = "flex";
+        actions.style.justifyContent = "flex-end";
+        card1.appendChild(actions);
+      }
+      // si ya hay un botón con id btnDescargarPage1, no crearlo dos veces
+      if (!document.getElementById("btnDescargarPage1")) {
+        btnDescargarPage1 = document.createElement("button");
+        btnDescargarPage1.id = "btnDescargarPage1";
+        btnDescargarPage1.textContent = "Descargar reporte (CSV)";
+        btnDescargarPage1.title = "Descargar CSV del inventario actual";
+        btnDescargarPage1.style.marginLeft = "8px";
+        btnDescargarPage1.addEventListener("click", (ev) => { ev&&ev.preventDefault(); downloadCSV(); });
+        // estilo simple
+        btnDescargarPage1.style.background = "#111827";
+        btnDescargarPage1.style.color = "#fff";
+        btnDescargarPage1.style.padding = "8px 12px";
+        btnDescargarPage1.style.borderRadius = "8px";
+        actions.appendChild(btnDescargarPage1);
+      }
+    } catch (e) {
+      console.warn("No se pudo crear botón de descarga en page1:", e);
+    }
   }
 
   moveButtonsToCardBottom();
@@ -469,7 +482,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await loadInventoryAndPopulate(key, categoriaActiva);
     } catch (err) {
-      console.warn("No se pudo cargar inventario:", err);
+      console.warn("No se pudo cargar inventory:", err);
     }
 
     document.getElementById("page1").classList.remove("activo"); document.getElementById("page1").classList.add("oculto");
@@ -486,17 +499,13 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCaducidadHeader();
   };
 
-  function limpiarTabla() {
-    if (tbody) tbody.innerHTML = "";
-    filaContador = 0;
-    refreshDisabledOptions();
-  }
+  function limpiarTabla() { if (tbody) tbody.innerHTML = ""; filaContador = 0; refreshDisabledOptions(); }
 
   btnAgregar.onclick = (ev) => {
     ev && ev.preventDefault();
     if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
     const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-    btnAgregar.disabled = true; setTimeout(() => { btnAgregar.disabled = false; }, 300);
+    btnAgregar.disabled = true; setTimeout(()=>btnAgregar.disabled=false,300);
     agregarFila();
   };
 
@@ -508,7 +517,6 @@ document.addEventListener("DOMContentLoaded", () => {
     selects.forEach(s => {
       Array.from(s.options).forEach(opt => {
         if (!opt.value) { opt.disabled = false; return; }
-        // Allow same product if different date: we only disable exact same select value (which includes '||idx')
         const chosenElsewhere = selectedValues.includes(opt.value) && s.value !== opt.value;
         opt.disabled = !!chosenElsewhere;
       });
@@ -525,14 +533,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
-  // renumerar filas después de eliminar
   function renumerarFilas() {
     filaContador = 0;
-    for (const r of tbody.rows) {
-      filaContador++;
-      const noCell = r.cells[0];
-      if (noCell) noCell.textContent = filaContador;
-    }
+    for (const r of tbody.rows) { filaContador++; const noCell = r.cells[0]; if (noCell) noCell.textContent = filaContador; }
   }
 
   // Construye fila estándar
@@ -547,7 +550,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const tdClave = document.createElement("td");
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
-
     if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
       catalogo[categoriaActiva].forEach((p, idx) => {
         const o = document.createElement("option");
@@ -558,67 +560,39 @@ document.addEventListener("DOMContentLoaded", () => {
         select.appendChild(o);
       });
     }
-    tdClave.appendChild(select);
-    tr.appendChild(tdClave);
+    tdClave.appendChild(select); tr.appendChild(tdClave);
 
-    // Descripción (input con datalist)
+    // Descripción
     const tdDesc = document.createElement("td");
-    const inputDesc = document.createElement("input");
-    inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
+    const inputDesc = document.createElement("input"); inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
     const datalistId = `datalist-desc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
     const dl = document.createElement("datalist"); dl.id = datalistId;
-    if (catalogo[categoriaActiva]) {
-      catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
-    }
+    if (catalogo[categoriaActiva]) catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
     inputDesc.setAttribute("list", datalistId);
     tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
 
     // Stock
-    const tdStock = document.createElement("td");
-    const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
+    const tdStock = document.createElement("td"); const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
 
-    // Minimo (readonly)
-    const tdMin = document.createElement("td");
-    const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0;
-    inputMin.readOnly = true; inputMin.style.background = "#f3f4f6"; inputMin.style.cursor = "not-allowed";
-    tdMin.appendChild(inputMin); tr.appendChild(tdMin);
+    // Min
+    const tdMin = document.createElement("td"); const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0; inputMin.readOnly = true; inputMin.style.background="#f3f4f6"; inputMin.style.cursor="not-allowed"; tdMin.appendChild(inputMin); tr.appendChild(tdMin);
 
     // Estado
     const tdEstado = document.createElement("td"); const spanEstado = document.createElement("span"); tdEstado.appendChild(spanEstado); tr.appendChild(tdEstado);
 
-    // Caducidad / Fecha adquisición
-    const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date";
-    inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad");
-    tdCad.appendChild(inputCad); tr.appendChild(tdCad);
+    // Caducidad
+    const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date"; inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad"); tdCad.appendChild(inputCad); tr.appendChild(tdCad);
 
     // Días
-    const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type = "text"; inputDias.readOnly = true; inputDias.value = ""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
+    const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type="text"; inputDias.readOnly=true; inputDias.value=""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
 
     // Observaciones
-    const tdObs = document.createElement("td");
-    const textareaObs = document.createElement("textarea");
-    textareaObs.placeholder = "Observaciones";
-    textareaObs.rows = 2;
-    textareaObs.style.resize = "vertical";
-    textareaObs.style.width = "100%";
-    textareaObs.style.boxSizing = "border-box";
-    tdObs.appendChild(textareaObs);
-    tr.appendChild(tdObs);
+    const tdObs = document.createElement("td"); const textareaObs = document.createElement("textarea"); textareaObs.placeholder="Observaciones"; textareaObs.rows=2; textareaObs.style.resize="vertical"; textareaObs.style.width="100%"; textareaObs.style.boxSizing="border-box"; tdObs.appendChild(textareaObs); tr.appendChild(tdObs);
 
-    // Acciones -> checkbox Seleccionar + botón Eliminar
-    const tdAcc = document.createElement("td");
-    tdAcc.style.display = "flex";
-    tdAcc.style.gap = "8px";
-    tdAcc.style.alignItems = "center";
+    // Acciones: checkbox + eliminar
+    const tdAcc = document.createElement("td"); tdAcc.style.display="flex"; tdAcc.style.gap="8px"; tdAcc.style.alignItems="center";
+    const chk = document.createElement("input"); chk.type="checkbox"; chk.className="row-select"; chk.title="Seleccionar fila para eliminar"; tdAcc.appendChild(chk);
 
-    // checkbox selección
-    const chk = document.createElement("input");
-    chk.type = "checkbox";
-    chk.className = "row-select";
-    chk.title = "Seleccionar fila para eliminar";
-    tdAcc.appendChild(chk);
-
-    // botón Eliminar por fila
     const btnDel = document.createElement("button");
     btnDel.type = "button";
     btnDel.textContent = "Eliminar";
@@ -637,66 +611,48 @@ document.addEventListener("DOMContentLoaded", () => {
       const obs = (tr.cells[tr.cells.length-2].querySelector("textarea") ? tr.cells[tr.cells.length-2].querySelector("textarea").value : "").trim();
       const clave = (tr.cells[1].querySelector("select").value || "").trim();
       const hasData = !!(descripcion || stock || fecha || obs || clave);
-      if (hasData) {
-        if (!confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
-      }
-      tr.remove();
-      renumerarFilas();
-      refreshDisabledOptions();
-      if (!tbody.rows.length) agregarFila();
+      if (hasData) if (!confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
+      tr.remove(); renumerarFilas(); refreshDisabledOptions(); if (!tbody.rows.length) agregarFila();
     });
     tdAcc.appendChild(btnDel);
 
     tr.appendChild(tdAcc);
     tbody.appendChild(tr);
 
-    // listeners & relleno
+    // Rellenos y listeners
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
       inputStock.value = producto.stock || "";
-      if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") {
-        inputMin.value = producto.minimo;
-      } else {
-        const clave = producto.clave || "";
-        const val = getMinimoValue(clave);
-        inputMin.value = val;
-      }
+      if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") inputMin.value = producto.minimo;
+      else inputMin.value = getMinimoValue(producto.clave || "");
       inputCad.value = producto.caducidad || "";
-
       const lista = catalogo[categoriaActiva] || [];
       const idx = lista.indexOf(producto);
       if (idx >= 0) {
-        for (let i = 0; i < select.options.length; i++) {
-          const opt = select.options[i];
-          if (opt.dataset && ('idx' in opt.dataset) && parseInt(opt.dataset.idx, 10) === idx) {
-            select.value = opt.value; break;
-          }
-        }
+        for (let i=0;i<select.options.length;i++){ const opt = select.options[i]; if (opt.dataset && ('idx' in opt.dataset) && parseInt(opt.dataset.idx,10)===idx) { select.value = opt.value; break; } }
       } else {
         select.value = `${producto.clave}||0`;
       }
-      refreshDisabledOptions();
-      actualizarFila(tr);
+      refreshDisabledOptions(); actualizarFila(tr);
     }
 
     inputDesc.addEventListener("input", () => {
-      const v = (inputDesc.value || "").trim();
+      const v = (inputDesc.value||"").trim();
       if (!v) { refreshDisabledOptions(); actualizarFila(tr); return; }
       const lista = catalogo[categoriaActiva] || [];
       const vLower = v.toLowerCase();
       const productoExact = lista.find(p => p.descripcion && p.descripcion.trim().toLowerCase() === vLower);
       if (productoExact) { fillProduct(productoExact); return; }
-      refreshDisabledOptions();
-      actualizarFila(tr);
+      refreshDisabledOptions(); actualizarFila(tr);
     });
 
     inputDesc.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === "Tab") {
-        const v = (inputDesc.value || "").trim(); if (!v) return;
+        const v = (inputDesc.value||"").trim(); if (!v) return;
         const lista = catalogo[categoriaActiva] || []; const vLower = v.toLowerCase();
-        const matchesStarts = lista.filter(p => p.descripcion && p.descripcion.trim().toLowerCase().startsWith(vLower));
-        const matchesContains = lista.filter(p => p.descripcion && p.descripcion.trim().toLowerCase().includes(vLower));
+        const matchesStarts = lista.filter(p=>p.descripcion && p.descripcion.trim().toLowerCase().startsWith(vLower));
+        const matchesContains = lista.filter(p=>p.descripcion && p.descripcion.trim().toLowerCase().includes(vLower));
         let producto = null;
         if (matchesStarts.length >= 1) producto = matchesStarts[0];
         else if (matchesContains.length === 1) producto = matchesContains[0];
@@ -708,12 +664,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const selectedOption = select.selectedOptions[0];
       let producto = null;
       if (selectedOption && selectedOption.dataset && ('idx' in selectedOption.dataset)) {
-        const idx = parseInt(selectedOption.dataset.idx, 10);
-        producto = (catalogo[categoriaActiva] || [])[idx] || null;
+        const idx = parseInt(selectedOption.dataset.idx,10);
+        producto = (catalogo[categoriaActiva]||[])[idx] || null;
       }
       if (!producto) {
         const claveSimple = select.value ? select.value.split("||")[0] : "";
-        producto = (catalogo[categoriaActiva] || []).find(p => p.clave === claveSimple) || null;
+        producto = (catalogo[categoriaActiva]||[]).find(p => p.clave === claveSimple) || null;
         if (!producto && claveSimple) {
           const val = getMinimoValue(claveSimple);
           inputMin.value = val;
@@ -721,52 +677,35 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (producto) fillProduct(producto);
       refreshDisabledOptions();
-      setTimeout(() => { try { inputDesc.focus(); } catch(e) {} }, 0);
+      setTimeout(()=>{ try{ inputDesc.focus(); }catch(e){} }, 0);
     });
 
-    inputStock.addEventListener("input", () => {
-      if (inputStock.value === "") return actualizarFila(tr);
-      let v = parseInt(inputStock.value, 10);
-      if (isNaN(v) || v < 0) v = 0;
-      inputStock.value = v;
-      actualizarFila(tr);
-    });
-
+    inputStock.addEventListener("input", () => { if (inputStock.value === "") return actualizarFila(tr); let v = parseInt(inputStock.value,10); if (isNaN(v)||v<0) v = 0; inputStock.value = v; actualizarFila(tr); });
     inputCad.addEventListener("change", () => actualizarFila(tr));
     [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
     refreshDisabledOptions();
-  }
+  } // fin agregarFila
 
   // Agregar fila manual (no listado)
   function agregarFilaManual() {
-    // crear fila estándar primero
     agregarFila();
-    const tr = tbody.rows[tbody.rows.length - 1];
+    const tr = tbody.rows[tbody.rows.length-1];
     if (!tr) return;
     const select = tr.cells[1].querySelector("select");
     const inputDesc = tr.cells[2].querySelector("input");
-    const btnDel = tr.cells[tr.cells.length - 1].querySelector("button");
-
-    // generar clave única y marcar manual
+    const btnDel = tr.cells[tr.cells.length-1].querySelector("button");
     const gen = `MAN-${Date.now().toString(36).slice(-6)}`;
-    // crear opción y asignar
     const opt = document.createElement("option");
     opt.value = gen;
     opt.textContent = gen + " (no listado)";
     select.appendChild(opt);
     select.value = gen;
-    select.disabled = true; // evita que el usuario seleccione otra clave preparada
+    select.disabled = true;
     tr.dataset.manual = "true";
-    // marcar descripción como obligatoria (visual)
     inputDesc.required = true;
     inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
     inputDesc.focus();
-
-    if (btnDel) {
-      btnDel.style.background = "#fee2e2";
-      btnDel.style.color = "#7f1d1d";
-    }
-
+    if (btnDel) { btnDel.style.background="#fee2e2"; btnDel.style.color="#7f1d1d"; }
     refreshDisabledOptions();
   }
 
@@ -776,22 +715,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputCad = tr.cells[6].querySelector("input");
     const inputDias = tr.cells[7].querySelector("input");
     const estadoSpan = tr.cells[5].querySelector("span");
-
-    const stockVal = inputStock.value === "" ? null : Math.max(0, parseInt(inputStock.value || 0, 10));
-    const minVal = inputMin.value === "" ? 0 : Math.max(0, parseInt(inputMin.value || 0, 10));
-    if (stockVal === null) { estadoSpan.textContent = ""; } else {
-      estadoSpan.textContent = (stockVal < minVal) ? "Bajo stock" : "Stock suficiente";
-    }
-
-    tr.classList.remove("expired", "warning-expiry", "valid-expiry");
+    const stockVal = inputStock.value === "" ? null : Math.max(0, parseInt(inputStock.value||0,10));
+    const minVal = inputMin.value === "" ? 0 : Math.max(0, parseInt(inputMin.value||0,10));
+    if (stockVal === null) { estadoSpan.textContent = ""; } else { estadoSpan.textContent = (stockVal < minVal) ? "Bajo stock" : "Stock suficiente"; }
+    tr.classList.remove("expired","warning-expiry","valid-expiry");
     inputDias.value = "";
-
     if (inputCad.value) {
       const hoy = new Date(); hoy.setHours(0,0,0,0);
       const fecha = new Date(inputCad.value);
       const msPorDia = 1000*60*60*24;
       const isAdq = adquisicionCats.has(categoriaActiva);
-
       if (isAdq) {
         const diffMs = hoy - fecha;
         const diasDesde = Math.ceil(diffMs / msPorDia);
@@ -800,10 +733,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const diffMs = fecha - hoy;
         const diasRest = Math.ceil(diffMs / msPorDia);
         inputDias.value = diasRest < 0 ? "Caducado" : String(diasRest);
-
         let meses = (fecha.getFullYear() - hoy.getFullYear()) * 12 + (fecha.getMonth() - hoy.getMonth());
         if (fecha.getDate() < hoy.getDate()) meses -= 1;
-
         if (meses < 0) tr.classList.add("expired");
         else if (meses < 6) tr.classList.add("expired");
         else if (meses <= 12) tr.classList.add("warning-expiry");
@@ -812,19 +743,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  const semaforoColor = {
-    expired: "#FDE2E5",
-    "warning-expiry": "#FFF7E0",
-    "valid-expiry": "#E8F9F0",
-    default: "#FFFFFF"
-  };
+  const semaforoColor = { expired: "#FDE2E5", "warning-expiry": "#FFF7E0", "valid-expiry": "#E8F9F0", default: "#FFFFFF" };
 
-  function escapeHtml(str) {
-    if (str === null || str === undefined) return "";
-    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");
-  }
+  function escapeHtml(str) { if (str===null||str===undefined) return ""; return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;"); }
 
-  // Construir payload (reutilizable) - valida productos manuales con descripción
+  // Construir payload - valida manuales
   function buildPayloadRows() {
     const filasExport = [];
     const errors = [];
@@ -833,30 +756,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const raw = select ? select.value : "";
       const claveReal = raw ? raw.split("||")[0] : "";
       const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-      const obsCellIndex = row.cells.length - 2; // last is actions
+      const obsCellIndex = row.cells.length - 2;
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
       const isManual = row.dataset && row.dataset.manual === "true";
-
       // Si no hay datos, saltar
       if (!claveReal && !descripcion && !observaciones) continue;
-
-      // validación: si fila manual, descripción obligatoria
-      if (isManual && !descripcion) {
-        errors.push(`Fila ${row.rowIndex}: Falta descripción para producto no listado (clave ${claveReal || "(sin clave)"}).`);
-        continue;
-      }
-
+      if (isManual && !descripcion) { errors.push(`Fila ${row.rowIndex}: Falta descripción para producto no listado`); continue; }
       let color = semaforoColor.default;
-      if (adquisicionCats.has(categoriaActiva)) {
-        color = semaforoColor.default;
-      } else {
+      if (!adquisicionCats.has(categoriaActiva)) {
         if (row.classList.contains("expired")) color = semaforoColor.expired;
         else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
         else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
-        else color = semaforoColor.default;
       }
-
       filasExport.push({
         clave: claveReal,
         descripcion,
@@ -875,56 +787,31 @@ document.addEventListener("DOMContentLoaded", () => {
   // Guardar inventario en servidor (POST /inventory)
   async function saveInventoryToServer(hospitalNombre, hospitalClave, categoria, items) {
     if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
-    const payload = {
-      hospitalNombre: hospitalNombre || "",
-      hospitalClave: hospitalClave || "",
-      categoria: categoria || "",
-      items
-    };
+    const payload = { hospitalNombre: hospitalNombre||"", hospitalClave: hospitalClave||"", categoria: categoria||"", items };
     const headers = { "Content-Type": "application/json" };
+    // ya no preguntamos token al usuario; si CLIENT_API_TOKEN está definido, lo usamos
     if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
-    const resp = await fetch(INVENTORY_POST_URL, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload)
-    });
+    const resp = await fetch(INVENTORY_POST_URL, { method: "POST", headers, body: JSON.stringify(payload) });
     if (!resp.ok) {
-      const txt = await resp.text().catch(() => "");
+      const txt = await resp.text().catch(()=>"");
       throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
     }
     return resp.json();
   }
 
-  // Botón Enviar -> intenta guardar inventario (POST /inventory)
+  // Enviar / Guardar inventario (sin prompt de token)
   if (btnEnviar) {
     btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
-
       const { filasExport, errors } = buildPayloadRows();
-      if (errors.length) {
-        alert("Errores en el formulario:\n\n" + errors.join("\n"));
-        return;
-      }
-      if (filasExport.length === 0) {
-        alert("No hay datos para enviar.");
-        return;
-      }
-      if (!INVENTORY_POST_URL) {
-        alert("INVENTORY_POST_URL no configurada. Ajusta Logica.js.");
-        return;
-      }
-
+      if (errors.length) { alert("Errores:\n\n" + errors.join("\n")); return; }
+      if (filasExport.length === 0) { alert("No hay datos para enviar."); return; }
+      if (!INVENTORY_POST_URL) { alert("INVENTORY_POST_URL no configurada."); return; }
       const hospitalNombre = inputHospital ? (inputHospital.value || "").trim() : "";
       try {
-        btnEnviar.disabled = true;
-        const originalText = btnEnviar.textContent;
-        btnEnviar.textContent = "Guardando...";
-
-        // Guardar como inventory (reemplaza inventario del hospital/categoria)
+        btnEnviar.disabled = true; const originalText = btnEnviar.textContent; btnEnviar.textContent = "Guardando...";
         await saveInventoryToServer(hospitalNombre, selectedHospitalClave || hospitalNombre, categoriaActiva, filasExport);
-
         alert("Inventario guardado correctamente en el servidor.");
-        // limpieza y reset solo después de éxito
         limpiarTabla();
         categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = ""; selectedHospitalClave = "";
         updateCaducidadHeader();
@@ -934,60 +821,77 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Error al guardar inventario:", err);
         alert("No fue posible guardar el inventario en el servidor:\n\n" + (err.message || err));
       } finally {
-        btnEnviar.disabled = false;
-        btnEnviar.textContent = "Enviar";
+        btnEnviar.disabled = false; btnEnviar.textContent = "Enviar";
       }
     };
   }
 
-  // ================= HOSPITALES: carga y autocompletado =================
+  // ---- HOSPITALES: fetch robusto con reintentos y fallback local ----
+  async function tryFetchHospitals(urlToTry) {
+    try {
+      const resp = await fetch(urlToTry, { method: "GET", cache: "no-store" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      return Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
+    } catch (err) {
+      throw err;
+    }
+  }
+
   async function cargarHospitales() {
     if (!datalistHospitales) return;
-    try {
-      const resp = await fetch(HOSPITALES_URL);
-      if (!resp.ok) throw new Error("No pudo obtenerse la lista de hospitales desde el servidor.");
-      const data = await resp.json();
-      hospitales = Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
-      datalistHospitales.innerHTML = "";
-      hospitales.forEach(h => {
-        const opt = document.createElement("option"); opt.value = h.nombre; if (h.clave) opt.dataset.clave = h.clave; datalistHospitales.appendChild(opt);
-      });
-    } catch (e) {
-      console.warn("No se pudieron cargar hospitales:", e);
-      hospitales = [];
-      datalistHospitales.innerHTML = "";
+    datalistHospitales.innerHTML = "";
+    if (location.protocol === "https:" && HOSPITALES_URL.startsWith("http://")) {
+      console.warn("Mixed content detectado: página HTTPS, hospital endpoint HTTP. Intenta usar HTTPS en tu servidor.");
     }
+    try {
+      hospitales = await tryFetchHospitals(HOSPITALES_URL);
+      console.log("hospitales cargados desde HOSPITALES_URL:", HOSPITALES_URL);
+    } catch (err1) {
+      console.warn("Intento 1 falló:", err1);
+      try {
+        const alt = `${location.origin}/hospitales`;
+        hospitales = await tryFetchHospitals(alt);
+        console.log("hospitales cargados desde origen alterno:", alt);
+      } catch (err2) {
+        console.warn("Intento 2 falló:", err2);
+        hospitales = fallbackHospitals;
+        console.warn("Usando fallback local de hospitales.");
+      }
+    }
+    datalistHospitales.innerHTML = "";
+    hospitales.forEach(h => {
+      const opt = document.createElement("option"); opt.value = h.nombre;
+      if (h.clave) opt.dataset.clave = h.clave;
+      datalistHospitales.appendChild(opt);
+    });
   }
 
   function syncHospitalClave() {
     const v = (inputHospital.value || "").trim();
     if (!v) { selectedHospitalClave = ""; return; }
-    const found = hospitales.find(h => (h.nombre || "").toLowerCase() === v.toLowerCase());
+    const found = hospitales.find(h => (h.nombre||"").toLowerCase() === v.toLowerCase());
     selectedHospitalClave = found ? (found.clave || "") : "";
   }
-
   inputHospital && inputHospital.addEventListener("change", syncHospitalClave);
   inputHospital && inputHospital.addEventListener("blur", syncHospitalClave);
   inputHospital && inputHospital.addEventListener("input", () => {
     const v = (inputHospital.value || "").trim().toLowerCase();
-    const found = hospitales.find(h => (h.nombre || "").toLowerCase() === v);
+    const found = hospitales.find(h => (h.nombre||"").toLowerCase() === v);
     if (found) selectedHospitalClave = found.clave || "";
     else selectedHospitalClave = "";
   });
 
-  cargarHospitales().catch(() => { /* no crítico */ });
+  cargarHospitales().catch(()=>{/* no crítico */});
 
-  // ================= INVENTORY: cargar y poblar =================
+  // ---- INVENTORY: cargar y poblar ----
   async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     if (!hospitalClaveOrName || !categoria) return;
+    if (!INVENTORY_GET_URL) { console.warn("INVENTORY_GET_URL no configurada."); return; }
     try {
-      if (!INVENTORY_GET_URL) return;
       const qs = new URLSearchParams({ hospitalClave: hospitalClaveOrName, categoria }).toString();
       const resp = await fetch(`${INVENTORY_GET_URL}?${qs}`, { method: "GET" });
-      if (!resp.ok) {
-        console.warn("No se pudo obtener inventory:", resp.status);
-        return;
-      }
+      if (!resp.ok) { console.warn("No se pudo obtener inventory:", resp.status); return; }
       const data = await resp.json();
       const items = Array.isArray(data) ? data : (data.items || []);
       limpiarTabla();
@@ -1026,101 +930,58 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Eliminar filas seleccionadas (cualquier posición)
+  // Eliminar filas seleccionadas
   function deleteSelectedRows() {
     const checked = Array.from(tbody.querySelectorAll("input.row-select:checked"));
     if (!checked.length) { alert("No hay filas seleccionadas para eliminar."); return; }
-
     const detalles = checked.map(chk => {
       const tr = chk.closest("tr");
       const no = tr ? (tr.cells[0].textContent || "").trim() : "(?)";
       const desc = tr ? (tr.cells[2].querySelector("input").value || "").trim() : "";
-      return `Fila ${no}: ${desc ? (desc.length > 60 ? desc.slice(0,60)+"…" : desc) : "(sin descripción)"}`;
+      return `Fila ${no}: ${desc ? (desc.length>60 ? desc.slice(0,60)+"…" : desc) : "(sin descripción)"}`;
     }).join("\n");
-
     if (!confirm(`Vas a eliminar ${checked.length} fila(s):\n\n${detalles}\n\n¿Continuar?`)) return;
-
-    for (const ch of checked) {
-      const tr = ch.closest("tr"); if (tr) tr.remove();
-    }
+    for (const ch of checked) { const tr = ch.closest("tr"); if (tr) tr.remove(); }
     renumerarFilas();
     refreshDisabledOptions();
     if (!tbody.rows.length) agregarFila();
   }
 
+  // ---- Descarga CSV (usada por botón en page1) ----
+  function downloadCSV() {
+    const { filasExport, errors } = buildPayloadRows();
+    if (errors.length) { alert("Errores:\n\n" + errors.join("\n")); return; }
+    if (!filasExport || filasExport.length === 0) { alert("No hay datos para exportar."); return; }
+
+    const cols = ["clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
+    const escapeCell = s => {
+      if (s===null||s===undefined) return "";
+      const str = String(s);
+      return (str.includes('"')||str.includes(',')||str.includes('\n')) ? `"${str.replace(/"/g,'""')}"` : str;
+    };
+    const lines = [ cols.join(",") ];
+    for (const row of filasExport) {
+      const vals = cols.map(c => escapeCell(row[c]));
+      lines.push(vals.join(","));
+    }
+    const csv = lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const now = new Date().toISOString().replace(/[:.]/g,"-");
+    a.download = `inventario_${(selectedHospitalClave||inputHospital.value||"no-hospital")}_${categoriaActiva||"no-cat"}_${now}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
+});
 
-  // ================= REPORT (admin) - descarga con token solicitado en prompt =================
-  (function initReportButton(){
-    const btnReport = btnDescargarReporte;
-    if (!btnReport) return;
-    btnReport.style.background = "#0b74de";
-    btnReport.style.color = "#fff";
-    btnReport.style.borderRadius = "8px";
-    btnReport.style.padding = "8px 12px";
-    btnReport.style.border = "none";
-    btnReport.style.cursor = "pointer";
 
-    btnReport.addEventListener("click", async (ev) => {
-      ev && ev.preventDefault();
-      // pedir token solo en el momento (no lo guardamos)
-      const token = prompt("Introduce tu API token de admin para descargar el reporte (se enviará solo una vez):");
-      if (!token) return alert("Token requerido para descargar el reporte.");
-
-      // elegir formato
-      const fmt = prompt("Formato de reporte: escribe 'csv' o 'json' (por defecto csv):", "csv") || "csv";
-      const url = `${REPORT_URL}?format=${encodeURIComponent(fmt)}`;
-
-      try {
-        btnReport.disabled = true;
-        const originalText = btnReport.textContent;
-        btnReport.textContent = "Descargando...";
-        const resp = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Accept": fmt === "json" ? "application/json" : "text/csv",
-            "Authorization": "Bearer " + token
-          }
-        });
-        if (!resp.ok) {
-          const txt = await resp.text().catch(()=>"");
-          throw new Error(`Error ${resp.status} ${resp.statusText} ${txt}`);
-        }
-        const disposition = resp.headers.get("Content-Disposition") || "";
-        let filename = "";
-        const m = /filename="([^"]+)"/.exec(disposition);
-        if (m && m[1]) filename = m[1];
-        else filename = `reporte_submissions.${fmt === "json" ? "json" : "csv"}`;
-
-        const blob = await resp.blob();
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(link.href);
-        btnReport.textContent = originalText;
-      } catch (err) {
-        console.error("Error descargando reporte:", err);
-        alert("No fue posible descargar el reporte:\n" + (err.message || err));
-      } finally {
-        btnReport.disabled = false;
-        btnReport.textContent = "Descargar reporte (admin)";
-      }
-    });
-  })();
-
-  // ====================================================================================
-  // (Opcional) definiciones de minimosDefinidos si las necesitas en este script.
-  // Puedes inyectar la lista completa que ya tenías en tu proyecto.
-  
-    // añade el resto según tu archivo original...
-  } 
-  // ====================================================================================
-
-);
 
 
 

@@ -39,10 +39,8 @@
         <option value="instrumental">Instrumental</option>
       </select>
 
-      <div class="actions" style="margin-top:12px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+      <div class="actions" style="margin-top:12px; display:flex; justify-content:flex-end;">
         <button id="btnSiguiente">Siguiente</button>
-        <!-- Botón admin para descargar reporte -->
-        <button id="btnDescargarReporte" title="Descargar reporte (admin)">Descargar reporte (admin)</button>
       </div>
     </div>
   </div>
@@ -55,8 +53,9 @@
       <div class="controls">
         <button id="btnRegresar1">Regresar</button>
         <button id="btnAgregarFila">Agregar fila</button>
+        <!-- botón agregado dinámicamente por JS: btnAgregarManual -->
         <button id="btnEnviarInsumos">Enviar</button>
-        <!-- btnEliminarSeleccionados se creará dinámicamente por el script -->
+       
       </div>
 
       <table id="tablaInsumos" aria-label="Tabla de insumos">
@@ -78,25 +77,6 @@
       </table>
     </div>
   </div>
-
-  <script>
-  // 🔹 Al cargar la página, obtenemos la lista de hospitales del servidor (local dev fallback)
-  document.addEventListener("DOMContentLoaded", async () => {
-    try {
-      const response = await fetch("http://localhost:3000/hospitales");
-      if (!response.ok) throw new Error("No se pudo obtener la lista de hospitales");
-      const hospitales = await response.json();
-      const lista = document.getElementById("listaHospitales");
-      hospitales.forEach(h => {
-        const option = document.createElement("option");
-        option.value = h.nombre;
-        lista.appendChild(option);
-      });
-    } catch (err) {
-      console.error("Error cargando hospitales:", err);
-    }
-  });
-  </script>
 
   <script src="Logica.js"></script>
 </body>
