@@ -860,14 +860,39 @@ const catalogo = {
   // Eliminar filas seleccionadas (ahora manda uids al servidor si corresponde)
   async function deleteSelectedRows() {
     const checked = Array.from(tbody.querySelectorAll("input.row-select:checked"));
-    if (!checked.length) { alert("No hay filas seleccionadas para eliminar."); return; }
-    const detalles = checked.map(chk => {
-      const tr = chk.closest("tr");
-      const no = tr ? (tr.cells[0].textContent || "").trim() : "(?)";
-      const desc = tr ? (tr.cells[2].querySelector("input").value || "").trim() : "";
-      return `Fila ${no}: ${desc ? (desc.length>60 ? desc.slice(0,60)+"…" : desc) : "(sin descripción)"}`;
-    }).join("\n");
-    if (!confirm(`Vas a eliminar ${checked.length} fila(s):\n\n${detalles}\n\n¿Continuar?`)) return;
+    // dentro de deleteSelectedRows() — reemplaza el bloque try { ... fetch(...) ... } catch(...) { ... }
+if (uids.length && hospitalKey && categoriaActiva) {
+  try {
+    const body = { hospitalClave: hospitalKey, categoria: categoriaActiva, uids };
+    const headers = { "Content-Type": "application/json" };
+    if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+    const resp = await fetch(INVENTORY_DELETE_ITEM_URL, { method: "POST", headers, body: JSON.stringify(body) });
+
+    if (!resp.ok) {
+      // Tratar 404 como "no había inventario" (aceptamos y borramos localmente)
+      if (resp.status === 404) {
+        console.warn("Servidor indica que no existe inventario remoto para este hospital+categoria. Borrando localmente.");
+      } else {
+        const text = await resp.text().catch(()=>"");
+        throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
+      }
+    } else {
+      // si quieres leer respuesta exitosa:
+      try { await resp.json().catch(()=>null); } catch(e){}
+    }
+
+    // eliminar filas en UI en cualquier caso (ok o 404)
+    for (const tr of rowsToRemove) { tr.remove(); }
+    renumerarFilas();
+    refreshDisabledOptions();
+    if (!tbody.rows.length) agregarFila();
+    return;
+  } catch (err) {
+    console.error("Error borrando items en servidor:", err);
+    if (!confirm("No se pudo eliminar algunos items en el servidor. ¿Eliminar localmente de todas formas?")) return;
+    // si el usuario confirma, caemos a eliminar localmente
+  }
+}
 
     // reunir uids que existan y rows a eliminar localmente
     const uids = [];
