@@ -1,4 +1,3 @@
-// Logica.js - versión con uid por fila y borrado remoto al eliminar fila(s)
 document.addEventListener("DOMContentLoaded", () => {
   // ======== Config ========
   let categoriaActiva = null;
@@ -312,6 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0208": 2
     // ... (mantén el resto como lo tienes)
     };
+
 
   // ================= DOM =================
   const selCategoria = document.getElementById("categoria");
