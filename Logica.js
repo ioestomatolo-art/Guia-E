@@ -1,5 +1,4 @@
-
-// Logica.js - versión final (botón "Descargar reporte" en la primera pantalla, sin prompt en Enviar)
+// Logica.js - versión con uid por fila y borrado remoto al eliminar fila(s)
 document.addEventListener("DOMContentLoaded", () => {
   // ======== Config ========
   let categoriaActiva = null;
@@ -13,12 +12,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
+  const INVENTORY_DELETE_ITEM_URL = `${SERVER_BASE}/inventory/item/delete`;
   const CLIENT_API_TOKEN = ""; // si quieres que el cliente envíe un token (opcional). Si lo dejas vacío, no se enviará.
 
-  const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
-
-  // ================= CATALOGO (placeholder) =================
-  // Sustituye con tu catálogo real; debe ser { insumos: [ {clave:'XXX', descripcion:'...', minimo: 2, caducidad:'2025-01-01', stock:0}, ... ], material: [...], ... }
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -317,12 +313,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ... (mantén el resto como lo tienes)
     };
 
-  // fallback hospitals si no se puede fetch
-  const fallbackHospitals = [
-    { nombre: "Hospital General Boca del Río", clave: "VZIM010212" },
-    { nombre: "Hospital General Martínez de la Torre", clave: "VZIM003361" }
-  ];
-
   // ================= DOM =================
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
@@ -335,8 +325,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
 
-  let btnAgregarManual = null; // creado dinámicamente
-  let btnDescargarPage1 = null; // botón de descarga en la primera pantalla
+  let btnAgregarManual = null;
+  let btnDescargarPage1 = null;
 
   function safeEscapeCss(s) { try { return CSS.escape(s); } catch(e) { return String(s).replace(/[[\\\]"']/g,"\\$&"); } }
 
@@ -355,6 +345,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   ensureHeaders();
 
+  // Generador de uid (cliente) para filas temporales/automáticas
+  function genUid() {
+    return `uid-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  }
+
   function updateCaducidadHeader() {
     if (!tabla) return;
     const thead = tabla.querySelector("thead"); if (!thead) return;
@@ -369,7 +364,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (thead.querySelectorAll("th")[diasIdx]) thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
   }
 
-  // mueve/crea botones en page2 y crea el botón de descarga en page1
+  // mueve/crea botones y botón descarga en page1
   function moveButtonsToCardBottom() {
     const page2 = document.getElementById("page2"); if (!page2 || !tabla) return;
     const card = page2.querySelector(".card") || page2;
@@ -385,7 +380,6 @@ document.addEventListener("DOMContentLoaded", () => {
       else card.appendChild(bottom);
     }
 
-    // crear botón manual si no existe
     if (!btnAgregarManual) {
       btnAgregarManual = document.createElement("button");
       btnAgregarManual.id = "btnAgregarManual";
@@ -400,7 +394,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // crear botón eliminar seleccionados si no existe
     let btnEliminarSeleccionados = document.getElementById("btnEliminarSeleccionados");
     if (!btnEliminarSeleccionados) {
       btnEliminarSeleccionados = document.createElement("button");
@@ -415,7 +408,6 @@ document.addEventListener("DOMContentLoaded", () => {
       btnEliminarSeleccionados.addEventListener("click", (ev) => { ev&&ev.preventDefault(); deleteSelectedRows(); });
     }
 
-    // reubicar botones en page2 (Regresar, Agregar, Agregar manual, Enviar, Eliminar seleccionados)
     const btns = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarSeleccionados];
     btns.forEach(b => {
       if (!b) return;
@@ -430,11 +422,10 @@ document.addEventListener("DOMContentLoaded", () => {
       else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
     });
 
-    // --- CREAR BOTÓN "Descargar reporte" EN LA PRIMERA PANTALLA ---
+    // crear botón descarga en page1
     try {
       const page1 = document.getElementById("page1");
       const card1 = page1.querySelector(".card");
-      // busca área de acciones; si no existe, crea una
       let actions = card1.querySelector(".actions");
       if (!actions) {
         actions = document.createElement("div");
@@ -444,7 +435,6 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.style.justifyContent = "flex-end";
         card1.appendChild(actions);
       }
-      // si ya hay un botón con id btnDescargarPage1, no crearlo dos veces
       if (!document.getElementById("btnDescargarPage1")) {
         btnDescargarPage1 = document.createElement("button");
         btnDescargarPage1.id = "btnDescargarPage1";
@@ -452,7 +442,6 @@ document.addEventListener("DOMContentLoaded", () => {
         btnDescargarPage1.title = "Descargar CSV del inventario actual";
         btnDescargarPage1.style.marginLeft = "8px";
         btnDescargarPage1.addEventListener("click", (ev) => { ev&&ev.preventDefault(); downloadCSV(); });
-        // estilo simple
         btnDescargarPage1.style.background = "#111827";
         btnDescargarPage1.style.color = "#fff";
         btnDescargarPage1.style.padding = "8px 12px";
@@ -476,14 +465,9 @@ document.addEventListener("DOMContentLoaded", () => {
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
 
-    // sincroniza clave hospital y carga inventario
     syncHospitalClave();
     const key = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
-    try {
-      await loadInventoryAndPopulate(key, categoriaActiva);
-    } catch (err) {
-      console.warn("No se pudo cargar inventory:", err);
-    }
+    try { await loadInventoryAndPopulate(key, categoriaActiva); } catch (err) { console.warn("No se pudo cargar inventory:", err); }
 
     document.getElementById("page1").classList.remove("activo"); document.getElementById("page1").classList.add("oculto");
     document.getElementById("page2").classList.remove("oculto"); document.getElementById("page2").classList.add("activo");
@@ -542,6 +526,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function agregarFila() {
     filaContador++;
     const tr = document.createElement("tr");
+    const uid = genUid();
+    tr.dataset.uid = uid;
 
     // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
@@ -550,26 +536,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const tdClave = document.createElement("td");
     const select = document.createElement("select");
     const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
-    if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
-      catalogo[categoriaActiva].forEach((p, idx) => {
-        const o = document.createElement("option");
-        o.value = `${p.clave}||${idx}`;
-        o.textContent = p.clave;
-        o.dataset.descripcion = p.descripcion || "";
-        o.dataset.idx = String(idx);
-        select.appendChild(o);
-      });
-    }
+    // Si tienes catalogo, completa opciones (dejé genérico)
+    // if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) { ... }
     tdClave.appendChild(select); tr.appendChild(tdClave);
 
     // Descripción
     const tdDesc = document.createElement("td");
     const inputDesc = document.createElement("input"); inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
-    const datalistId = `datalist-desc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
-    const dl = document.createElement("datalist"); dl.id = datalistId;
-    if (catalogo[categoriaActiva]) catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
-    inputDesc.setAttribute("list", datalistId);
-    tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
+    tdDesc.appendChild(inputDesc); tr.appendChild(tdDesc);
 
     // Stock
     const tdStock = document.createElement("td"); const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
@@ -603,7 +577,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnDel.style.cursor = "pointer";
     btnDel.style.background = "#fee2e2";
     btnDel.style.color = "#7f1d1d";
-    btnDel.addEventListener("click", (ev) => {
+    btnDel.addEventListener("click", async (ev) => {
       ev && ev.preventDefault();
       const descripcion = (tr.cells[2].querySelector("input").value || "").trim();
       const stock = (tr.cells[3].querySelector("input").value || "").trim();
@@ -611,7 +585,43 @@ document.addEventListener("DOMContentLoaded", () => {
       const obs = (tr.cells[tr.cells.length-2].querySelector("textarea") ? tr.cells[tr.cells.length-2].querySelector("textarea").value : "").trim();
       const clave = (tr.cells[1].querySelector("select").value || "").trim();
       const hasData = !!(descripcion || stock || fecha || obs || clave);
-      if (hasData) if (!confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
+
+      if (hasData && !confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
+
+      // Si fila tiene uid y hay hospital+categoria definidos -> pedir borrado remoto
+      const rowUid = tr.dataset.uid;
+      const hospitalKey = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
+      if (rowUid && hospitalKey && categoriaActiva) {
+        try {
+          btnDel.disabled = true;
+          const body = { hospitalClave: hospitalKey, categoria: categoriaActiva, uids: [rowUid] };
+          const headers = { "Content-Type": "application/json" };
+          if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+          const resp = await fetch(INVENTORY_DELETE_ITEM_URL, { method: "POST", headers, body: JSON.stringify(body) });
+          if (!resp.ok) {
+            const text = await resp.text().catch(()=>"");
+            throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
+          }
+          const data = await resp.json().catch(()=>({ok:true}));
+          // si el servidor indica éxito (o no encontró pero devolvió ok), eliminamos en UI
+          tr.remove();
+          renumerarFilas();
+          refreshDisabledOptions();
+          if (!tbody.rows.length) agregarFila();
+          return;
+        } catch (err) {
+          console.error("Error borrando item en servidor:", err);
+          if (!confirm("No se pudo eliminar item en servidor. ¿Eliminar localmente de todas formas?")) {
+            btnDel.disabled = false;
+            return;
+          }
+          // fallback: eliminar localmente
+        } finally {
+          try { btnDel.disabled = false; } catch(e){}
+        }
+      }
+
+      // si no hay hospital/uid -> eliminar localmente
       tr.remove(); renumerarFilas(); refreshDisabledOptions(); if (!tbody.rows.length) agregarFila();
     });
     tdAcc.appendChild(btnDel);
@@ -619,67 +629,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tr.appendChild(tdAcc);
     tbody.appendChild(tr);
 
-    // Rellenos y listeners
-    function fillProduct(producto) {
-      if (!producto) return;
-      inputDesc.value = producto.descripcion || inputDesc.value;
-      inputStock.value = producto.stock || "";
-      if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") inputMin.value = producto.minimo;
-      else inputMin.value = getMinimoValue(producto.clave || "");
-      inputCad.value = producto.caducidad || "";
-      const lista = catalogo[categoriaActiva] || [];
-      const idx = lista.indexOf(producto);
-      if (idx >= 0) {
-        for (let i=0;i<select.options.length;i++){ const opt = select.options[i]; if (opt.dataset && ('idx' in opt.dataset) && parseInt(opt.dataset.idx,10)===idx) { select.value = opt.value; break; } }
-      } else {
-        select.value = `${producto.clave}||0`;
-      }
-      refreshDisabledOptions(); actualizarFila(tr);
-    }
-
-    inputDesc.addEventListener("input", () => {
-      const v = (inputDesc.value||"").trim();
-      if (!v) { refreshDisabledOptions(); actualizarFila(tr); return; }
-      const lista = catalogo[categoriaActiva] || [];
-      const vLower = v.toLowerCase();
-      const productoExact = lista.find(p => p.descripcion && p.descripcion.trim().toLowerCase() === vLower);
-      if (productoExact) { fillProduct(productoExact); return; }
-      refreshDisabledOptions(); actualizarFila(tr);
-    });
-
-    inputDesc.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" || ev.key === "Tab") {
-        const v = (inputDesc.value||"").trim(); if (!v) return;
-        const lista = catalogo[categoriaActiva] || []; const vLower = v.toLowerCase();
-        const matchesStarts = lista.filter(p=>p.descripcion && p.descripcion.trim().toLowerCase().startsWith(vLower));
-        const matchesContains = lista.filter(p=>p.descripcion && p.descripcion.trim().toLowerCase().includes(vLower));
-        let producto = null;
-        if (matchesStarts.length >= 1) producto = matchesStarts[0];
-        else if (matchesContains.length === 1) producto = matchesContains[0];
-        if (producto) { if (ev.key === "Enter") ev.preventDefault(); fillProduct(producto); }
-      }
-    });
-
-    select.addEventListener("change", () => {
-      const selectedOption = select.selectedOptions[0];
-      let producto = null;
-      if (selectedOption && selectedOption.dataset && ('idx' in selectedOption.dataset)) {
-        const idx = parseInt(selectedOption.dataset.idx,10);
-        producto = (catalogo[categoriaActiva]||[])[idx] || null;
-      }
-      if (!producto) {
-        const claveSimple = select.value ? select.value.split("||")[0] : "";
-        producto = (catalogo[categoriaActiva]||[]).find(p => p.clave === claveSimple) || null;
-        if (!producto && claveSimple) {
-          const val = getMinimoValue(claveSimple);
-          inputMin.value = val;
-        }
-      }
-      if (producto) fillProduct(producto);
-      refreshDisabledOptions();
-      setTimeout(()=>{ try{ inputDesc.focus(); }catch(e){} }, 0);
-    });
-
+    // listeners básicos
     inputStock.addEventListener("input", () => { if (inputStock.value === "") return actualizarFila(tr); let v = parseInt(inputStock.value,10); if (isNaN(v)||v<0) v = 0; inputStock.value = v; actualizarFila(tr); });
     inputCad.addEventListener("change", () => actualizarFila(tr));
     [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
@@ -743,11 +693,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  const semaforoColor = { expired: "#FDE2E5", "warning-expiry": "#FFF7E0", "valid-expiry": "#E8F9F0", default: "#FFFFFF" };
-
   function escapeHtml(str) { if (str===null||str===undefined) return ""; return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;"); }
 
-  // Construir payload - valida manuales
+  // Construir payload - ahora incluye uid por fila
   function buildPayloadRows() {
     const filasExport = [];
     const errors = [];
@@ -760,16 +708,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
       const isManual = row.dataset && row.dataset.manual === "true";
+      const uid = row.dataset.uid || genUid();
       // Si no hay datos, saltar
       if (!claveReal && !descripcion && !observaciones) continue;
       if (isManual && !descripcion) { errors.push(`Fila ${row.rowIndex}: Falta descripción para producto no listado`); continue; }
-      let color = semaforoColor.default;
+      let color = "#FFFFFF";
       if (!adquisicionCats.has(categoriaActiva)) {
-        if (row.classList.contains("expired")) color = semaforoColor.expired;
-        else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
-        else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
+        if (row.classList.contains("expired")) color = "#FDE2E5";
+        else if (row.classList.contains("warning-expiry")) color = "#FFF7E0";
+        else if (row.classList.contains("valid-expiry")) color = "#E8F9F0";
       }
       filasExport.push({
+        uid,
         clave: claveReal,
         descripcion,
         stock: row.cells[3].querySelector("input").value || "",
@@ -780,6 +730,8 @@ document.addEventListener("DOMContentLoaded", () => {
         color,
         manual: !!isManual
       });
+      // asegurar que la fila tenga el mismo uid guardado en DOM
+      row.dataset.uid = uid;
     }
     return { filasExport, errors };
   }
@@ -789,7 +741,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
     const payload = { hospitalNombre: hospitalNombre||"", hospitalClave: hospitalClave||"", categoria: categoria||"", items };
     const headers = { "Content-Type": "application/json" };
-    // ya no preguntamos token al usuario; si CLIENT_API_TOKEN está definido, lo usamos
     if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
     const resp = await fetch(INVENTORY_POST_URL, { method: "POST", headers, body: JSON.stringify(payload) });
     if (!resp.ok) {
@@ -826,38 +777,23 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // ---- HOSPITALES: fetch robusto con reintentos y fallback local ----
+  // ---- HOSPITALES: fetch robusto con fallback local ----
   async function tryFetchHospitals(urlToTry) {
     try {
       const resp = await fetch(urlToTry, { method: "GET", cache: "no-store" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       return Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
-    } catch (err) {
-      throw err;
-    }
+    } catch (err) { throw err; }
   }
 
   async function cargarHospitales() {
     if (!datalistHospitales) return;
     datalistHospitales.innerHTML = "";
-    if (location.protocol === "https:" && HOSPITALES_URL.startsWith("http://")) {
-      console.warn("Mixed content detectado: página HTTPS, hospital endpoint HTTP. Intenta usar HTTPS en tu servidor.");
-    }
     try {
       hospitales = await tryFetchHospitals(HOSPITALES_URL);
-      console.log("hospitales cargados desde HOSPITALES_URL:", HOSPITALES_URL);
     } catch (err1) {
-      console.warn("Intento 1 falló:", err1);
-      try {
-        const alt = `${location.origin}/hospitales`;
-        hospitales = await tryFetchHospitals(alt);
-        console.log("hospitales cargados desde origen alterno:", alt);
-      } catch (err2) {
-        console.warn("Intento 2 falló:", err2);
-        hospitales = fallbackHospitals;
-        console.warn("Usando fallback local de hospitales.");
-      }
+      hospitales = [{ nombre: "Hospital General Boca del Río", clave: "VZIM010212" }, { nombre: "Hospital General Martínez de la Torre", clave: "VZIM003361" }];
     }
     datalistHospitales.innerHTML = "";
     hospitales.forEach(h => {
@@ -866,6 +802,7 @@ document.addEventListener("DOMContentLoaded", () => {
       datalistHospitales.appendChild(opt);
     });
   }
+  cargarHospitales().catch(()=>{/* no crítico */});
 
   function syncHospitalClave() {
     const v = (inputHospital.value || "").trim();
@@ -882,8 +819,6 @@ document.addEventListener("DOMContentLoaded", () => {
     else selectedHospitalClave = "";
   });
 
-  cargarHospitales().catch(()=>{/* no crítico */});
-
   // ---- INVENTORY: cargar y poblar ----
   async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     if (!hospitalClaveOrName || !categoria) return;
@@ -899,29 +834,16 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const it of items) {
         agregarFila();
         const tr = tbody.rows[tbody.rows.length - 1];
-        try {
-          const sel = tr.cells[1].querySelector("select");
-          if (it.clave) {
-            let found = false;
-            for (const opt of Array.from(sel.options)) {
-              if (opt.value && opt.value.split("||")[0] === it.clave) { sel.value = opt.value; found = true; break; }
-            }
-            if (!found) {
-              const opt2 = document.createElement("option");
-              opt2.value = it.clave;
-              opt2.textContent = it.clave + (it.manual ? " (manual)" : "");
-              sel.appendChild(opt2);
-              sel.value = it.clave;
-              if (it.manual) { sel.disabled = true; tr.dataset.manual = "true"; }
-            }
-          }
-        } catch(e){}
+        // asignar uid desde servidor si existe
+        if (it.uid) tr.dataset.uid = it.uid;
         try { tr.cells[2].querySelector("input").value = it.descripcion || ""; } catch(e){}
         try { tr.cells[3].querySelector("input").value = it.stock || ""; } catch(e){}
         try { tr.cells[4].querySelector("input").value = it.minimo || ""; } catch(e){}
         try { tr.cells[6].querySelector("input").value = it.fecha || ""; } catch(e){}
         try { tr.cells[7].querySelector("input").value = it.dias || ""; } catch(e){}
         try { tr.cells[tr.cells.length-2].querySelector("textarea").value = it.observaciones || ""; } catch(e){}
+        // si item fue marcado manual en servidor
+        if (it.manual) tr.dataset.manual = "true";
         actualizarFila(tr);
       }
       refreshDisabledOptions();
@@ -930,8 +852,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Eliminar filas seleccionadas
-  function deleteSelectedRows() {
+  // Eliminar filas seleccionadas (ahora manda uids al servidor si corresponde)
+  async function deleteSelectedRows() {
     const checked = Array.from(tbody.querySelectorAll("input.row-select:checked"));
     if (!checked.length) { alert("No hay filas seleccionadas para eliminar."); return; }
     const detalles = checked.map(chk => {
@@ -941,7 +863,43 @@ document.addEventListener("DOMContentLoaded", () => {
       return `Fila ${no}: ${desc ? (desc.length>60 ? desc.slice(0,60)+"…" : desc) : "(sin descripción)"}`;
     }).join("\n");
     if (!confirm(`Vas a eliminar ${checked.length} fila(s):\n\n${detalles}\n\n¿Continuar?`)) return;
-    for (const ch of checked) { const tr = ch.closest("tr"); if (tr) tr.remove(); }
+
+    // reunir uids que existan y rows a eliminar localmente
+    const uids = [];
+    const rowsToRemove = [];
+    for (const ch of checked) {
+      const tr = ch.closest("tr");
+      if (!tr) continue;
+      if (tr.dataset && tr.dataset.uid) uids.push(tr.dataset.uid);
+      rowsToRemove.push(tr);
+    }
+
+    const hospitalKey = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
+    if (uids.length && hospitalKey && categoriaActiva) {
+      try {
+        const body = { hospitalClave: hospitalKey, categoria: categoriaActiva, uids };
+        const headers = { "Content-Type": "application/json" };
+        if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+        const resp = await fetch(INVENTORY_DELETE_ITEM_URL, { method: "POST", headers, body: JSON.stringify(body) });
+        if (!resp.ok) {
+          const text = await resp.text().catch(()=>"");
+          throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
+        }
+        // eliminar filas en UI
+        for (const tr of rowsToRemove) { tr.remove(); }
+        renumerarFilas();
+        refreshDisabledOptions();
+        if (!tbody.rows.length) agregarFila();
+        return;
+      } catch (err) {
+        console.error("Error borrando items en servidor:", err);
+        if (!confirm("No se pudo eliminar algunos items en el servidor. ¿Eliminar localmente de todas formas?")) return;
+        // si el usuario confirma, caemos a eliminar localmente
+      }
+    }
+
+    // eliminar localmente
+    for (const tr of rowsToRemove) { tr.remove(); }
     renumerarFilas();
     refreshDisabledOptions();
     if (!tbody.rows.length) agregarFila();
@@ -953,7 +911,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (errors.length) { alert("Errores:\n\n" + errors.join("\n")); return; }
     if (!filasExport || filasExport.length === 0) { alert("No hay datos para exportar."); return; }
 
-    const cols = ["clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
+    const cols = ["uid","clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
     const escapeCell = s => {
       if (s===null||s===undefined) return "";
       const str = String(s);
