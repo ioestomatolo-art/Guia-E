@@ -260,8 +260,8 @@ button:focus, select:focus, input:focus {
   padding: 8px 6px; /* más espacio vertical/horizontal */
 }
 
-/* Si usas una columna dedicada para checkboxes (por ejemplo columna 1 o 0),
-   pon la clase .select-cell en la celda; si no, las reglas siguientes se aplican a cualquier checkbox en la tabla */
+/* Si se una columna dedicada para checkboxes (por ejemplo columna 1 o 0),
+   se pone la clase .select-cell en la celda; si no, las reglas siguientes se aplican a cualquier checkbox en la tabla */
 #tablaInsumos td.select-cell,
 #tablaInsumos th.select-cell {
   display: flex;
@@ -335,7 +335,7 @@ button:focus, select:focus, input:focus {
 /* Aumentar área clicable: etiqueta que envuelve el checkbox puede recibir clicks */
 #tablaInsumos label.checkbox-wrapper { cursor: pointer; }
 
-/* Si prefieres que la columna de selección tenga un fondo sutil */
+/*  fondo sutil */
 #tablaInsumos th.select-cell {
   background: rgba(255,255,255,0.98);
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);

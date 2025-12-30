@@ -1,4 +1,4 @@
-// Logica.js - Con ordenamiento automático por caducidad (fecha más próxima arriba)
+// Logica.js 
 document.addEventListener("DOMContentLoaded", () => {
   // ======== Config ========
   let categoriaActiva = null;
@@ -8,8 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedHospitalClave = "";
   let rowCreationCounter = 0; // para data-order estable
 
-  // Ajusta estas URLs a tu servidor en Render (o local para pruebas)
-  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <--- CAMBIA a tu URL real
+  // Ajustar  URLs a  servidor en Render (o local para pruebas)
+  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <--- CAMBIA de URL 
   const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
   // ================= CATALOGO (placeholder) =================
-  // Sustituye con tu catálogo real; debe ser { insumos: [ {clave:'XXX', descripcion:'...', minimo: 2, caducidad:'2025-01-01', stock:0}, ... ], material: [...], ... }
+  // Anteriormente en la base de datos
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -235,7 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // -----------------------------------------------------------------------------------------------
     
     // ------------------ MINIMOS DEFINIDOS (categoria: material) ------------------
-    // Lista provista por ti; mantenida aquí como referencia para rellenar "mínimo" en 'material'.
+    // Lista provista ; mantenida aquí como referencia para rellenar "mínimo" en 'material'.
     const minimosDefinidos = {
     "060.016.0204": 1,
     "060.016.0253": 1,
@@ -315,7 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0224": 2,
     "060.889.0232": 2,
     "060.889.0208": 2
-    // ... (mantén el resto como lo tienes)
+    
     };
 
   // fallback hospitals si no se puede fetch
@@ -842,7 +842,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
     const payload = { hospitalNombre: hospitalNombre||"", hospitalClave: hospitalClave||"", categoria: categoria||"", items };
     const headers = { "Content-Type": "application/json" };
-    // ya no preguntamos token al usuario; si CLIENT_API_TOKEN está definido, lo usamos
+    // ya no preguntamos token al usuario; si CLIENT_API_TOKEN está definido, se usa
     if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
     const resp = await fetch(INVENTORY_POST_URL, { method: "POST", headers, body: JSON.stringify(payload) });
     if (!resp.ok) {
