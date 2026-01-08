@@ -1,4 +1,4 @@
-// Logica.js 
+
 document.addEventListener("DOMContentLoaded", () => {
   // ======== Config ========
   let categoriaActiva = null;
@@ -6,20 +6,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let lastAddTime = 0;
   let hospitales = [];
   let selectedHospitalClave = "";
-  let rowCreationCounter = 0; // para data-order estable
+  let rowCreationCounter = 0;
 
-  // Ajustar  URLs a  servidor en Render (o local para pruebas)
-  const SERVER_BASE = "https://servidor-4wu6.onrender.com"; // <--- CAMBIA de URL 
+  const SERVER_BASE = "https://servidor-4wu6.onrender.com";
   const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
-  const CLIENT_API_TOKEN = ""; // si quieres que el cliente envíe un token (opcional). Si lo dejas vacío, no se enviará.
+  const INVENTORY_DELETE_ITEM_URL = `${SERVER_BASE}/inventory/item/delete`;
+  const CLIENT_API_TOKEN = ""; 
 
-  // categorías tratadas como adquisiciones (afecta encabezados y cálculo de días)
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // ================= CATALOGO (placeholder) =================
-  // Anteriormente en la base de datos
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -318,7 +315,6 @@ document.addEventListener("DOMContentLoaded", () => {
     
     };
 
-  // fallback hospitals si no se puede fetch
   const fallbackHospitals = [
     { nombre: "Hospital General Boca del Río", clave: "VZIM010212" },
     { nombre: "Hospital General Martínez de la Torre", clave: "VZIM003361" }
@@ -341,7 +337,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function safeEscapeCss(s) { try { return CSS.escape(s); } catch(e) { return String(s).replace(/[[\\\]"']/g,"\\$&"); } }
 
-  // Asegura headers Observaciones y Acciones
   function ensureHeaders() {
     if (!tabla) return;
     const thead = tabla.querySelector("thead");
@@ -356,10 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   ensureHeaders();
 
-  // Generador de uid (cliente) para filas temporales/automáticas
-  function genUid() {
-    return `uid-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-  }
+  function genUid() { return `uid-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
 
   function updateCaducidadHeader() {
     if (!tabla) return;
@@ -375,7 +367,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (thead.querySelectorAll("th")[diasIdx]) thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
   }
 
-  // mueve/crea botones en page2 y crea el botón de descarga en page1
   function moveButtonsToCardBottom() {
     const page2 = document.getElementById("page2"); if (!page2 || !tabla) return;
     const card = page2.querySelector(".card") || page2;
@@ -391,7 +382,6 @@ document.addEventListener("DOMContentLoaded", () => {
       else card.appendChild(bottom);
     }
 
-    // crear botón manual si no existe
     if (!btnAgregarManual) {
       btnAgregarManual = document.createElement("button");
       btnAgregarManual.id = "btnAgregarManual";
@@ -406,7 +396,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // crear botón eliminar seleccionados si no existe
     let btnEliminarSeleccionados = document.getElementById("btnEliminarSeleccionados");
     if (!btnEliminarSeleccionados) {
       btnEliminarSeleccionados = document.createElement("button");
@@ -421,7 +410,6 @@ document.addEventListener("DOMContentLoaded", () => {
       btnEliminarSeleccionados.addEventListener("click", (ev) => { ev&&ev.preventDefault(); deleteSelectedRows(); });
     }
 
-    // reubicar botones en page2 (Regresar, Agregar, Agregar manual, Enviar, Eliminar seleccionados)
     const btns = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarSeleccionados];
     btns.forEach(b => {
       if (!b) return;
@@ -436,11 +424,9 @@ document.addEventListener("DOMContentLoaded", () => {
       else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
     });
 
-    // --- CREAR BOTÓN "Descargar reporte" EN LA PRIMERA PANTALLA ---
     try {
       const page1 = document.getElementById("page1");
       const card1 = page1.querySelector(".card");
-      // busca área de acciones; si no existe, crea una
       let actions = card1.querySelector(".actions");
       if (!actions) {
         actions = document.createElement("div");
@@ -450,7 +436,6 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.style.justifyContent = "flex-end";
         card1.appendChild(actions);
       }
-      // si ya hay un botón con id btnDescargarPage1, no crearlo dos veces
       if (!document.getElementById("btnDescargarPage1")) {
         btnDescargarPage1 = document.createElement("button");
         btnDescargarPage1.id = "btnDescargarPage1";
@@ -458,7 +443,6 @@ document.addEventListener("DOMContentLoaded", () => {
         btnDescargarPage1.title = "Descargar CSV del inventario actual";
         btnDescargarPage1.style.marginLeft = "8px";
         btnDescargarPage1.addEventListener("click", (ev) => { ev&&ev.preventDefault(); downloadCSV(); });
-        // estilo simple
         btnDescargarPage1.style.background = "#111827";
         btnDescargarPage1.style.color = "#fff";
         btnDescargarPage1.style.padding = "8px 12px";
@@ -477,26 +461,31 @@ document.addEventListener("DOMContentLoaded", () => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
     if (!cat) return alert("Selecciona una categoría.");
+
+    // -- nuevo: requerir hospital antes de continuar --
+    // sincroniza la clave (si el usuario seleccionó desde datalist)
+    syncHospitalClave();
+    const hospitalInputValue = inputHospital ? (inputHospital.value || "").trim() : "";
+    if (!hospitalInputValue) {
+      return alert("Debes ingresar o seleccionar el nombre del hospital antes de continuar.");
+    }
+    // Si se requiere forzar que el hospital coincida exactamente con la lista,
+    //  Se usa `if (!selectedHospitalClave) { return alert("Selecciona un hospital válido de la lista."); }`
+    // por ahora permitimos nombre libre, pero se exigr que no esté vacío.
+
     const categoriaCambio = categoriaActiva && categoriaActiva !== cat;
     if (categoriaCambio) limpiarTabla();
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
 
-    // sincroniza clave hospital y carga inventario
-    syncHospitalClave();
-    const key = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
-    try {
-      await loadInventoryAndPopulate(key, categoriaActiva);
-    } catch (err) {
-      console.warn("No se pudo cargar inventory:", err);
-    }
+    const key = selectedHospitalClave || hospitalInputValue;
+    try { await loadInventoryAndPopulate(key, categoriaActiva); } catch (err) { console.warn("No se pudo cargar inventory:", err); }
 
     document.getElementById("page1").classList.remove("activo"); document.getElementById("page1").classList.add("oculto");
     document.getElementById("page2").classList.remove("oculto"); document.getElementById("page2").classList.add("activo");
     updateCaducidadHeader();
     if (!tbody.rows.length) agregarFila();
     moveButtonsToCardBottom();
-    // ordenar después de mostrar
     sortRowsByCaducidad();
   };
 
@@ -515,7 +504,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
     btnAgregar.disabled = true; setTimeout(()=>btnAgregar.disabled=false,300);
     agregarFila();
-    // ordenar despues de agregar
     sortRowsByCaducidad();
   };
 
@@ -548,7 +536,6 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const r of tbody.rows) { filaContador++; const noCell = r.cells[0]; if (noCell) noCell.textContent = filaContador; }
   }
 
-  // Obtiene valor numérico de la fecha de la fila (ms desde epoch). Si no hay fecha -> +Infinity
   function getRowDateValue(tr) {
     try {
       const inputCad = tr.cells[6].querySelector("input");
@@ -562,13 +549,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Ordena las filas del tbody por la fecha (más próxima arriba). Estable en empates usando data-order.
   function sortRowsByCaducidad() {
     if (!tbody) return;
-    // construir array de filas
     const rows = Array.from(tbody.rows);
     if (!rows.length) return;
-    // stable sort por fecha asc (fecha más pequeña = más próxima), luego por data-order asc
     rows.sort((a,b) => {
       const da = getRowDateValue(a);
       const db = getRowDateValue(b);
@@ -579,7 +563,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return da - db;
     });
-    // re-append en nuevo orden
     const fragment = document.createDocumentFragment();
     rows.forEach(r => fragment.appendChild(r));
     tbody.appendChild(fragment);
@@ -592,7 +575,8 @@ document.addEventListener("DOMContentLoaded", () => {
     filaContador++;
     rowCreationCounter++;
     const tr = document.createElement("tr");
-    tr.dataset.order = String(rowCreationCounter); // orden estable
+    tr.dataset.order = String(rowCreationCounter);
+
     // No.
     const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
 
@@ -653,7 +637,8 @@ document.addEventListener("DOMContentLoaded", () => {
     btnDel.style.cursor = "pointer";
     btnDel.style.background = "#fee2e2";
     btnDel.style.color = "#7f1d1d";
-    btnDel.addEventListener("click", (ev) => {
+
+    btnDel.addEventListener("click", async (ev) => {
       ev && ev.preventDefault();
       const descripcion = (tr.cells[2].querySelector("input").value || "").trim();
       const stock = (tr.cells[3].querySelector("input").value || "").trim();
@@ -661,15 +646,55 @@ document.addEventListener("DOMContentLoaded", () => {
       const obs = (tr.cells[tr.cells.length-2].querySelector("textarea") ? tr.cells[tr.cells.length-2].querySelector("textarea").value : "").trim();
       const clave = (tr.cells[1].querySelector("select").value || "").trim();
       const hasData = !!(descripcion || stock || fecha || obs || clave);
-      if (hasData) if (!confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
+      if (hasData && !confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
+
+      const rowUid = tr.dataset.uid;
+      const hospitalKey = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
+      if (rowUid && hospitalKey && categoriaActiva) {
+        // pedir borrado remoto
+        try {
+          btnDel.disabled = true;
+          const body = { hospitalClave: hospitalKey, categoria: categoriaActiva, uids: [rowUid] };
+          const headers = { "Content-Type": "application/json" };
+          if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+          const resp = await fetch(INVENTORY_DELETE_ITEM_URL, { method: "POST", headers, body: JSON.stringify(body) });
+          if (!resp.ok) {
+            const text = await resp.text().catch(()=>"");
+            throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
+          }
+          const data = await resp.json().catch(()=>({ok:true}));
+          if (data && data.ok) {
+            // eliminar en UI
+            tr.remove();
+            renumerarFilas();
+            refreshDisabledOptions();
+            if (!tbody.rows.length) agregarFila();
+            return;
+          } else {
+            throw new Error("Servidor respondió sin ok.");
+          }
+        } catch (err) {
+          console.error("Error borrando item en servidor:", err);
+          if (!confirm("No se pudo eliminar item en servidor. ¿Eliminar localmente de todas formas?")) {
+            btnDel.disabled = false;
+            return;
+          }
+          // fallback: eliminar localmente
+        } finally {
+          try { btnDel.disabled = false; } catch(e){}
+        }
+      }
+
+      // si no hay uid/hospital -> eliminar localmente
       tr.remove(); renumerarFilas(); refreshDisabledOptions(); if (!tbody.rows.length) agregarFila();
     });
+
     tdAcc.appendChild(btnDel);
 
     tr.appendChild(tdAcc);
     tbody.appendChild(tr);
 
-    // Rellenos y listeners
+    // listeners y helpers (idénticos a versiones anteriores)
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -738,7 +763,6 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshDisabledOptions();
   } // fin agregarFila
 
-  // Agregar fila manual (no listado)
   function agregarFilaManual() {
     agregarFila();
     const tr = tbody.rows[tbody.rows.length-1];
@@ -800,7 +824,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function escapeHtml(str) { if (str===null||str===undefined) return ""; return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;"); }
 
-  // Construir payload - valida manuales
+  // Ahora devuelve uid por fila y actualiza dataset.uid para que server y cliente compartan ids
   function buildPayloadRows() {
     const filasExport = [];
     const errors = [];
@@ -813,7 +837,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
       const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
       const isManual = row.dataset && row.dataset.manual === "true";
-      // Si no hay datos, saltar
+
+      // generar/usar uid (asegura existencia)
+      const uidExisting = row.dataset && row.dataset.uid ? row.dataset.uid : null;
+      const uid = uidExisting || genUid();
+      row.dataset.uid = uid; // aseguro que DOM tenga uid
+
       if (!claveReal && !descripcion && !observaciones) continue;
       if (isManual && !descripcion) { errors.push(`Fila ${row.rowIndex}: Falta descripción para producto no listado`); continue; }
       let color = semaforoColor.default;
@@ -822,7 +851,9 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
         else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
       }
+
       filasExport.push({
+        uid,
         clave: claveReal,
         descripcion,
         stock: row.cells[3].querySelector("input").value || "",
@@ -837,22 +868,20 @@ document.addEventListener("DOMContentLoaded", () => {
     return { filasExport, errors };
   }
 
-  // Guardar inventario en servidor (POST /inventory)
   async function saveInventoryToServer(hospitalNombre, hospitalClave, categoria, items) {
     if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
     const payload = { hospitalNombre: hospitalNombre||"", hospitalClave: hospitalClave||"", categoria: categoria||"", items };
     const headers = { "Content-Type": "application/json" };
-    // ya no preguntamos token al usuario; si CLIENT_API_TOKEN está definido, se usa
     if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
     const resp = await fetch(INVENTORY_POST_URL, { method: "POST", headers, body: JSON.stringify(payload) });
     if (!resp.ok) {
       const txt = await resp.text().catch(()=>"");
       throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
     }
-    return resp.json();
+    const data = await resp.json().catch(()=>null);
+    return data;
   }
 
-  // Enviar / Guardar inventario (sin prompt de token)
   if (btnEnviar) {
     btnEnviar.onclick = async (ev) => {
       ev && ev.preventDefault();
@@ -879,24 +908,19 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // ---- HOSPITALES: fetch robusto con reintentos y fallback local ----
+  // ---- HOSPITALES ----
   async function tryFetchHospitals(urlToTry) {
     try {
       const resp = await fetch(urlToTry, { method: "GET", cache: "no-store" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       return Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
-    } catch (err) {
-      throw err;
-    }
+    } catch (err) { throw err; }
   }
 
   async function cargarHospitales() {
     if (!datalistHospitales) return;
     datalistHospitales.innerHTML = "";
-    if (location.protocol === "https:" && HOSPITALES_URL.startsWith("http://")) {
-      console.warn("Mixed content detectado: página HTTPS, hospital endpoint HTTP. Intenta usar HTTPS en tu servidor.");
-    }
     try {
       hospitales = await tryFetchHospitals(HOSPITALES_URL);
       console.log("hospitales cargados desde HOSPITALES_URL:", HOSPITALES_URL);
@@ -919,6 +943,7 @@ document.addEventListener("DOMContentLoaded", () => {
       datalistHospitales.appendChild(opt);
     });
   }
+  cargarHospitales().catch(()=>{/* no crítico */});
 
   function syncHospitalClave() {
     const v = (inputHospital.value || "").trim();
@@ -935,9 +960,7 @@ document.addEventListener("DOMContentLoaded", () => {
     else selectedHospitalClave = "";
   });
 
-  cargarHospitales().catch(()=>{/* no crítico */});
-
-  // ---- INVENTORY: cargar y poblar ----
+  // ---- INVENTORY: cargar y poblar (asegura dataset.uid si el servidor lo retorna) ----
   async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     if (!hospitalClaveOrName || !categoria) return;
     if (!INVENTORY_GET_URL) { console.warn("INVENTORY_GET_URL no configurada."); return; }
@@ -952,43 +975,26 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const it of items) {
         agregarFila();
         const tr = tbody.rows[tbody.rows.length - 1];
-        try {
-          const sel = tr.cells[1].querySelector("select");
-          if (it.clave) {
-            let found = false;
-            for (const opt of Array.from(sel.options)) {
-              if (opt.value && opt.value.split("||")[0] === it.clave) { sel.value = opt.value; found = true; break; }
-            }
-            if (!found) {
-              const opt2 = document.createElement("option");
-              opt2.value = it.clave;
-              opt2.textContent = it.clave + (it.manual ? " (manual)" : "");
-              sel.appendChild(opt2);
-              sel.value = it.clave;
-              if (it.manual) { sel.disabled = true; tr.dataset.manual = "true"; }
-            }
-          }
-        } catch(e){}
+        // asignar uid desde servidor si existe
+        if (it.uid) tr.dataset.uid = it.uid;
         try { tr.cells[2].querySelector("input").value = it.descripcion || ""; } catch(e){}
         try { tr.cells[3].querySelector("input").value = it.stock || ""; } catch(e){}
         try { tr.cells[4].querySelector("input").value = it.minimo || ""; } catch(e){}
         try { tr.cells[6].querySelector("input").value = it.fecha || ""; } catch(e){}
         try { tr.cells[7].querySelector("input").value = it.dias || ""; } catch(e){}
         try { tr.cells[tr.cells.length-2].querySelector("textarea").value = it.observaciones || ""; } catch(e){}
-        // si item fue marcado manual en servidor
         if (it.manual) tr.dataset.manual = "true";
         actualizarFila(tr);
       }
       refreshDisabledOptions();
-      // ordenar luego de poblar
       sortRowsByCaducidad();
     } catch (err) {
       console.error("loadInventoryAndPopulate error:", err);
     }
   }
 
-  // Eliminar filas seleccionadas
-  function deleteSelectedRows() {
+  // Eliminar filas seleccionadas -> ahora con llamada al servidor
+  async function deleteSelectedRows() {
     const checked = Array.from(tbody.querySelectorAll("input.row-select:checked"));
     if (!checked.length) { alert("No hay filas seleccionadas para eliminar."); return; }
     const detalles = checked.map(chk => {
@@ -998,19 +1004,55 @@ document.addEventListener("DOMContentLoaded", () => {
       return `Fila ${no}: ${desc ? (desc.length>60 ? desc.slice(0,60)+"…" : desc) : "(sin descripción)"}`;
     }).join("\n");
     if (!confirm(`Vas a eliminar ${checked.length} fila(s):\n\n${detalles}\n\n¿Continuar?`)) return;
-    for (const ch of checked) { const tr = ch.closest("tr"); if (tr) tr.remove(); }
+
+    const uids = [];
+    const rowsToRemove = [];
+    for (const ch of checked) {
+      const tr = ch.closest("tr");
+      if (!tr) continue;
+      if (tr.dataset && tr.dataset.uid) uids.push(tr.dataset.uid);
+      rowsToRemove.push(tr);
+    }
+
+    const hospitalKey = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
+    if (uids.length && hospitalKey && categoriaActiva) {
+      try {
+        const body = { hospitalClave: hospitalKey, categoria: categoriaActiva, uids };
+        const headers = { "Content-Type": "application/json" };
+        if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+        const resp = await fetch(INVENTORY_DELETE_ITEM_URL, { method: "POST", headers, body: JSON.stringify(body) });
+        if (!resp.ok) {
+          const text = await resp.text().catch(()=>"");
+          throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
+        }
+        const data = await resp.json().catch(()=>null);
+        // eliminar filas en UI si servidor confirmó (o si no devuelve, asumir ok)
+        for (const tr of rowsToRemove) { tr.remove(); }
+        renumerarFilas();
+        refreshDisabledOptions();
+        if (!tbody.rows.length) agregarFila();
+        return;
+      } catch (err) {
+        console.error("Error borrando items en servidor:", err);
+        if (!confirm("No se pudo eliminar algunos items en el servidor. ¿Eliminar localmente de todas formas?")) return;
+        // el usuario confirmó: eliminar localmente
+      }
+    }
+
+    // eliminar localmente
+    for (const tr of rowsToRemove) { tr.remove(); }
     renumerarFilas();
     refreshDisabledOptions();
     if (!tbody.rows.length) agregarFila();
   }
 
-  // ---- Descarga CSV (usada por botón en page1) ----
+  // Descarga CSV
   function downloadCSV() {
     const { filasExport, errors } = buildPayloadRows();
     if (errors.length) { alert("Errores:\n\n" + errors.join("\n")); return; }
     if (!filasExport || filasExport.length === 0) { alert("No hay datos para exportar."); return; }
 
-    const cols = ["clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
+    const cols = ["uid","clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
     const escapeCell = s => {
       if (s===null||s===undefined) return "";
       const str = String(s);
@@ -1034,8 +1076,10 @@ document.addEventListener("DOMContentLoaded", () => {
     URL.revokeObjectURL(url);
   }
 
-  // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
+
+
+
 
 
