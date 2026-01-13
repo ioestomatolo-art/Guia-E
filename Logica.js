@@ -1,4 +1,4 @@
-
+// Logica.js - versión: exigir selección explícita de hospital (no permitir nombres libres)
 document.addEventListener("DOMContentLoaded", () => {
   // ======== Config ========
   let categoriaActiva = null;
@@ -13,11 +13,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_DELETE_ITEM_URL = `${SERVER_BASE}/inventory/item/delete`;
-  const CLIENT_API_TOKEN = ""; 
+  const CLIENT_API_TOKEN = "";
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  const catalogo = {
+  // placeholder de catálogo (mantener o rellenar con tus datos)
+  const catalogo = { 
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
       { clave: "S/C", descripcion: "MEPIVACAÍNA 3% SIN VASOCONSTRICTOR. CAJA CON 50 CARTUCHOS DENTALES DE 1.8 ML CADA UNO.", stock: "", minimo: "", caducidad: "" },
@@ -314,6 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "060.889.0208": 2
     
     };
+  
 
   const fallbackHospitals = [
     { nombre: "Hospital General Boca del Río", clave: "VZIM010212" },
@@ -456,29 +458,93 @@ document.addEventListener("DOMContentLoaded", () => {
 
   moveButtonsToCardBottom();
 
-  // NAV
+  // -------------------------
+  // Normalización y búsqueda de hospitales (EXACT MATCH required)
+  // -------------------------
+  function stripAccents(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).normalize ? String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '') : String(str);
+  }
+  function normalizeStr(s) {
+    return stripAccents(String(s || "")).trim().toLowerCase();
+  }
+
+  let hospitalesIndex = []; // { nombre, clave, norm }
+  function buildHospitalIndex() {
+    hospitalesIndex = (hospitales || []).map(h => ({
+      nombre: (h.nombre || "").trim(),
+      clave: (h.clave || "").trim(),
+      norm: normalizeStr(h.nombre || h.clave || "")
+    }));
+  }
+
+  // Busca coincidencia exacta normalizada (nombre o clave)
+  function findExactHospitalMatch(input) {
+    if (!input) return null;
+    const q = normalizeStr(input);
+    if (!q) return null;
+    return hospitalesIndex.find(h => (h.norm === q) || (normalizeStr(h.clave) === q)) || null;
+  }
+
+  function ensureHospitalStatusEl() {
+    if (!inputHospital) return null;
+    let el = document.getElementById("hospital-status");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "hospital-status";
+      el.style.marginTop = "6px";
+      el.style.fontSize = "0.92rem";
+      el.style.minHeight = "1.1rem";
+      inputHospital.parentElement && inputHospital.parentElement.appendChild(el);
+    }
+    return el;
+  }
+  function showHospitalStatus(msg, ok) {
+    const el = ensureHospitalStatusEl();
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = ok ? "#065f46" : "#92400e";
+  }
+  function updateHospitalValidationUI() {
+    const v = (inputHospital.value || "").trim();
+    if (!v) {
+      selectedHospitalClave = "";
+      showHospitalStatus("Ingresa o selecciona un hospital de la lista.", false);
+      btnSiguiente.disabled = true;
+      return;
+    }
+    const match = findExactHospitalMatch(v);
+    if (match) {
+      selectedHospitalClave = match.clave || "";
+      showHospitalStatus(`Hospital válido: ${match.nombre} (${selectedHospitalClave})`, true);
+      btnSiguiente.disabled = false;
+    } else {
+      selectedHospitalClave = "";
+      showHospitalStatus("Hospital no reconocido. Selecciona exactamente uno de los hospitales del listado.", false);
+      btnSiguiente.disabled = true;
+    }
+  }
+
+  // NAV: ahora Siguiente sólo avanza si selectedHospitalClave está presente (match exacto)
   btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
     const cat = selCategoria.value;
     if (!cat) return alert("Selecciona una categoría.");
 
-    // -- nuevo: requerir hospital antes de continuar --
-    // sincroniza la clave (si el usuario seleccionó desde datalist)
-    syncHospitalClave();
-    const hospitalInputValue = inputHospital ? (inputHospital.value || "").trim() : "";
-    if (!hospitalInputValue) {
-      return alert("Debes ingresar o seleccionar el nombre del hospital antes de continuar.");
+    // actualizar validación de hospital
+    updateHospitalValidationUI();
+    if (!selectedHospitalClave) {
+      // impedir continuar
+      inputHospital.focus();
+      return alert("Selecciona un hospital válido de la lista antes de continuar. No se permiten nombres libres.");
     }
-    // Si se requiere forzar que el hospital coincida exactamente con la lista,
-    //  Se usa `if (!selectedHospitalClave) { return alert("Selecciona un hospital válido de la lista."); }`
-    // por ahora permitimos nombre libre, pero se exigr que no esté vacío.
 
     const categoriaCambio = categoriaActiva && categoriaActiva !== cat;
     if (categoriaCambio) limpiarTabla();
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
 
-    const key = selectedHospitalClave || hospitalInputValue;
+    const key = selectedHospitalClave;
     try { await loadInventoryAndPopulate(key, categoriaActiva); } catch (err) { console.warn("No se pudo cargar inventory:", err); }
 
     document.getElementById("page1").classList.remove("activo"); document.getElementById("page1").classList.add("oculto");
@@ -694,7 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tr.appendChild(tdAcc);
     tbody.appendChild(tr);
 
-    // listeners y helpers (idénticos a versiones anteriores)
+    // listeners y helpers 
     function fillProduct(producto) {
       if (!producto) return;
       inputDesc.value = producto.descripcion || inputDesc.value;
@@ -890,6 +956,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (filasExport.length === 0) { alert("No hay datos para enviar."); return; }
       if (!INVENTORY_POST_URL) { alert("INVENTORY_POST_URL no configurada."); return; }
       const hospitalNombre = inputHospital ? (inputHospital.value || "").trim() : "";
+      // Asegurar que el hospital sea válido antes de guardar
+      if (!selectedHospitalClave) { alert("Selecciona un hospital válido de la lista antes de enviar."); inputHospital.focus(); return; }
       try {
         btnEnviar.disabled = true; const originalText = btnEnviar.textContent; btnEnviar.textContent = "Guardando...";
         await saveInventoryToServer(hospitalNombre, selectedHospitalClave || hospitalNombre, categoriaActiva, filasExport);
@@ -899,6 +967,8 @@ document.addEventListener("DOMContentLoaded", () => {
         updateCaducidadHeader();
         document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
         document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
+        showHospitalStatus("", true);
+        btnSiguiente.disabled = true;
       } catch (err) {
         console.error("Error al guardar inventario:", err);
         alert("No fue posible guardar el inventario en el servidor:\n\n" + (err.message || err));
@@ -942,22 +1012,32 @@ document.addEventListener("DOMContentLoaded", () => {
       if (h.clave) opt.dataset.clave = h.clave;
       datalistHospitales.appendChild(opt);
     });
+
+    // Construir índice normalizado para búsqueda robusta
+    buildHospitalIndex();
+
+    // Inicialmente deshabilitar avanzar hasta que el usuario seleccione válido
+    btnSiguiente.disabled = true;
+    if (inputHospital && inputHospital.value) updateHospitalValidationUI();
+    else showHospitalStatus("Selecciona un hospital de la lista.", false);
   }
   cargarHospitales().catch(()=>{/* no crítico */});
 
+  // sincronización y validación en tiempo real: solo coincidencia EXACTA es válida
   function syncHospitalClave() {
     const v = (inputHospital.value || "").trim();
-    if (!v) { selectedHospitalClave = ""; return; }
-    const found = hospitales.find(h => (h.nombre||"").toLowerCase() === v.toLowerCase());
-    selectedHospitalClave = found ? (found.clave || "") : "";
+    if (!v) { selectedHospitalClave = ""; updateHospitalValidationUI(); return; }
+    // buscar coincidencia exacta normalizada
+    const match = findExactHospitalMatch(v);
+    if (match) selectedHospitalClave = match.clave || "";
+    else selectedHospitalClave = "";
+    updateHospitalValidationUI();
   }
   inputHospital && inputHospital.addEventListener("change", syncHospitalClave);
   inputHospital && inputHospital.addEventListener("blur", syncHospitalClave);
   inputHospital && inputHospital.addEventListener("input", () => {
-    const v = (inputHospital.value || "").trim().toLowerCase();
-    const found = hospitales.find(h => (h.nombre||"").toLowerCase() === v);
-    if (found) selectedHospitalClave = found.clave || "";
-    else selectedHospitalClave = "";
+    // actualiza UI y mantiene la posibilidad de seguir escribiendo, pero no se habilita Siguiente hasta match exacto
+    syncHospitalClave();
   });
 
   // ---- INVENTORY: cargar y poblar (asegura dataset.uid si el servidor lo retorna) ----
@@ -1076,6 +1156,7 @@ document.addEventListener("DOMContentLoaded", () => {
     URL.revokeObjectURL(url);
   }
 
+  // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
 });
 
