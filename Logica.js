@@ -1040,38 +1040,87 @@ document.addEventListener("DOMContentLoaded", () => {
     syncHospitalClave();
   });
 
-  // ---- INVENTORY: cargar y poblar (asegura dataset.uid si el servidor lo retorna) ----
-  async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
-    if (!hospitalClaveOrName || !categoria) return;
-    if (!INVENTORY_GET_URL) { console.warn("INVENTORY_GET_URL no configurada."); return; }
-    try {
-      const qs = new URLSearchParams({ hospitalClave: hospitalClaveOrName, categoria }).toString();
-      const resp = await fetch(`${INVENTORY_GET_URL}?${qs}`, { method: "GET" });
-      if (!resp.ok) { console.warn("No se pudo obtener inventory:", resp.status); return; }
-      const data = await resp.json();
-      const items = Array.isArray(data) ? data : (data.items || []);
-      limpiarTabla();
-      if (!items || items.length === 0) { agregarFila(); return; }
-      for (const it of items) {
-        agregarFila();
-        const tr = tbody.rows[tbody.rows.length - 1];
-        // asignar uid desde servidor si existe
-        if (it.uid) tr.dataset.uid = it.uid;
-        try { tr.cells[2].querySelector("input").value = it.descripcion || ""; } catch(e){}
-        try { tr.cells[3].querySelector("input").value = it.stock || ""; } catch(e){}
-        try { tr.cells[4].querySelector("input").value = it.minimo || ""; } catch(e){}
-        try { tr.cells[6].querySelector("input").value = it.fecha || ""; } catch(e){}
-        try { tr.cells[7].querySelector("input").value = it.dias || ""; } catch(e){}
-        try { tr.cells[tr.cells.length-2].querySelector("textarea").value = it.observaciones || ""; } catch(e){}
-        if (it.manual) tr.dataset.manual = "true";
-        actualizarFila(tr);
+  // ---- INVENTORY: cargar y poblar 
+async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
+  if (!hospitalClaveOrName || !categoria) return;
+  if (!INVENTORY_GET_URL) { console.warn("INVENTORY_GET_URL no configurada."); return; }
+  try {
+    const qs = new URLSearchParams({ hospitalClave: hospitalClaveOrName, categoria }).toString();
+    const resp = await fetch(`${INVENTORY_GET_URL}?${qs}`, { method: "GET" });
+    if (!resp.ok) { console.warn("No se pudo obtener inventory:", resp.status); return; }
+    const data = await resp.json();
+    const items = Array.isArray(data) ? data : (data.items || []);
+    limpiarTabla();
+    if (!items || items.length === 0) { agregarFila(); return; }
+
+    for (const it of items) {
+      agregarFila();
+      const tr = tbody.rows[tbody.rows.length - 1];
+      // asignar uid desde servidor si existe
+      if (it.uid) tr.dataset.uid = it.uid;
+
+      // ACCEDER a elementos de la fila
+      const selectEl = tr.cells[1].querySelector("select");
+      const inputDescEl = tr.cells[2].querySelector("input");
+      const inputStockEl = tr.cells[3].querySelector("input");
+      const inputMinEl = tr.cells[4].querySelector("input");
+      const inputFechaEl = tr.cells[6].querySelector("input");
+      const inputDiasEl = tr.cells[7].querySelector("input");
+      const textareaObs = tr.cells[tr.cells.length - 2].querySelector("textarea");
+
+      // Rellenar los campos básicos
+      try { inputDescEl.value = it.descripcion || ""; } catch(e){}
+      try { inputStockEl.value = (it.stock !== undefined && it.stock !== null) ? it.stock : ""; } catch(e){}
+      try { inputFechaEl.value = it.fecha || ""; } catch(e){}
+      try { inputDiasEl.value = it.dias || ""; } catch(e){}
+      try { textareaObs.value = it.observaciones || ""; } catch(e){}
+      if (it.manual) tr.dataset.manual = "true";
+
+      // --- ASIGNAR CLAVE al <select> ---
+      const claveFromServer = (it.clave || "").trim();
+      if (claveFromServer) {
+        // buscar opción existente cuyo value (antes del "||") o text coincida con la clave
+        let matchedOpt = Array.from(selectEl.options).find(o => {
+          const val = (o.value || "");
+          const valClave = val.split("||")[0];
+          return (String(valClave).trim() === claveFromServer) || (String(o.textContent || "").trim() === claveFromServer);
+        });
+
+        if (matchedOpt) {
+          selectEl.value = matchedOpt.value;
+        } else {
+          // si no existe la opción (por ejemplo catálogo diferente), crear una opción visible con la clave
+          const opt = document.createElement("option");
+          opt.value = `${claveFromServer}||0`;
+          opt.textContent = claveFromServer;
+          // opcional: marcar que fue agregada desde servidor
+          opt.dataset.fromServer = "true";
+          selectEl.appendChild(opt);
+          selectEl.value = opt.value;
+        }
+      } else {
+        // si no hay clave en el item, dejar el select en default (ya lo está)
       }
+
+      // --- MINIMO ---
+      if (it.minimo !== undefined && it.minimo !== null && String(it.minimo) !== "") {
+        try { inputMinEl.value = it.minimo; } catch(e){}
+      } else {
+        // intentar poblar desde los mínimos definidos si aplica
+        try { inputMinEl.value = getMinimoValue(claveFromServer) || ""; } catch(e){}
+      }
+
+      // actualizar semáforo / visual y opciones bloqueadas
+      actualizarFila(tr);
       refreshDisabledOptions();
-      sortRowsByCaducidad();
-    } catch (err) {
-      console.error("loadInventoryAndPopulate error:", err);
     }
+
+    sortRowsByCaducidad();
+  } catch (err) {
+    console.error("loadInventoryAndPopulate error:", err);
   }
+}
+
 
   // Eliminar filas seleccionadas -> ahora con llamada al servidor
   async function deleteSelectedRows() {
