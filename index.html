@@ -4,27 +4,35 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Formulario Estomatología</title>
+
+  <!-- FAVICONS -->
+  <!-- "icono.ico":  -->
   <link rel="shortcut icon" href="icono.ico" />
+
+  
   <link rel="stylesheet" href="Formato.css" />
 </head>
 <body>
+  <!-- Encabezado -->
   <header class="site-header" role="banner">
-    <img id="logo-sesver" src="Logos/sesver.png" alt="Logo SESVER" onerror="this.style.display='none';" />
+    <img id="logo-sesver" src="Logos/sesver.png" alt="Logo SESVER"
+         onerror="this.style.display='none';" />
   </header>
 
+  <!-- Página 1 -->
   <div id="page1" class="page activo">
     <div class="card">
       <h1 class="page-title">Formulario Estomatología</h1>
       <h2>Selecciona la categoría</h2>
 
-      <div class="hospital-row readonly-row">
-        <label for="hospitalNombre">Hospital asignado:</label>
-        <input id="hospitalNombre" type="text" readonly placeholder="Cargando sesión..." />
-      </div>
-
-      <div class="hospital-row readonly-row">
-        <label for="usuarioCorreo">Usuario:</label>
-        <input id="usuarioCorreo" type="text" readonly placeholder="Cargando usuario..." />
+      <!-- Campo con autocompletado -->
+      <div class="hospital-row" style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
+        <label for="hospitalNombre" style="min-width:160px; font-weight:600;">Nombre del hospital:</label>
+        <input list="listaHospitales" id="hospitalNombre" name="hospitalNombre"
+               placeholder="Escribe o selecciona el hospital..."
+               aria-label="Nombre del hospital"
+               style="flex:1; padding:8px; border-radius:6px; border:1px solid #cbd5e1;" />
+        <datalist id="listaHospitales"></datalist>
       </div>
 
       <select id="categoria" aria-label="Selecciona categoría">
@@ -37,25 +45,23 @@
         <option value="instrumental">Instrumental</option>
       </select>
 
-      <div class="actions page1-actions">
-        <button id="btnLogout" type="button">Salir</button>
-        <button id="btnSiguiente" type="button">Siguiente</button>
+      <div class="actions" style="margin-top:12px; display:flex; justify-content:flex-end;">
+        <button id="btnSiguiente">Siguiente</button>
       </div>
-
-      <div id="hospitalStatus" class="status-line"></div>
     </div>
   </div>
 
+  <!-- Página 2 -->
   <div id="page2" class="page oculto">
     <div class="card">
       <h2 id="tituloCategoria">Formulario</h2>
 
       <div class="controls">
-        <button id="btnRegresar1" type="button">Regresar</button>
-        <button id="btnAgregarFila" type="button">Agregar fila</button>
-        <button id="btnAgregarManual" type="button">Agregar no listado</button>
-        <button id="btnEliminarSeleccionados" type="button">Eliminar seleccionados</button>
-        <button id="btnEnviarInsumos" type="button">Enviar</button>
+        <button id="btnRegresar1">Regresar</button>
+        <button id="btnAgregarFila">Agregar fila</button>
+        <!-- botón agregado dinámicamente por JS: btnAgregarManual -->
+        <button id="btnEnviarInsumos">Enviar</button>
+       
       </div>
 
       <table id="tablaInsumos" aria-label="Tabla de insumos">
@@ -78,6 +84,6 @@
     </div>
   </div>
 
-  <script type="module" src="Logica.js"></script>
+  <script src="Logica.js"></script>
 </body>
 </html>
