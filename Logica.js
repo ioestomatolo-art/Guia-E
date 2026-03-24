@@ -466,73 +466,44 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   // Normalización y búsqueda de hospitales (EXACT MATCH required)
   // -------------------------
-  function stripAccents(str) {
-    if (str === null || str === undefined) return "";
-    return String(str).normalize ? String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '') : String(str);
+// 1. Saca el Listener fuera de las funciones de validación (para que no se duplique)
+inputHospital.addEventListener("change", (e) => { 
+  const v = (e.target.value || "").trim();
+  const match = findExactHospitalMatch(v);
+  
+  if (match) {
+    selectedHospitalClave = match.clave; // Guardamos la clave (ej: VZIM...)
+    console.log("Hospital seleccionado, cargando inventario para clave:", selectedHospitalClave);
+    cargarInventarioDesdeDB(selectedHospitalClave); // <--- ENVIAMOS LA CLAVE, NO EL NOMBRE
+  } else {
+    console.warn("No se puede cargar: El hospital ingresado no es válido.");
   }
-  function normalizeStr(s) {
-    return stripAccents(String(s || "")).trim().toLowerCase();
+});
+
+// 2. Tu función de validación UI se queda así (limpia):
+function updateHospitalValidationUI() {
+  const v = (inputHospital.value || "").trim();
+  if (!v) {
+    selectedHospitalClave = "";
+    showHospitalStatus("Ingresa o selecciona un hospital de la lista.", false);
+    btnSiguiente.disabled = true;
+    return;
   }
 
-  let hospitalesIndex = []; // { nombre, clave, norm }
-  function buildHospitalIndex() {
-    hospitalesIndex = (hospitales || []).map(h => ({
-      nombre: (h.nombre || "").trim(),
-      clave: (h.clave || "").trim(),
-      norm: normalizeStr(h.nombre || h.clave || "")
-    }));
+  const match = findExactHospitalMatch(v);
+  if (match) {
+    selectedHospitalClave = match.clave || "";
+    showHospitalStatus(`Hospital válido: ${match.nombre} (${selectedHospitalClave})`, true);
+    btnSiguiente.disabled = false;
+  } else {
+    selectedHospitalClave = "";
+    showHospitalStatus("Hospital no reconocido. Selecciona uno del listado.", false);
+    btnSiguiente.disabled = true;
   }
-
-  // Busca coincidencia exacta normalizada (nombre o clave)
-  function findExactHospitalMatch(input) {
-    if (!input) return null;
-    const q = normalizeStr(input);
-    if (!q) return null;
-    return hospitalesIndex.find(h => (h.norm === q) || (normalizeStr(h.clave) === q)) || null;
-  }
-
-  function ensureHospitalStatusEl() {
-    if (!inputHospital) return null;
-    let el = document.getElementById("hospital-status");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "hospital-status";
-      el.style.marginTop = "6px";
-      el.style.fontSize = "0.92rem";
-      el.style.minHeight = "1.1rem";
-      inputHospital.parentElement && inputHospital.parentElement.appendChild(el);
-    }
-    return el;
-  }
-  function showHospitalStatus(msg, ok) {
-    const el = ensureHospitalStatusEl();
-    if (!el) return;
-    el.textContent = msg || "";
-    el.style.color = ok ? "#065f46" : "#92400e";
-  }
-  function updateHospitalValidationUI() {
-    const v = (inputHospital.value || "").trim();
-    if (!v) {
-      selectedHospitalClave = "";
-      showHospitalStatus("Ingresa o selecciona un hospital de la lista.", false);
-      btnSiguiente.disabled = true;
-      return;
-    }
-    const match = findExactHospitalMatch(v);
-    if (match) {
-      selectedHospitalClave = match.clave || "";
-      showHospitalStatus(`Hospital válido: ${match.nombre} (${selectedHospitalClave})`, true);
-      btnSiguiente.disabled = false;
-    } else {
-      selectedHospitalClave = "";
-      showHospitalStatus("Hospital no reconocido. Selecciona exactamente uno de los hospitales del listado.", false);
-      btnSiguiente.disabled = true;
+}
 
 
-       inputHospital.addEventListener("change", (e) => { selectedHospitalClave = e.target.value;  cargarInventarioDesdeDB(selectedHospitalClave); });
-    }
-  }
-
+  
   // NAV: ahora Siguiente sólo avanza si selectedHospitalClave está presente (match exacto)
   btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
