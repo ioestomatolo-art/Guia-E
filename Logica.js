@@ -3,9 +3,52 @@
 
 // Logica.js - versión: exigir selección explícita de hospital (no permitir nombres libres)
 document.addEventListener("DOMContentLoaded", () => {
-  async function cargarInventarioDesdeDB(clave) { try { console.log("Consultando base de datos para el hospital:", clave); const res = await fetch(`${SERVER_BASE}/inventory-base?hospitalClave=${clave}`); const registros = await res.json(); if (registros && registros.length > 0) { 
-     Object.keys(catalogo).forEach(cat => { catalogo[cat] = []; }); 
-      registros.forEach(item => {  if (catalogo[item.categoria]) { catalogo[item.categoria].push({ clave: item.clave, descripcion: item.descripcion, stock: item.stock || "0", minimo: item.minimo || "0", caducidad: item.fecha || "" }); } }); console.log("Inventario cargado con éxito:", registros.length, "ítems."); } else { console.warn("No se encontraron registros para este hospital."); } } catch (error) { console.error("Error al conectar con el servidor:", error); } }
+  async function cargarInventarioDesdeDB(clave) {
+    try {
+      console.log("Consultando base de datos para el hospital:", clave);
+  
+      const res = await fetch(
+        `${SERVER_BASE}/inventory-base?hospitalClave=${encodeURIComponent(clave)}`,
+        { method: "GET" }
+      );
+  
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${txt}`);
+      }
+  
+      const registros = await res.json();
+  
+      if (!Array.isArray(registros) || registros.length === 0) {
+        console.warn("No se encontraron registros para este hospital.");
+        return;
+      }
+  
+      Object.keys(catalogo).forEach(cat => {
+        catalogo[cat] = [];
+      });
+  
+      registros.forEach(item => {
+        const cat = String(item.categoria || "").trim().toLowerCase();
+  
+        if (catalogo[cat]) {
+          catalogo[cat].push({
+            clave: item.clave,
+            descripcion: item.descripcion,
+            stock: item.stock || "0",
+            minimo: item.minimo || "0",
+            caducidad: item.fecha || ""
+          });
+        } else {
+          console.warn("Categoría no reconocida:", item.categoria);
+        }
+      });
+  
+      console.log("Inventario cargado con éxito:", registros.length, "ítems.");
+    } catch (error) {
+      console.error("Error al conectar con el servidor:", error);
+    }
+  }
   // ======== Config ========
   let categoriaActiva = null;
   let filaContador = 0;
@@ -1051,6 +1094,9 @@ document.addEventListener("DOMContentLoaded", () => {
     syncHospitalClave();
   });
 
+
+
+  
   // ---- INVENTORY: cargar y poblar 
 async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
