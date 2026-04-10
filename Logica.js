@@ -1,53 +1,23 @@
+async function cargarInventarioDesdeDB(clave) {
+  try {
+    console.log("Consultando base de datos para el hospital:", clave);
 
+    const res = await fetch(
+      `${SERVER_BASE}/inventory-base?hospitalClave=${encodeURIComponent(clave)}`,
+      { method: "GET" }
+    );
 
-
-// Logica.js - versión: exigir selección explícita de hospital (no permitir nombres libres)
-document.addEventListener("DOMContentLoaded", () => {
-  async function cargarInventarioDesdeDB(clave) {
-    try {
-      console.log("Consultando base de datos para el hospital:", clave);
-  
-      const res = await fetch(
-        `${SERVER_BASE}/inventory-base?hospitalClave=${encodeURIComponent(clave)}`,
-        { method: "GET" }
-      );
-  
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status} ${txt}`);
-      }
-  
-      const registros = await res.json();
-  
-      if (!Array.isArray(registros) || registros.length === 0) {
-        console.warn("No se encontraron registros para este hospital.");
-        return;
-      }
-  
-      Object.keys(catalogo).forEach(cat => {
-        catalogo[cat] = [];
-      });
-  
-      registros.forEach(item => {
-        const cat = String(item.categoria || "").trim().toLowerCase();
-  
-        if (catalogo[cat]) {
-          catalogo[cat].push({
-            clave: item.clave,
-            descripcion: item.descripcion,
-            stock: item.stock || "0",
-            minimo: item.minimo || "0",
-            caducidad: item.fecha || ""
-          });
-        } else {
-          console.warn("Categoría no reconocida:", item.categoria);
-        }
-      });
-  
-      console.log("Inventario cargado con éxito:", registros.length, "ítems.");
-    } catch (error) {
-      console.error("Error al conectar con el servidor:", error);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} ${txt}`);
     }
+
+    const registros = await res.json();
+    return Array.isArray(registros) ? registros : [];
+  } catch (error) {
+    console.error("Error al conectar con el servidor:", error);
+    return [];
+  }
   }
   // ======== Config ========
   let categoriaActiva = null;
@@ -375,7 +345,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ================= DOM =================
   const selCategoria = document.getElementById("categoria");
-  const btnSiguiente = document.getElementById("btnSiguiente");
+  const btnSiguiente = document.getElementById("btnSiguiente")
+  const key = selectedHospitalClave;
+  await loadInventoryAndPopulate(key, categoriaActiva);;
   const btnRegresar = document.getElementById("btnRegresar1");
   const btnAgregar = document.getElementById("btnAgregarFila");
   const tbody = document.querySelector("#tablaInsumos tbody");
@@ -558,13 +530,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function updateHospitalValidationUI() {
     const v = (inputHospital.value || "").trim();
+  
     if (!v) {
       selectedHospitalClave = "";
       showHospitalStatus("Ingresa o selecciona un hospital de la lista.", false);
       btnSiguiente.disabled = true;
       return;
     }
+  
     const match = findExactHospitalMatch(v);
+  
     if (match) {
       selectedHospitalClave = match.clave || "";
       showHospitalStatus(`Hospital válido: ${match.nombre} (${selectedHospitalClave})`, true);
@@ -573,12 +548,8 @@ document.addEventListener("DOMContentLoaded", () => {
       selectedHospitalClave = "";
       showHospitalStatus("Hospital no reconocido. Selecciona exactamente uno de los hospitales del listado.", false);
       btnSiguiente.disabled = true;
-
-
-       inputHospital.addEventListener("change", (e) => { selectedHospitalClave = e.target.value;  cargarInventarioDesdeDB(selectedHospitalClave); });
     }
   }
-
   // NAV: ahora Siguiente sólo avanza si selectedHospitalClave está presente (match exacto)
   btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
@@ -1098,85 +1069,90 @@ document.addEventListener("DOMContentLoaded", () => {
 
   
   // ---- INVENTORY: cargar y poblar 
-async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
-  if (!hospitalClaveOrName || !categoria) return;
-  if (!INVENTORY_GET_URL) { console.warn("INVENTORY_GET_URL no configurada."); return; }
-  try {
-    const qs = new URLSearchParams({ hospitalClave: hospitalClaveOrName, categoria }).toString();
-    const resp = await fetch(`${INVENTORY_GET_URL}?${qs}`, { method: "GET" });
-    if (!resp.ok) { console.warn("No se pudo obtener inventory:", resp.status); return; }
-    const data = await resp.json();
-    const items = Array.isArray(data) ? data : (data.items || []);
-    limpiarTabla();
-    if (!items || items.length === 0) { agregarFila(); return; }
-
-    for (const it of items) {
-      agregarFila();
-      const tr = tbody.rows[tbody.rows.length - 1];
-      // asignar uid desde servidor si existe
-      if (it.uid) tr.dataset.uid = it.uid;
-
-      // ACCEDER a elementos de la fila
-      const selectEl = tr.cells[1].querySelector("select");
-      const inputDescEl = tr.cells[2].querySelector("input");
-      const inputStockEl = tr.cells[3].querySelector("input");
-      const inputMinEl = tr.cells[4].querySelector("input");
-      const inputFechaEl = tr.cells[6].querySelector("input");
-      const inputDiasEl = tr.cells[7].querySelector("input");
-      const textareaObs = tr.cells[tr.cells.length - 2].querySelector("textarea");
-
-      // Rellenar los campos básicos
-      try { inputDescEl.value = it.descripcion || ""; } catch(e){}
-      try { inputStockEl.value = (it.stock !== undefined && it.stock !== null) ? it.stock : ""; } catch(e){}
-      try { inputFechaEl.value = it.fecha || ""; } catch(e){}
-      try { inputDiasEl.value = it.dias || ""; } catch(e){}
-      try { textareaObs.value = it.observaciones || ""; } catch(e){}
-      if (it.manual) tr.dataset.manual = "true";
-
-      // --- ASIGNAR CLAVE al <select> ---
-      const claveFromServer = (it.clave || "").trim();
-      if (claveFromServer) {
-        // buscar opción existente cuyo value (antes del "||") o text coincida con la clave
+  async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
+    if (!hospitalClaveOrName || !categoria) return;
+    if (!INVENTORY_GET_URL) {
+      console.warn("INVENTORY_GET_URL no configurada.");
+      return;
+    }
+  
+    try {
+      const registros = await cargarInventarioDesdeDB(hospitalClaveOrName);
+      const categoriaNorm = String(categoria || "").trim().toLowerCase();
+  
+      // Solo registros de la categoría actual
+      const registrosCat = registros.filter(r =>
+        String(r.categoria || "").trim().toLowerCase() === categoriaNorm
+      );
+  
+      // Buscar por clave para “hidratar” el catálogo visual
+      const registrosPorClave = new Map(
+        registrosCat.map(r => [String(r.clave || "").trim(), r])
+      );
+  
+      limpiarTabla();
+  
+      const productosBase = catalogo[categoria] || [];
+      if (!productosBase.length) {
+        agregarFila();
+        return;
+      }
+  
+      for (const productoBase of productosBase) {
+        agregarFila();
+        const tr = tbody.rows[tbody.rows.length - 1];
+  
+        if (!tr) continue;
+  
+        const selectEl = tr.cells[1].querySelector("select");
+        const inputDescEl = tr.cells[2].querySelector("input");
+        const inputStockEl = tr.cells[3].querySelector("input");
+        const inputMinEl = tr.cells[4].querySelector("input");
+        const inputFechaEl = tr.cells[6].querySelector("input");
+        const inputDiasEl = tr.cells[7].querySelector("input");
+        const textareaObs = tr.cells[tr.cells.length - 2].querySelector("textarea");
+  
+        const clave = String(productoBase.clave || "").trim();
+        const guardado = registrosPorClave.get(clave);
+  
+        // Mantener el formato tradicional y solo rellenar si hay guardado
+        inputDescEl.value = productoBase.descripcion || "";
+        inputStockEl.value = guardado?.stock ?? productoBase.stock ?? "";
+        inputMinEl.value = guardado?.minimo ?? productoBase.minimo ?? getMinimoValue(clave) ?? "";
+        inputFechaEl.value = guardado?.fecha ?? productoBase.caducidad ?? "";
+        inputDiasEl.value = guardado?.dias_restantes ?? guardado?.dias ?? "";
+        textareaObs.value = guardado?.observaciones ?? "";
+  
+        if (guardado?.uid) tr.dataset.uid = guardado.uid;
+        if (guardado?.manual) tr.dataset.manual = "true";
+  
+        // Asignar clave al select
         let matchedOpt = Array.from(selectEl.options).find(o => {
-          const val = (o.value || "");
-          const valClave = val.split("||")[0];
-          return (String(valClave).trim() === claveFromServer) || (String(o.textContent || "").trim() === claveFromServer);
+          const valClave = (o.value || "").split("||")[0].trim();
+          return valClave === clave;
         });
-
+  
         if (matchedOpt) {
           selectEl.value = matchedOpt.value;
         } else {
-          // si no existe la opción (por ejemplo catálogo diferente), crear una opción visible con la clave
           const opt = document.createElement("option");
-          opt.value = `${claveFromServer}||0`;
-          opt.textContent = claveFromServer;
-          // opcional: marcar que fue agregada desde servidor
+          opt.value = `${clave}||server`;
+          opt.textContent = clave;
           opt.dataset.fromServer = "true";
           selectEl.appendChild(opt);
           selectEl.value = opt.value;
         }
-      } else {
-        // si no hay clave en el item, dejar el select en default (ya lo está)
+  
+        actualizarFila(tr);
       }
-
-      // --- MINIMO ---
-      if (it.minimo !== undefined && it.minimo !== null && String(it.minimo) !== "") {
-        try { inputMinEl.value = it.minimo; } catch(e){}
-      } else {
-        // intentar poblar desde los mínimos definidos si aplica
-        try { inputMinEl.value = getMinimoValue(claveFromServer) || ""; } catch(e){}
-      }
-
-      // actualizar semáforo / visual y opciones bloqueadas
-      actualizarFila(tr);
+  
+      sortRowsByCaducidad();
       refreshDisabledOptions();
+    } catch (err) {
+      console.error("loadInventoryAndPopulate error:", err);
     }
-
-    sortRowsByCaducidad();
-  } catch (err) {
-    console.error("loadInventoryAndPopulate error:", err);
   }
-}
+
 
 
   // Eliminar filas seleccionadas -> ahora con llamada al servidor
@@ -1264,5 +1240,4 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
-});
-
+;
