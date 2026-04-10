@@ -345,9 +345,7 @@ async function cargarInventarioDesdeDB(clave) {
 
   // ================= DOM =================
   const selCategoria = document.getElementById("categoria");
-  const btnSiguiente = document.getElementById("btnSiguiente")
-  const key = selectedHospitalClave;
-  await loadInventoryAndPopulate(key, categoriaActiva);;
+  const btnSiguiente = document.getElementById("btnSiguiente");
   const btnRegresar = document.getElementById("btnRegresar1");
   const btnAgregar = document.getElementById("btnAgregarFila");
   const tbody = document.querySelector("#tablaInsumos tbody");
@@ -553,27 +551,33 @@ async function cargarInventarioDesdeDB(clave) {
   // NAV: ahora Siguiente sólo avanza si selectedHospitalClave está presente (match exacto)
   btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
+  
     const cat = selCategoria.value;
     if (!cat) return alert("Selecciona una categoría.");
-
-    // actualizar validación de hospital
+  
     updateHospitalValidationUI();
     if (!selectedHospitalClave) {
-      // impedir continuar
       inputHospital.focus();
-      return alert("Selecciona un hospital válido de la lista antes de continuar. No se permiten nombres libres.");
+      return alert("Selecciona un hospital válido de la lista antes de continuar.");
     }
-
+  
     const categoriaCambio = categoriaActiva && categoriaActiva !== cat;
     if (categoriaCambio) limpiarTabla();
+  
     categoriaActiva = cat;
     tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
-
-    const key = selectedHospitalClave;
-    try { await loadInventoryAndPopulate(key, categoriaActiva); } catch (err) { console.warn("No se pudo cargar inventory:", err); }
-
-    document.getElementById("page1").classList.remove("activo"); document.getElementById("page1").classList.add("oculto");
-    document.getElementById("page2").classList.remove("oculto"); document.getElementById("page2").classList.add("activo");
+  
+    try {
+      await loadInventoryAndPopulate(selectedHospitalClave, categoriaActiva);
+    } catch (err) {
+      console.warn("No se pudo cargar inventory:", err);
+    }
+  
+    document.getElementById("page1").classList.remove("activo");
+    document.getElementById("page1").classList.add("oculto");
+    document.getElementById("page2").classList.remove("oculto");
+    document.getElementById("page2").classList.add("activo");
+  
     updateCaducidadHeader();
     if (!tbody.rows.length) agregarFila();
     moveButtonsToCardBottom();
@@ -1240,4 +1244,5 @@ async function cargarInventarioDesdeDB(clave) {
 
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
-;
+ 
+ 
