@@ -1074,71 +1074,80 @@ async function cargarInventarioDesdeDB(clave) {
   
   // ---- INVENTORY: cargar y poblar 
   async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
-    const registros = await cargarInventarioDesdeDB(hospitalClaveOrName);
+    if (!hospitalClaveOrName || !categoria) return;
   
-    const categoriaNorm = String(categoria || "").trim().toLowerCase();
-    const registrosCat = registros.filter(r =>
-      String(r.categoria || "").trim().toLowerCase() === categoriaNorm
-    );
+    try {
+      const registros = await cargarInventarioDesdeDB(hospitalClaveOrName);
+      const categoriaNorm = String(categoria || "").trim().toLowerCase();
   
-    const registrosPorClave = new Map(
-      registrosCat.map(r => [String(r.clave || "").trim(), r])
-    );
+      const registrosCat = registros.filter(r =>
+        String(r.categoria || "").trim().toLowerCase() === categoriaNorm
+      );
   
-    limpiarTabla();
+      const registrosPorClave = new Map(
+        registrosCat.map(r => [String(r.clave || "").trim(), r])
+      );
   
-    const productosBase = catalogo[categoria] || [];
-    if (!productosBase.length) {
-      agregarFila();
-      return;
-    }
+      limpiarTabla();
   
-    for (const productoBase of productosBase) {
-      agregarFila();
-      const tr = tbody.rows[tbody.rows.length - 1];
-  
-      const selectEl = tr.cells[1].querySelector("select");
-      const inputDescEl = tr.cells[2].querySelector("input");
-      const inputStockEl = tr.cells[3].querySelector("input");
-      const inputMinEl = tr.cells[4].querySelector("input");
-      const inputFechaEl = tr.cells[6].querySelector("input");
-      const inputDiasEl = tr.cells[7].querySelector("input");
-      const textareaObs = tr.cells[tr.cells.length - 2].querySelector("textarea");
-  
-      const clave = String(productoBase.clave || "").trim();
-      const guardado = registrosPorClave.get(clave);
-  
-      inputDescEl.value = productoBase.descripcion || "";
-      inputStockEl.value = guardado?.stock ?? "";
-      inputMinEl.value = guardado?.minimo ?? getMinimoValue(clave) ?? "";
-      inputFechaEl.value = guardado?.fecha ?? "";
-      inputDiasEl.value = guardado?.dias_restantes ?? "";
-      textareaObs.value = guardado?.observaciones ?? "";
-  
-      if (guardado?.uid) tr.dataset.uid = guardado.uid;
-      if (guardado?.manual) tr.dataset.manual = "true";
-  
-      let matchedOpt = Array.from(selectEl.options).find(o => {
-        const valClave = (o.value || "").split("||")[0].trim();
-        return valClave === clave;
-      });
-  
-      if (matchedOpt) {
-        selectEl.value = matchedOpt.value;
-      } else {
-        const opt = document.createElement("option");
-        opt.value = `${clave}||server`;
-        opt.textContent = clave;
-        selectEl.appendChild(opt);
-        selectEl.value = opt.value;
+      // Si no hay registros guardados, deja una sola fila vacía
+      if (!registrosCat.length) {
+        agregarFila();
+        return;
       }
   
-      actualizarFila(tr);
-    }
+      // Si sí hay registros, pinta solo esos
+      for (const item of registrosCat) {
+        agregarFila();
+        const tr = tbody.rows[tbody.rows.length - 1];
+        if (!tr) continue;
   
-    sortRowsByCaducidad();
-    refreshDisabledOptions();
-  } 
+        const selectEl = tr.cells[1].querySelector("select");
+        const inputDescEl = tr.cells[2].querySelector("input");
+        const inputStockEl = tr.cells[3].querySelector("input");
+        const inputMinEl = tr.cells[4].querySelector("input");
+        const inputFechaEl = tr.cells[6].querySelector("input");
+        const inputDiasEl = tr.cells[7].querySelector("input");
+        const textareaObs = tr.cells[tr.cells.length - 2].querySelector("textarea");
+  
+        const clave = String(item.clave || "").trim();
+  
+        inputDescEl.value = item.descripcion || "";
+        inputStockEl.value = item.stock ?? "";
+        inputMinEl.value = item.minimo ?? getMinimoValue(clave) ?? "";
+        inputFechaEl.value = item.fecha ?? "";
+        inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
+        textareaObs.value = item.observaciones ?? "";
+  
+        if (item.uid) tr.dataset.uid = item.uid;
+        if (item.manual) tr.dataset.manual = "true";
+  
+        // Asignar la clave al select
+        let matchedOpt = Array.from(selectEl.options).find(o => {
+          const valClave = (o.value || "").split("||")[0].trim();
+          return valClave === clave;
+        });
+  
+        if (matchedOpt) {
+          selectEl.value = matchedOpt.value;
+        } else {
+          const opt = document.createElement("option");
+          opt.value = `${clave}||server`;
+          opt.textContent = clave;
+          opt.dataset.fromServer = "true";
+          selectEl.appendChild(opt);
+          selectEl.value = opt.value;
+        }
+  
+        actualizarFila(tr);
+      }
+  
+      sortRowsByCaducidad();
+      refreshDisabledOptions();
+    } catch (err) {
+      console.error("loadInventoryAndPopulate error:", err);
+    }
+  }
     
   
 
