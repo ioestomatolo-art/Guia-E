@@ -26,13 +26,11 @@ html, body {
   box-sizing: border-box;
 }
 
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   box-sizing: inherit;
 }
 
-/* Fondo degradado descendente: color vino arriba -> blanco abajo */
+/* Fondo degradado descendente: vino arriba -> blanco abajo */
 body {
   min-height: 100vh;
   padding: 16px;
@@ -55,13 +53,18 @@ body {
   flex-direction: column;
   align-items: stretch;
   max-width: 1100px;
-  width: min(1100px, calc(100vw - 32px));
   margin: 16px auto;
   padding: 16px;
   border-radius: 8px;
   background: rgba(255,255,255,0.92);
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+
+  /* importante para que no se “corte” la tabla */
   max-height: none;
+  overflow: visible;
+}
+
+#page2 .card {
   overflow: visible;
 }
 
@@ -145,37 +148,25 @@ body {
 }
 
 /* Anchos por columna */
-#tablaInsumos th:nth-child(1), #tablaInsumos td:nth-child(1)  { width: 5%;  min-width: 44px;  text-align: center; } /* No */
-#tablaInsumos th:nth-child(2), #tablaInsumos td:nth-child(2)  { width: 11%; min-width: 92px; } /* Clave */
-#tablaInsumos th:nth-child(3), #tablaInsumos td:nth-child(3)  { width: 31%; min-width: 220px; } /* Descripción */
-#tablaInsumos th:nth-child(4), #tablaInsumos td:nth-child(4)  { width: 7%;  min-width: 64px;  text-align: center; } /* Stock */
-#tablaInsumos th:nth-child(5), #tablaInsumos td:nth-child(5)  { width: 7%;  min-width: 64px;  text-align: center; } /* Mínimo */
-#tablaInsumos th:nth-child(6), #tablaInsumos td:nth-child(6)  { width: 9%;  min-width: 80px; } /* Estado */
-#tablaInsumos th:nth-child(7), #tablaInsumos td:nth-child(7)  { width: 9%;  min-width: 86px; } /* Caducidad */
-#tablaInsumos th:nth-child(8), #tablaInsumos td:nth-child(8)  { width: 5%;  min-width: 52px;  text-align: center; } /* Días */
-#tablaInsumos th:nth-child(9), #tablaInsumos td:nth-child(9)  { width: 12%; min-width: 140px; white-space: normal; } /* Observaciones */
+#tablaInsumos th:nth-child(1),  #tablaInsumos td:nth-child(1)  { width: 4%;  min-width: 40px;  text-align: center; }  /* No */
+#tablaInsumos th:nth-child(2),  #tablaInsumos td:nth-child(2)  { width: 10%; min-width: 90px; }                       /* Clave */
+#tablaInsumos th:nth-child(3),  #tablaInsumos td:nth-child(3)  { width: 28%; min-width: 220px; }                      /* Descripción */
+#tablaInsumos th:nth-child(4),  #tablaInsumos td:nth-child(4)  { width: 6%;  min-width: 60px;  text-align: center; }   /* Stock */
+#tablaInsumos th:nth-child(5),  #tablaInsumos td:nth-child(5)  { width: 6%;  min-width: 60px;  text-align: center; }   /* Mínimo */
+#tablaInsumos th:nth-child(6),  #tablaInsumos td:nth-child(6)  { width: 8%;  min-width: 80px; }                        /* Estado */
+#tablaInsumos th:nth-child(7),  #tablaInsumos td:nth-child(7)  { width: 10%; min-width: 95px; }                        /* Caducidad */
+#tablaInsumos th:nth-child(8),  #tablaInsumos td:nth-child(8)  { width: 5%;  min-width: 50px;  text-align: center; }   /* Días */
+#tablaInsumos th:nth-child(9),  #tablaInsumos td:nth-child(9)  { width: 15%; min-width: 140px; white-space: normal; }   /* Observaciones */
+#tablaInsumos th:nth-child(10), #tablaInsumos td:nth-child(10) { width: 8%;  min-width: 180px; text-align: center; overflow: visible; } /* Acciones */
 
-/* Columna de acciones: más espacio para que no se corte el checkbox */
-#tablaInsumos th:nth-child(10),
-#tablaInsumos td:nth-child(10) {
-  width: 120px;
-  min-width: 120px;
-  text-align: center;
-  white-space: nowrap;
+/* Asegurar que la columna de acciones no se corte */
+#tablaInsumos tbody td:nth-child(10) {
   overflow: visible;
+  white-space: nowrap;
+  padding: 10px 10px;
 }
 
-/* El JS pone display:flex en la celda de acciones; aquí lo hacemos más cómodo */
-#tablaInsumos td:nth-child(10) {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 8px 10px;
-  overflow: visible !important;
-}
-
-/* Inputs y selects */
+/* Inputs, selects y textareas */
 #tablaInsumos tbody td input,
 #tablaInsumos tbody td select {
   width: 100%;
@@ -185,47 +176,10 @@ body {
   padding: 0;
   margin: 0;
   font-size: 0.95rem;
+  color: #0b1220;
 }
 
-/* Checkbox más visible y sin recorte */
-#tablaInsumos td:nth-child(10) input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  flex: 0 0 auto;
-  appearance: none;
-  -webkit-appearance: none;
-  border: 1.6px solid rgba(11,18,32,0.18);
-  border-radius: 4px;
-  display: inline-grid;
-  place-content: center;
-  background: #fff;
-  cursor: pointer;
-}
-
-#tablaInsumos td:nth-child(10) input[type="checkbox"]::after {
-  content: "";
-  width: 10px;
-  height: 6px;
-  transform: rotate(-45deg) scale(0);
-  border-left: 2.4px solid transparent;
-  border-bottom: 2.4px solid transparent;
-  transition: transform .09s ease, border-color .09s ease;
-}
-
-#tablaInsumos td:nth-child(10) input[type="checkbox"]:checked {
-  background: linear-gradient(180deg, #b81a44 0%, #8d0f30 100%);
-  border-color: rgba(0,0,0,0.05);
-}
-
-#tablaInsumos td:nth-child(10) input[type="checkbox"]:checked::after {
-  transform: rotate(-45deg) scale(1);
-  border-left-color: #fff;
-  border-bottom-color: #fff;
-}
-
-/* Observaciones: textarea redondeado */
-#tablaInsumos tbody td:nth-child(9) textarea {
+#tablaInsumos tbody td textarea {
   width: 100%;
   min-height: 40px;
   max-height: 120px;
@@ -239,28 +193,194 @@ body {
   background: #fff;
 }
 
-#tablaInsumos tbody td:nth-child(9) textarea:focus {
+#tablaInsumos tbody td textarea:focus {
   outline: 3px solid rgba(37,99,235,0.15);
   border-color: #2563eb;
 }
 
+/* Inputs de fecha y número un poco más cómodos */
+#tablaInsumos tbody td input[type="date"],
+#tablaInsumos tbody td input[type="number"],
+#tablaInsumos tbody td input[type="text"] {
+  min-height: 24px;
+}
+
 /* Hover en fila */
 #tablaInsumos tbody tr:hover td {
-  transform: translateY(-1px);
-  transition: transform .12s ease, box-shadow .12s ease;
+  transform: translateY(-3px);
+  transition: transform .12s ease;
   box-shadow: 0 8px 22px rgba(0,0,0,0.06);
 }
 
-/* Semáforo */
-#tablaInsumos tbody tr.expired td { background: rgba(244,114,128,0.12); }
-#tablaInsumos tbody tr.warning-expiry td { background: rgba(250,215,103,0.12); }
-#tablaInsumos tbody tr.valid-expiry td { background: rgba(167,243,208,0.12); }
+/* Semáforo por estado */
+#tablaInsumos tbody tr.expired td {
+  background: rgba(244,114,128,0.12);
+}
+
+#tablaInsumos tbody tr.warning-expiry td {
+  background: rgba(250,215,103,0.12);
+}
+
+#tablaInsumos tbody tr.valid-expiry td {
+  background: rgba(167,243,208,0.12);
+}
+
+/* Texto dentro de filas con semáforo */
+.expired td, .warning-expiry td, .valid-expiry td {
+  color: #0b1220;
+}
+
+/* Controles debajo de la tabla */
+.controls {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Botones apariencia */
+.controls button, .actions button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 110px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
+}
+
+.controls button:hover, .actions button:hover {
+  transform: translateY(-1px);
+  opacity: 0.98;
+}
+
+.controls button:active, .actions button:active {
+  transform: translateY(0);
+}
+
+/* Tonos vino/rosado */
+#btnEnviarInsumos {
+  background: linear-gradient(180deg, #b81a44 0%, #8d0f30 100%);
+  color: #fff;
+}
+
+#btnAgregarFila {
+  background: linear-gradient(180deg, #f07b98 0%, #d84a68 100%);
+  color: #fff;
+}
+
+#btnRegresar1 {
+  background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+  color: #fff;
+}
+
+#btnSiguiente {
+  background: linear-gradient(180deg, #9f213f 0%, #7a132b 100%);
+  color: #fff;
+}
+
+/* Accesibilidad focus */
+button:focus,
+select:focus,
+input:focus,
+textarea:focus {
+  outline: 3px solid rgba(37,99,235,0.18);
+  outline-offset: 2px;
+}
+
+/* ---------------- Casilla de seleccionar para eliminar ---------------- */
+
+/* Dar más espacio visual a la columna de acciones */
+#tablaInsumos td:nth-child(10),
+#tablaInsumos th:nth-child(10) {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* Casilla más grande y centrada */
+#tablaInsumos input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: 0 0 auto;
+  appearance: auto;
+  -webkit-appearance: auto;
+  accent-color: #8d0f30;
+}
+
+/* Si usas un contenedor alrededor de la casilla */
+.checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(15,23,42,0.06);
+  background: rgba(255,255,255,0.98);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  min-width: 32px;
+  min-height: 32px;
+  transition: box-shadow .12s ease, transform .06s ease;
+}
+
+.checkbox-wrapper:hover {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+.checkbox-wrapper:focus-within {
+  outline: 3px solid rgba(37,99,235,0.12);
+  outline-offset: 2px;
+}
+
+#tablaInsumos label.checkbox-wrapper {
+  cursor: pointer;
+}
+
+#tablaInsumos th.select-cell {
+  background: rgba(255,255,255,0.98);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
 
 /* Responsive */
 @media (max-width: 900px) {
-  #tablaInsumos th:nth-child(3), #tablaInsumos td:nth-child(3) { width: 28%; min-width: 180px; }
-  #tablaInsumos th:nth-child(9), #tablaInsumos td:nth-child(9) { min-width: 120px; }
-  #tablaInsumos th:nth-child(10), #tablaInsumos td:nth-child(10) { width: 110px; min-width: 110px; }
+  #tablaInsumos th:nth-child(3), #tablaInsumos td:nth-child(3) {
+    width: 34%;
+    min-width: 160px;
+  }
+
+  #tablaInsumos th:nth-child(9), #tablaInsumos td:nth-child(9) {
+    min-width: 120px;
+  }
+
+  #tablaInsumos th:nth-child(10), #tablaInsumos td:nth-child(10) {
+    min-width: 160px;
+  }
+}
+
+@media (max-width: 700px) {
+  #logo-sesver {
+    max-height: 90px;
+  }
+
+  #tablaInsumos td,
+  #tablaInsumos th {
+    font-size: 13px;
+    padding: 6px;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .controls button {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 480px) {
@@ -275,109 +395,21 @@ body {
   #tablaInsumos tr {
     display: table;
     width: auto;
-    min-width: 980px;
+    min-width: 900px;
   }
 
   #tablaInsumos tbody td {
     white-space: nowrap;
   }
 
-  #tablaInsumos td:nth-child(10) {
-    min-width: 110px;
+  .checkbox-wrapper {
+    padding: 4px;
+    min-width: 30px;
+    min-height: 30px;
   }
-}
 
-#tablaInsumos td:nth-child(3) { white-space: normal; } /* descripción puede quebrar */
-
-/* Controles (debajo de la tabla) */
-.controls {
-  margin-top: 12px;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-/* Botones */
-.controls button,
-.actions button {
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 0;
-  font-weight: 700;
-  cursor: pointer;
-  min-width: 110px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-  transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
-}
-
-/* Tonos vino/rosado */
-#btnEnviarInsumos {
-  background: linear-gradient(180deg, #b81a44 0%, #8d0f30 100%);
-  color: #fff;
-}
-#btnAgregarFila {
-  background: linear-gradient(180deg, #f07b98 0%, #d84a68 100%);
-  color: #fff;
-}
-#btnRegresar1 {
-  background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
-  color: #fff;
-}
-#btnSiguiente {
-  background: linear-gradient(180deg, #9f213f 0%, #7a132b 100%);
-  color: #fff;
-}
-
-/* Hover/active */
-.controls button:hover,
-.actions button:hover {
-  transform: translateY(-1px);
-  opacity: 0.98;
-}
-.controls button:active,
-.actions button:active {
-  transform: translateY(0);
-}
-
-/* Semáforo (filas) */
-.expired {
-  background: rgba(244,114,128,0.18);
-  border-left: 4px solid rgba(244,114,128,0.9);
-}
-.warning-expiry {
-  background: rgba(250,215,103,0.16);
-  border-left: 4px solid rgba(250,215,103,0.95);
-}
-.valid-expiry {
-  background: rgba(167,243,208,0.16);
-  border-left: 4px solid rgba(34,197,94,0.95);
-}
-.expired td,
-.warning-expiry td,
-.valid-expiry td {
-  color: #0b1220;
-}
-
-/* Accesibilidad focus */
-button:focus,
-select:focus,
-input:focus,
-textarea:focus {
-  outline: 3px solid rgba(37,99,235,0.18);
-  outline-offset: 2px;
-}
-
-@media (max-width: 700px) {
-  #logo-sesver { max-height: 90px; }
-  #tablaInsumos td, #tablaInsumos th { font-size: 13px; padding: 6px; }
-  .controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  .controls button {
-    width: 100%;
-    min-width: 0;
+  #tablaInsumos input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
   }
 }
