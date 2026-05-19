@@ -368,9 +368,7 @@ async function cargarInventarioDesdeDB(clave) {
     if (!ths.includes("observaciones")) {
       const th = document.createElement("th"); th.textContent = "Observaciones"; thead.querySelector("tr").appendChild(th);
     }
-    if (!ths.includes("acciones")) {
-      const th = document.createElement("th"); th.textContent = "Acciones"; thead.querySelector("tr").appendChild(th);
-    }
+    
   }
   ensureHeaders();
 
