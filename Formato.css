@@ -59,7 +59,7 @@ body {
   background: rgba(255,255,255,0.92);
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 
-  /* importante para que no se “corte” la tabla */
+  /* ya no se corta la parte inferior */
   max-height: none;
   overflow: visible;
 }
@@ -68,7 +68,7 @@ body {
   overflow: visible;
 }
 
-/* Títulos */
+/* Titulos */
 .page-title {
   margin: 0 0 12px 0;
   font-size: 1.5rem;
@@ -149,24 +149,17 @@ body {
 
 /* Anchos por columna */
 #tablaInsumos th:nth-child(1),  #tablaInsumos td:nth-child(1)  { width: 4%;  min-width: 40px;  text-align: center; }  /* No */
-#tablaInsumos th:nth-child(2),  #tablaInsumos td:nth-child(2)  { width: 10%; min-width: 90px; }                       /* Clave */
-#tablaInsumos th:nth-child(3),  #tablaInsumos td:nth-child(3)  { width: 28%; min-width: 220px; }                      /* Descripción */
-#tablaInsumos th:nth-child(4),  #tablaInsumos td:nth-child(4)  { width: 6%;  min-width: 60px;  text-align: center; }   /* Stock */
-#tablaInsumos th:nth-child(5),  #tablaInsumos td:nth-child(5)  { width: 6%;  min-width: 60px;  text-align: center; }   /* Mínimo */
-#tablaInsumos th:nth-child(6),  #tablaInsumos td:nth-child(6)  { width: 8%;  min-width: 80px; }                        /* Estado */
-#tablaInsumos th:nth-child(7),  #tablaInsumos td:nth-child(7)  { width: 10%; min-width: 95px; }                        /* Caducidad */
-#tablaInsumos th:nth-child(8),  #tablaInsumos td:nth-child(8)  { width: 5%;  min-width: 50px;  text-align: center; }   /* Días */
-#tablaInsumos th:nth-child(9),  #tablaInsumos td:nth-child(9)  { width: 15%; min-width: 140px; white-space: normal; }   /* Observaciones */
-#tablaInsumos th:nth-child(10), #tablaInsumos td:nth-child(10) { width: 8%;  min-width: 180px; text-align: center; overflow: visible; } /* Acciones */
+#tablaInsumos th:nth-child(2),  #tablaInsumos td:nth-child(2)  { width: 11%; min-width: 95px; }                        /* Clave */
+#tablaInsumos th:nth-child(3),  #tablaInsumos td:nth-child(3)  { width: 30%; min-width: 220px; }                       /* Descripción */
+#tablaInsumos th:nth-child(4),  #tablaInsumos td:nth-child(4)  { width: 6%;  min-width: 62px;  text-align: center; }    /* Stock */
+#tablaInsumos th:nth-child(5),  #tablaInsumos td:nth-child(5)  { width: 6%;  min-width: 62px;  text-align: center; }    /* Mínimo */
+#tablaInsumos th:nth-child(6),  #tablaInsumos td:nth-child(6)  { width: 8%;  min-width: 78px; }                         /* Estado */
+#tablaInsumos th:nth-child(7),  #tablaInsumos td:nth-child(7)  { width: 9%;  min-width: 92px; }                         /* Caducidad */
+#tablaInsumos th:nth-child(8),  #tablaInsumos td:nth-child(8)  { width: 5%;  min-width: 54px;  text-align: center; }    /* Días */
+#tablaInsumos th:nth-child(9),  #tablaInsumos td:nth-child(9)  { width: 18%; min-width: 150px; white-space: normal; }    /* Observaciones */
+#tablaInsumos th:nth-child(10), #tablaInsumos td:nth-child(10) { width: 7%;  min-width: 64px;  text-align: center; }     /* Casilla */
 
-/* Asegurar que la columna de acciones no se corte */
-#tablaInsumos tbody td:nth-child(10) {
-  overflow: visible;
-  white-space: nowrap;
-  padding: 10px 10px;
-}
-
-/* Inputs, selects y textareas */
+/* Inputs y selects */
 #tablaInsumos tbody td input,
 #tablaInsumos tbody td select {
   width: 100%;
@@ -198,13 +191,6 @@ body {
   border-color: #2563eb;
 }
 
-/* Inputs de fecha y número un poco más cómodos */
-#tablaInsumos tbody td input[type="date"],
-#tablaInsumos tbody td input[type="number"],
-#tablaInsumos tbody td input[type="text"] {
-  min-height: 24px;
-}
-
 /* Hover en fila */
 #tablaInsumos tbody tr:hover td {
   transform: translateY(-3px);
@@ -212,25 +198,13 @@ body {
   box-shadow: 0 8px 22px rgba(0,0,0,0.06);
 }
 
-/* Semáforo por estado */
-#tablaInsumos tbody tr.expired td {
-  background: rgba(244,114,128,0.12);
-}
+/* Semáforo */
+#tablaInsumos tbody tr.expired td { background: rgba(244,114,128,0.12); }
+#tablaInsumos tbody tr.warning-expiry td { background: rgba(250,215,103,0.12); }
+#tablaInsumos tbody tr.valid-expiry td { background: rgba(167,243,208,0.12); }
+.expired td, .warning-expiry td, .valid-expiry td { color: #0b1220; }
 
-#tablaInsumos tbody tr.warning-expiry td {
-  background: rgba(250,215,103,0.12);
-}
-
-#tablaInsumos tbody tr.valid-expiry td {
-  background: rgba(167,243,208,0.12);
-}
-
-/* Texto dentro de filas con semáforo */
-.expired td, .warning-expiry td, .valid-expiry td {
-  color: #0b1220;
-}
-
-/* Controles debajo de la tabla */
+/* Controls */
 .controls {
   margin-top: 12px;
   display: flex;
@@ -239,7 +213,6 @@ body {
   align-items: center;
 }
 
-/* Botones apariencia */
 .controls button, .actions button {
   padding: 10px 14px;
   border-radius: 8px;
@@ -251,37 +224,28 @@ body {
   transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
 }
 
-.controls button:hover, .actions button:hover {
-  transform: translateY(-1px);
-  opacity: 0.98;
-}
-
-.controls button:active, .actions button:active {
-  transform: translateY(0);
-}
+.controls button:hover, .actions button:hover { transform: translateY(-1px); opacity: 0.98; }
+.controls button:active, .actions button:active { transform: translateY(0); }
 
 /* Tonos vino/rosado */
 #btnEnviarInsumos {
   background: linear-gradient(180deg, #b81a44 0%, #8d0f30 100%);
   color: #fff;
 }
-
 #btnAgregarFila {
   background: linear-gradient(180deg, #f07b98 0%, #d84a68 100%);
   color: #fff;
 }
-
 #btnRegresar1 {
   background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
   color: #fff;
 }
-
 #btnSiguiente {
   background: linear-gradient(180deg, #9f213f 0%, #7a132b 100%);
   color: #fff;
 }
 
-/* Accesibilidad focus */
+/* Focus */
 button:focus,
 select:focus,
 input:focus,
@@ -290,16 +254,21 @@ textarea:focus {
   outline-offset: 2px;
 }
 
-/* ---------------- Casilla de seleccionar para eliminar ---------------- */
-
-/* Dar más espacio visual a la columna de acciones */
+/* ---------------- Casilla de seleccionar ---------------- */
+/* Hacer que la celda quede visualmente contenida y no se corte */
 #tablaInsumos td:nth-child(10),
 #tablaInsumos th:nth-child(10) {
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: 10px;
+  padding-right: 10px;
+  overflow: visible;
 }
 
-/* Casilla más grande y centrada */
+/* Ocultar el botón "Eliminar" por fila si todavía lo crea el JS */
+#tablaInsumos tbody td:nth-child(10) button {
+  display: none !important;
+}
+
+/* Sólo la casilla */
 #tablaInsumos input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -308,9 +277,10 @@ textarea:focus {
   appearance: auto;
   -webkit-appearance: auto;
   accent-color: #8d0f30;
+  vertical-align: middle;
 }
 
-/* Si usas un contenedor alrededor de la casilla */
+/* Si hay envoltura alrededor del checkbox */
 .checkbox-wrapper {
   display: inline-flex;
   align-items: center;
@@ -339,11 +309,6 @@ textarea:focus {
   cursor: pointer;
 }
 
-#tablaInsumos th.select-cell {
-  background: rgba(255,255,255,0.98);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-}
-
 /* Responsive */
 @media (max-width: 900px) {
   #tablaInsumos th:nth-child(3), #tablaInsumos td:nth-child(3) {
@@ -353,10 +318,6 @@ textarea:focus {
 
   #tablaInsumos th:nth-child(9), #tablaInsumos td:nth-child(9) {
     min-width: 120px;
-  }
-
-  #tablaInsumos th:nth-child(10), #tablaInsumos td:nth-child(10) {
-    min-width: 160px;
   }
 }
 
