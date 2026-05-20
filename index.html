@@ -4,21 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Formulario Estomatología</title>
-
   <link rel="shortcut icon" href="icono.ico" />
   <link rel="stylesheet" href="Formato.css" />
 </head>
 <body>
   <header class="site-header" role="banner">
-    <button id="btnAdminAccess" class="admin-icon-btn" type="button" title="Acceso administrador" aria-label="Acceso administrador">
-      <img src="manage_accounts_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg" alt="Admin" />
+    <button id="btnAdminAccess" class="admin-fab" type="button" aria-label="Acceso administrador" title="Acceso administrador">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 2a4 4 0 0 1 4 4v1h1.5A2.5 2.5 0 0 1 20 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-8A2.5 2.5 0 0 1 6.5 7H8V6a4 4 0 0 1 4-4Zm2 5V6a2 2 0 1 0-4 0v1h4Zm-2 5.2a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4Zm0 5.8c-2.2 0-4 1.2-4 2.7V21h8v-.3c0-1.5-1.8-2.7-4-2.7Z"/>
+      </svg>
     </button>
 
     <img id="logo-sesver" src="Logos/sesver.png" alt="Logo SESVER"
          onerror="this.style.display='none';" />
   </header>
 
-  <!-- Página 1 -->
   <div id="page1" class="page activo">
     <div class="card">
       <h1 class="page-title">Formulario Estomatología</h1>
@@ -44,20 +44,19 @@
       </select>
 
       <div class="actions" style="margin-top:12px; display:flex; justify-content:flex-end;">
-        <button id="btnSiguiente">Siguiente</button>
+        <button id="btnSiguiente" type="button">Siguiente</button>
       </div>
     </div>
   </div>
 
-  <!-- Página 2 -->
   <div id="page2" class="page oculto">
     <div class="card">
       <h2 id="tituloCategoria">Formulario</h2>
 
       <div class="controls">
-        <button id="btnRegresar1">Regresar</button>
-        <button id="btnAgregarFila">Agregar fila</button>
-        <button id="btnEnviarInsumos">Enviar</button>
+        <button id="btnRegresar1" type="button">Regresar</button>
+        <button id="btnAgregarFila" type="button">Agregar fila</button>
+        <button id="btnEnviarInsumos" type="button">Enviar</button>
       </div>
 
       <table id="tablaInsumos" aria-label="Tabla de insumos">

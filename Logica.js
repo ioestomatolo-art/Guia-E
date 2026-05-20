@@ -469,11 +469,19 @@ async function cargarInventarioDesdeDB(clave) {
         btnDescargarPage1.style.padding = "8px 12px";
         btnDescargarPage1.style.borderRadius = "8px";
         actions.appendChild(btnDescargarPage1);
-      }
+       }
+
+       //================
+       const btnAdminAccess = document.getElementById("btnAdminAccess");
+if (btnAdminAccess) {
+  btnAdminAccess.addEventListener("click", () => {
+    window.location.href = "./admin.html";
+  });
+}
+//=======================
     } catch (e) {
       console.warn("No se pudo crear botón de descarga en page1:", e);
     }
-
 
 
 
@@ -1429,22 +1437,11 @@ if (adminToken) {
     URL.revokeObjectURL(url);
 
 
-
-
-
-
-
-
-
-    const btnAdminAccess = document.getElementById("btnAdminAccess");
-if (btnAdminAccess) {
-  btnAdminAccess.addEventListener("click", () => {
-    window.location.href = "admin.html";
-  });
-}
   }
 
   // reubicar botones si se cambia el tamaño
   window.addEventListener("resize", moveButtonsToCardBottom);
+
+  
  
  
