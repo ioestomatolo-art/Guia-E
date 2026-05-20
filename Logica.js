@@ -1427,6 +1427,21 @@ if (adminToken) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+
+
+
+
+
+
+
+
+
+    const btnAdminAccess = document.getElementById("btnAdminAccess");
+if (btnAdminAccess) {
+  btnAdminAccess.addEventListener("click", () => {
+    window.location.href = "admin.html";
+  });
+}
   }
 
   // reubicar botones si se cambia el tamaño

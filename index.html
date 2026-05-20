@@ -5,16 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Formulario Estomatología</title>
 
-  <!-- FAVICONS -->
-  <!-- "icono.ico":  -->
   <link rel="shortcut icon" href="icono.ico" />
-
-  
   <link rel="stylesheet" href="Formato.css" />
 </head>
 <body>
-  <!-- Encabezado -->
   <header class="site-header" role="banner">
+    <button id="btnAdminAccess" class="admin-icon-btn" type="button" title="Acceso administrador" aria-label="Acceso administrador">
+      <img src="manage_accounts_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg" alt="Admin" />
+    </button>
+
     <img id="logo-sesver" src="Logos/sesver.png" alt="Logo SESVER"
          onerror="this.style.display='none';" />
   </header>
@@ -25,7 +24,6 @@
       <h1 class="page-title">Formulario Estomatología</h1>
       <h2>Selecciona la categoría</h2>
 
-      <!-- Campo con autocompletado -->
       <div class="hospital-row" style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
         <label for="hospitalNombre" style="min-width:160px; font-weight:600;">Nombre del hospital:</label>
         <input list="listaHospitales" id="hospitalNombre" name="hospitalNombre"
@@ -59,9 +57,7 @@
       <div class="controls">
         <button id="btnRegresar1">Regresar</button>
         <button id="btnAgregarFila">Agregar fila</button>
-        <!-- botón agregado dinámicamente por JS: btnAgregarManual -->
         <button id="btnEnviarInsumos">Enviar</button>
-       
       </div>
 
       <table id="tablaInsumos" aria-label="Tabla de insumos">
@@ -83,51 +79,6 @@
     </div>
   </div>
 
-  <button id="btnAdminAccess" class="admin-fab" type="button" title="Acceso administrador">
-    Admin
-  </button>
-  
-  <div id="adminModal" class="admin-modal oculto" aria-hidden="true">
-    <div class="admin-card">
-      <h2>Acceso administrador</h2>
-      <p>Ingresa la contraseña para entrar al panel.</p>
-  
-      <input id="adminPass" type="password" placeholder="Contraseña de administrador" />
-  
-      <div class="admin-actions">
-        <button id="btnAdminLogin" type="button">Entrar</button>
-        <button id="btnAdminClose" type="button">Cerrar</button>
-      </div>
-  
-      <p id="adminMsg" class="admin-msg"></p>
-    </div>
-  </div>
-  
-  <div id="adminSection" class="page oculto">
-    <div class="card">
-      <h2>Panel de administrador</h2>
-  
-      <div class="controls" style="margin-bottom:12px;">
-        <button id="btnAdminReload" type="button">Actualizar registros</button>
-        <button id="btnAdminReport" type="button">Descargar reporte CSV</button>
-        <button id="btnAdminLogout" type="button">Salir</button>
-      </div>
-  
-      <table id="adminTable" aria-label="Registros de inventario">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Hospital</th>
-            <th>Clave</th>
-            <th>Categoría</th>
-            <th>Fecha</th>
-            <th>Items</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
   <script src="Logica.js"></script>
 </body>
 </html>

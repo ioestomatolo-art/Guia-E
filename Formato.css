@@ -449,4 +449,113 @@ textarea:focus {
     vertical-align: top;
     box-shadow: 0 2px 8px rgba(0,0,0,.05);
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /* Ícono admin en esquina superior izquierda */
+.site-header{
+  position: relative;
+}
+
+.admin-icon-btn{
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 20;
+  border: 0;
+  background: transparent;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.admin-icon-btn img{
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+.admin-icon-btn:hover{
+  background: rgba(128,0,32,0.08);
+}
+
+/* Página admin */
+.admin-page{
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.admin-panel{
+  width: 100%;
+  max-width: 520px;
+  background: rgba(255,255,255,0.96);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+  padding: 24px;
+}
+
+.admin-panel h2{
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.admin-panel input[type="password"]{
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+
+.admin-actions{
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-msg{
+  margin-top: 10px;
+  min-height: 1.2rem;
+  font-size: 0.95rem;
+  color: #7c2d12;
+}
+
+.admin-hidden{
+  display: none;
+}
+
+.admin-table{
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 8px;
+  margin-top: 12px;
+}
+
+.admin-table th,
+.admin-table td{
+  background: rgba(255,255,255,0.96);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
 }
