@@ -473,6 +473,201 @@ async function cargarInventarioDesdeDB(clave) {
     } catch (e) {
       console.warn("No se pudo crear botón de descarga en page1:", e);
     }
+
+
+
+
+
+// =================== ADMIN PANEL ===================
+const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
+const ADMIN_SUBMISSIONS_URL = `${SERVER_BASE}/submissions`;
+const ADMIN_REPORT_URL = `${SERVER_BASE}/report?format=csv`;
+
+let adminToken = localStorage.getItem("adminToken") || "";
+
+const btnAdminAccess = document.getElementById("btnAdminAccess");
+const adminModal = document.getElementById("adminModal");
+const adminPass = document.getElementById("adminPass");
+const btnAdminLogin = document.getElementById("btnAdminLogin");
+const btnAdminClose = document.getElementById("btnAdminClose");
+const adminMsg = document.getElementById("adminMsg");
+
+const adminSection = document.getElementById("adminSection");
+const adminTableBody = document.querySelector("#adminTable tbody");
+const btnAdminReload = document.getElementById("btnAdminReload");
+const btnAdminReport = document.getElementById("btnAdminReport");
+const btnAdminLogout = document.getElementById("btnAdminLogout");
+
+function openAdminModal() {
+  if (!adminModal) return;
+  adminMsg.textContent = "";
+  adminPass.value = "";
+  adminModal.classList.remove("oculto");
+  adminModal.setAttribute("aria-hidden", "false");
+  setTimeout(() => adminPass.focus(), 50);
+}
+
+function closeAdminModal() {
+  if (!adminModal) return;
+  adminModal.classList.add("oculto");
+  adminModal.setAttribute("aria-hidden", "true");
+}
+
+function showAdminSection() {
+  if (adminSection) {
+    adminSection.classList.remove("oculto");
+    adminSection.classList.add("activo");
+  }
+}
+
+function hideAdminSection() {
+  if (adminSection) {
+    adminSection.classList.add("oculto");
+    adminSection.classList.remove("activo");
+  }
+}
+
+function adminHeaders(extra = {}) {
+  return {
+    "Content-Type": "application/json",
+    "x-admin-token": adminToken,
+    ...extra
+  };
+}
+
+async function loginAdmin() {
+  const password = (adminPass.value || "").trim();
+  if (!password) {
+    adminMsg.textContent = "Escribe la contraseña.";
+    return;
+  }
+
+  adminMsg.textContent = "Validando...";
+  try {
+    const res = await fetch(ADMIN_LOGIN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok || !data.token) {
+      adminMsg.textContent = "Contraseña incorrecta.";
+      return;
+    }
+
+    adminToken = data.token;
+    localStorage.setItem("adminToken", adminToken);
+    adminMsg.textContent = "";
+    closeAdminModal();
+    showAdminSection();
+    await loadAdminSubmissions();
+  } catch (err) {
+    console.error("Error login admin:", err);
+    adminMsg.textContent = "No fue posible conectar con el servidor.";
+  }
+}
+
+async function loadAdminSubmissions() {
+  if (!adminTableBody) return;
+  adminTableBody.innerHTML = "";
+
+  try {
+    const res = await fetch(ADMIN_SUBMISSIONS_URL, {
+      method: "GET",
+      headers: { "x-admin-token": adminToken }
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : [];
+
+    if (!list.length) {
+      adminTableBody.innerHTML = `<tr><td colspan="6">Sin registros</td></tr>`;
+      return;
+    }
+
+    for (const item of list) {
+      const tr = document.createElement("tr");
+
+      const itemsCount = Array.isArray(item.items) ? item.items.length : 0;
+      const fecha = item.savedAt || item.receivedAt || "";
+
+      tr.innerHTML = `
+        <td>${escapeHtml(item.id || "")}</td>
+        <td>${escapeHtml(item.hospitalNombre || "")}</td>
+        <td>${escapeHtml(item.hospitalClave || "")}</td>
+        <td>${escapeHtml(item.categoria || "")}</td>
+        <td>${escapeHtml(fecha)}</td>
+        <td>${itemsCount}</td>
+      `;
+
+      adminTableBody.appendChild(tr);
+    }
+  } catch (err) {
+    console.error("Error cargando admin submissions:", err);
+    adminTableBody.innerHTML = `<tr><td colspan="6">Error al cargar registros</td></tr>`;
+  }
+}
+
+async function downloadAdminReport() {
+  try {
+    const res = await fetch(ADMIN_REPORT_URL, {
+      method: "GET",
+      headers: { "x-admin-token": adminToken }
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reporte_admin_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"_")}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Error descargando reporte admin:", err);
+    alert("No fue posible descargar el reporte.");
+  }
+}
+
+btnAdminAccess && btnAdminAccess.addEventListener("click", openAdminModal);
+btnAdminClose && btnAdminClose.addEventListener("click", closeAdminModal);
+btnAdminLogin && btnAdminLogin.addEventListener("click", loginAdmin);
+adminPass && adminPass.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") loginAdmin();
+});
+
+btnAdminReload && btnAdminReload.addEventListener("click", loadAdminSubmissions);
+btnAdminReport && btnAdminReport.addEventListener("click", downloadAdminReport);
+
+btnAdminLogout && btnAdminLogout.addEventListener("click", () => {
+  localStorage.removeItem("adminToken");
+  adminToken = "";
+  hideAdminSection();
+  openAdminModal();
+});
+
+if (adminToken) {
+  showAdminSection();
+  loadAdminSubmissions();
+} else {
+  hideAdminSection();
+}
+
+
+
+
   }
 
   moveButtonsToCardBottom();

@@ -83,6 +83,51 @@
     </div>
   </div>
 
+  <button id="btnAdminAccess" class="admin-fab" type="button" title="Acceso administrador">
+    Admin
+  </button>
+  
+  <div id="adminModal" class="admin-modal oculto" aria-hidden="true">
+    <div class="admin-card">
+      <h2>Acceso administrador</h2>
+      <p>Ingresa la contraseña para entrar al panel.</p>
+  
+      <input id="adminPass" type="password" placeholder="Contraseña de administrador" />
+  
+      <div class="admin-actions">
+        <button id="btnAdminLogin" type="button">Entrar</button>
+        <button id="btnAdminClose" type="button">Cerrar</button>
+      </div>
+  
+      <p id="adminMsg" class="admin-msg"></p>
+    </div>
+  </div>
+  
+  <div id="adminSection" class="page oculto">
+    <div class="card">
+      <h2>Panel de administrador</h2>
+  
+      <div class="controls" style="margin-bottom:12px;">
+        <button id="btnAdminReload" type="button">Actualizar registros</button>
+        <button id="btnAdminReport" type="button">Descargar reporte CSV</button>
+        <button id="btnAdminLogout" type="button">Salir</button>
+      </div>
+  
+      <table id="adminTable" aria-label="Registros de inventario">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Hospital</th>
+            <th>Clave</th>
+            <th>Categoría</th>
+            <th>Fecha</th>
+            <th>Items</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
   <script src="Logica.js"></script>
 </body>
 </html>
