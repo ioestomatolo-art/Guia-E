@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Acceso administrador</title>
+  <link rel="shortcut icon" href="icono.ico" />
+  <link rel="stylesheet" href="Formato.css" />
+</head>
+<body class="admin-page">
+  <div class="admin-panel" id="loginPanel">
+    <h2>Acceso administrador</h2>
+    <p>Ingresa la contraseña para entrar al panel.</p>
+
+    <input id="adminPass" type="password" placeholder="Contraseña de administrador" />
+
+    <div class="admin-actions">
+      <button id="btnAdminLogin" type="button">Entrar</button>
+      <button id="btnBack" type="button">Volver</button>
+    </div>
+
+    <p id="adminMsg" class="admin-msg"></p>
+  </div>
+
+  <div class="admin-panel admin-hidden" id="adminPanel">
+    <h2>Panel de administrador</h2>
+    <p>Acceso concedido. Aquí puedes administrar registros.</p>
+
+    <div class="admin-actions">
+      <button id="btnAdminReload" type="button">Actualizar registros</button>
+      <button id="btnAdminReport" type="button">Descargar reporte CSV</button>
+      <button id="btnAdminLogout" type="button">Salir</button>
+    </div>
+
+    <table class="admin-table" id="adminTable" aria-label="Registros de inventario">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Hospital</th>
+          <th>Clave</th>
+          <th>Categoría</th>
+          <th>Fecha</th>
+          <th>Items</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = "CAMBIA_ESTA_CLAVE";
+
+    const loginPanel = document.getElementById("loginPanel");
+    const adminPanel = document.getElementById("adminPanel");
+    const adminPass = document.getElementById("adminPass");
+    const btnAdminLogin = document.getElementById("btnAdminLogin");
+    const btnBack = document.getElementById("btnBack");
+    const btnAdminReload = document.getElementById("btnAdminReload");
+    const btnAdminReport = document.getElementById("btnAdminReport");
+    const btnAdminLogout = document.getElementById("btnAdminLogout");
+    const adminMsg = document.getElementById("adminMsg");
+    const adminTableBody = document.querySelector("#adminTable tbody");
+
+    const API_BASE = "https://servidor-4wu6.onrender.com";
+
+    function showLogin() {
+      loginPanel.classList.remove("admin-hidden");
+      adminPanel.classList.add("admin-hidden");
+      adminPass.value = "";
+      adminMsg.textContent = "";
+      adminPass.focus();
+    }
+
+    function showAdmin() {
+      loginPanel.classList.add("admin-hidden");
+      adminPanel.classList.remove("admin-hidden");
+      loadAdminData();
+    }
+
+    async function loadAdminData() {
+      adminTableBody.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
+      try {
+        const res = await fetch(`${API_BASE}/submissions`, { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        adminTableBody.innerHTML = "";
+        if (!Array.isArray(data) || data.length === 0) {
+          adminTableBody.innerHTML = "<tr><td colspan='6'>Sin registros.</td></tr>";
+          return;
+        }
+
+        data.forEach((r, i) => {
+          const tr = document.createElement("tr");
+          const fecha = r.receivedAt || r.fechaEnvio || "";
+          const itemsCount = Array.isArray(r.items) ? r.items.length : (r.items ? 1 : 0);
+
+          tr.innerHTML = `
+            <td>${r.id || i + 1}</td>
+            <td>${r.hospitalNombre || ""}</td>
+            <td>${r.hospitalClave || ""}</td>
+            <td>${r.categoria || ""}</td>
+            <td>${fecha}</td>
+            <td>${itemsCount}</td>
+          `;
+          adminTableBody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        adminTableBody.innerHTML = "<tr><td colspan='6'>Error al cargar registros.</td></tr>";
+      }
+    }
+
+    btnAdminLogin.addEventListener("click", () => {
+      const pass = (adminPass.value || "").trim();
+      if (!pass) {
+        adminMsg.textContent = "Escribe la contraseña.";
+        return;
+      }
+      if (pass === ADMIN_PASSWORD) {
+        localStorage.setItem("admin_ok", "1");
+        showAdmin();
+      } else {
+        adminMsg.textContent = "Contraseña incorrecta.";
+      }
+    });
+
+    btnBack.addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+
+    btnAdminReload.addEventListener("click", loadAdminData);
+
+    btnAdminReport.addEventListener("click", () => {
+      window.open(`${API_BASE}/report?format=csv`, "_blank");
+    });
+
+    btnAdminLogout.addEventListener("click", () => {
+      localStorage.removeItem("admin_ok");
+      showLogin();
+    });
+
+    if (localStorage.getItem("admin_ok") === "1") {
+      showAdmin();
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>
