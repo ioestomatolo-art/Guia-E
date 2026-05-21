@@ -20,11 +20,11 @@
 }
 
 /* Botón admin en esquina superior izquierda */
-.admin-fab{
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 20;
+.admin-fab {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 9999;
   border: 0;
   background: transparent;
   padding: 6px;
@@ -35,14 +35,14 @@
   justify-content: center;
 }
 
-.admin-fab svg{
+.admin-fab img,
+.admin-fab svg {
   width: 30px;
   height: 30px;
-  fill: #8d0f30;
   display: block;
 }
 
-.admin-fab:hover{
+.admin-fab:hover {
   background: rgba(128,0,32,0.08);
 }
 
@@ -102,8 +102,13 @@ body {
   color: #0f172a;
 }
 
-.page.oculto { display: none; }
-.page.activo { display: block; }
+.page.oculto {
+  display: none;
+}
+
+.page.activo {
+  display: block;
+}
 
 .hospital-row {
   display: flex;
@@ -250,22 +255,31 @@ body {
   transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
 }
 
-.controls button:hover, .actions button:hover { transform: translateY(-1px); opacity: 0.98; }
-.controls button:active, .actions button:active { transform: translateY(0); }
+.controls button:hover, .actions button:hover {
+  transform: translateY(-1px);
+  opacity: 0.98;
+}
+
+.controls button:active, .actions button:active {
+  transform: translateY(0);
+}
 
 /* Tonos vino/rosado */
 #btnEnviarInsumos {
   background: linear-gradient(180deg, #b81a44 0%, #8d0f30 100%);
   color: #fff;
 }
+
 #btnAgregarFila {
   background: linear-gradient(180deg, #f07b98 0%, #d84a68 100%);
   color: #fff;
 }
+
 #btnRegresar1 {
   background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
   color: #fff;
 }
+
 #btnSiguiente {
   background: linear-gradient(180deg, #9f213f 0%, #7a132b 100%);
   color: #fff;
@@ -278,6 +292,148 @@ input:focus,
 textarea:focus {
   outline: 3px solid rgba(37,99,235,0.18);
   outline-offset: 2px;
+}
+
+/* ---------------- Casilla de seleccionar ---------------- */
+#tablaInsumos td:nth-child(10),
+#tablaInsumos th:nth-child(10) {
+  padding-left: 0;
+  padding-right: 0;
+  overflow: visible;
+  vertical-align: middle;
+}
+
+#tablaInsumos tbody td:nth-child(10) {
+  text-align: center;
+  vertical-align: middle;
+}
+
+#tablaInsumos tbody td:nth-child(10) input[type="checkbox"] {
+  display: block;
+  margin: 0 auto;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  appearance: auto;
+  -webkit-appearance: auto;
+  accent-color: #8d0f30;
+  vertical-align: middle;
+}
+
+/* Ocultar el botón "Eliminar" por fila si el JS todavía lo crea */
+#tablaInsumos tbody td:nth-child(10) button {
+  display: none !important;
+}
+
+/* Si usas una envoltura alrededor del checkbox */
+.checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+#tablaInsumos label.checkbox-wrapper {
+  cursor: pointer;
+}
+
+/* ---------------- Admin ---------------- */
+.admin-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.admin-panel {
+  width: min(520px, 100%);
+  background: rgba(255,255,255,0.96);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+  padding: 24px;
+}
+
+.admin-panel-large {
+  width: min(1200px, 100%);
+}
+
+.admin-panel h1,
+.admin-panel h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.admin-panel input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-actions button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+#btnAdminLogin {
+  background: #8d0f30;
+  color: #fff;
+}
+
+#btnBackHome,
+#btnAdminClose,
+#btnAdminLogout {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.admin-msg {
+  margin-top: 10px;
+  min-height: 1.2rem;
+  font-size: 0.95rem;
+  color: #7c2d12;
+}
+
+.admin-hidden {
+  display: none !important;
+}
+
+.admin-table,
+#adminTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 8px;
+  margin-top: 12px;
+}
+
+.admin-table th,
+.admin-table td,
+#adminTable th,
+#adminTable td {
+  background: rgba(255,255,255,0.96);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
 }
 
 /* Responsive */
@@ -314,15 +470,20 @@ textarea:focus {
     min-width: 0;
   }
 
-  .admin-fab{
+  .admin-fab {
     top: 8px;
     left: 8px;
     padding: 5px;
   }
 
-  .admin-fab svg{
+  .admin-fab img,
+  .admin-fab svg {
     width: 26px;
     height: 26px;
+  }
+
+  .admin-panel {
+    padding: 18px;
   }
 }
 
@@ -344,7 +505,4 @@ textarea:focus {
   #tablaInsumos tbody td {
     white-space: nowrap;
   }
-}
-.admin-panel-large{
-  max-width: 1200px;
 }
