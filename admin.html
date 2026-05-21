@@ -1,71 +1,57 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Administrador</title>
-
-  <link rel="stylesheet" href="Formato.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Administrador | Estomatología</title>
+  <link rel="shortcut icon" href="icono.ico" />
+  <link rel="stylesheet" href="Formato.css" />
 </head>
 <body>
+  <header class="site-header" role="banner">
+    <button id="btnAdminAccess" class="admin-fab" type="button" title="Acceso administrador" aria-label="Acceso administrador">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5zm0 2c-3.866 0-7 3.134-7 7h14c0-3.866-3.134-7-7-7z"/>
+      </svg>
+    </button>
 
-  <!-- LOGIN -->
-  <section id="adminLoginPage" class="admin-page">
-    <div class="admin-panel">
+    <img id="logo-sesver" src="Logos/sesver.png" alt="Logo SESVER" onerror="this.style.display='none';" />
+  </header>
 
+  <main class="admin-page">
+    <section id="adminLoginView" class="admin-panel">
       <h1>Acceso administrador</h1>
-      <p>Ingresa la contraseña para continuar.</p>
+      <p>Ingresa la contraseña para entrar al panel.</p>
 
-      <input
-        type="password"
-        id="adminPass"
-        placeholder="Contraseña de administrador"
-      >
+      <form id="adminLoginForm" autocomplete="off">
+        <label for="adminPass" class="sr-only">Contraseña de administrador</label>
+        <input
+          id="adminPass"
+          type="password"
+          placeholder="Contraseña de administrador"
+          autocomplete="current-password"
+        />
 
-      <div class="admin-actions">
-        <button id="btnAdminLogin">
-          Entrar
-        </button>
+        <div class="admin-actions">
+          <button id="btnAdminLogin" type="submit">Entrar</button>
+          <button id="btnAdminClose" type="button">Volver</button>
+        </div>
 
-        <button id="btnBackHome">
-          Volver
-        </button>
-      </div>
+        <p id="adminMsg" class="admin-msg"></p>
+      </form>
+    </section>
 
-      <div id="adminMsg" class="admin-msg"></div>
-
-    </div>
-  </section>
-
-  <!-- PANEL -->
-  <section id="adminPanelPage" class="admin-page admin-hidden">
-
-    <div class="admin-panel admin-panel-large">
-
-      <h1>Panel de administrador</h1>
-
-      <p>
-        Acceso concedido. Aquí puedes administrar registros.
-      </p>
+    <section id="adminSection" class="admin-panel admin-hidden">
+      <h2>Panel de administrador</h2>
+      <p>Acceso concedido. Aquí puedes administrar registros.</p>
 
       <div class="admin-actions">
-
-        <button id="btnAdminReload">
-          Actualizar registros
-        </button>
-
-        <button id="btnAdminReport">
-          Descargar reporte CSV
-        </button>
-
-        <button id="btnAdminLogout">
-          Salir
-        </button>
-
+        <button id="btnAdminReload" type="button">Actualizar registros</button>
+        <button id="btnAdminReport" type="button">Descargar reporte CSV</button>
+        <button id="btnAdminLogout" type="button">Salir</button>
       </div>
 
-      <table id="adminTable" class="admin-table">
-
+      <table id="adminTable" class="admin-table" aria-label="Registros de inventario">
         <thead>
           <tr>
             <th>ID</th>
@@ -76,318 +62,185 @@
             <th>Items</th>
           </tr>
         </thead>
-
         <tbody></tbody>
-
       </table>
+    </section>
+  </main>
 
-    </div>
+  <script>
+    const SERVER_BASE = "https://servidor-4wu6.onrender.com";
+    const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
+    const ADMIN_SUBMISSIONS_URL = `${SERVER_BASE}/submissions`;
+    const ADMIN_REPORT_URL = `${SERVER_BASE}/report?format=csv`;
 
-  </section>
+    let adminToken = localStorage.getItem("adminToken") || "";
 
-<script>
+    const btnAdminAccess = document.getElementById("btnAdminAccess");
+    const adminLoginView = document.getElementById("adminLoginView");
+    const adminSection = document.getElementById("adminSection");
+    const adminPass = document.getElementById("adminPass");
+    const adminMsg = document.getElementById("adminMsg");
+    const adminLoginForm = document.getElementById("adminLoginForm");
+    const btnAdminClose = document.getElementById("btnAdminClose");
+    const btnAdminReload = document.getElementById("btnAdminReload");
+    const btnAdminReport = document.getElementById("btnAdminReport");
+    const btnAdminLogout = document.getElementById("btnAdminLogout");
+    const adminTableBody = document.querySelector("#adminTable tbody");
 
-const SERVER_BASE = "https://servidor-4wu6.onrender.com";
+    function showLogin() {
+      adminLoginView.classList.remove("admin-hidden");
+      adminSection.classList.add("admin-hidden");
+      adminMsg.textContent = "";
+      adminPass.value = "";
+      setTimeout(() => adminPass.focus(), 50);
+    }
 
-const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
-const ADMIN_SUBMISSIONS_URL = `${SERVER_BASE}/submissions`;
-const ADMIN_REPORT_URL = `${SERVER_BASE}/report?format=csv`;
+    function showPanel() {
+      adminSection.classList.remove("admin-hidden");
+      adminLoginView.classList.add("admin-hidden");
+    }
 
-let adminToken = localStorage.getItem("adminToken") || "";
+    function authHeaders(extra = {}) {
+      return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${adminToken}`,
+        ...extra
+      };
+    }
 
-/* LOGIN */
-const adminLoginPage = document.getElementById("adminLoginPage");
-const adminPanelPage = document.getElementById("adminPanelPage");
+    async function loginAdmin() {
+      const password = (adminPass.value || "").trim();
+      if (!password) {
+        adminMsg.textContent = "Escribe la contraseña.";
+        return;
+      }
 
-const adminPass = document.getElementById("adminPass");
-const btnAdminLogin = document.getElementById("btnAdminLogin");
-const btnBackHome = document.getElementById("btnBackHome");
-const adminMsg = document.getElementById("adminMsg");
+      adminMsg.textContent = "Validando...";
+      try {
+        const res = await fetch(ADMIN_LOGIN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        });
 
-/* PANEL */
-const adminTableBody = document.querySelector("#adminTable tbody");
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok || !data.token) {
+          adminMsg.textContent = "Contraseña incorrecta.";
+          return;
+        }
 
-const btnAdminReload = document.getElementById("btnAdminReload");
-const btnAdminReport = document.getElementById("btnAdminReport");
-const btnAdminLogout = document.getElementById("btnAdminLogout");
+        adminToken = data.token;
+        localStorage.setItem("adminToken", adminToken);
+        adminMsg.textContent = "";
+        showPanel();
+        await loadAdminSubmissions();
+      } catch (err) {
+        console.error("Error login admin:", err);
+        adminMsg.textContent = "No fue posible conectar con el servidor.";
+      }
+    }
 
-/* ========================= */
-/* MOSTRAR PANEL */
-/* ========================= */
+    async function loadAdminSubmissions() {
+      if (!adminTableBody) return;
+      adminTableBody.innerHTML = "";
 
-function showPanel() {
+      try {
+        const res = await fetch(ADMIN_SUBMISSIONS_URL, {
+          method: "GET",
+          headers: authHeaders()
+        });
 
-  adminLoginPage.classList.add("admin-hidden");
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `HTTP ${res.status}`);
+        }
 
-  adminPanelPage.classList.remove("admin-hidden");
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : [];
 
-}
+        if (!list.length) {
+          adminTableBody.innerHTML = `<tr><td colspan="6">Sin registros</td></tr>`;
+          return;
+        }
 
-/* ========================= */
-/* MOSTRAR LOGIN */
-/* ========================= */
+        for (const item of list) {
+          const tr = document.createElement("tr");
+          const itemsCount = Array.isArray(item.items) ? item.items.length : 0;
+          const fecha = item.savedAt || item.receivedAt || "";
 
-function showLogin() {
+          tr.innerHTML = `
+            <td>${escapeHtml(item.id || "")}</td>
+            <td>${escapeHtml(item.hospitalNombre || "")}</td>
+            <td>${escapeHtml(item.hospitalClave || "")}</td>
+            <td>${escapeHtml(item.categoria || "")}</td>
+            <td>${escapeHtml(fecha)}</td>
+            <td>${itemsCount}</td>
+          `;
+          adminTableBody.appendChild(tr);
+        }
+      } catch (err) {
+        console.error("Error cargando admin submissions:", err);
+        adminTableBody.innerHTML = `<tr><td colspan="6">Error al cargar registros</td></tr>`;
+      }
+    }
 
-  adminPanelPage.classList.add("admin-hidden");
+    async function downloadAdminReport() {
+      try {
+        const res = await fetch(ADMIN_REPORT_URL, {
+          method: "GET",
+          headers: authHeaders()
+        });
 
-  adminLoginPage.classList.remove("admin-hidden");
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `HTTP ${res.status}`);
+        }
 
-}
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `reporte_admin_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "_")}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Error descargando reporte admin:", err);
+        alert("No fue posible descargar el reporte.");
+      }
+    }
 
-/* ========================= */
-/* LOGIN */
-/* ========================= */
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
 
-async function loginAdmin() {
-
-  const password = adminPass.value.trim();
-
-  if (!password) {
-    adminMsg.textContent = "Escribe la contraseña.";
-    return;
-  }
-
-  adminMsg.textContent = "Validando...";
-
-  try {
-
-    const res = await fetch(ADMIN_LOGIN_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        password
-      })
+    btnAdminAccess && btnAdminAccess.addEventListener("click", showLogin);
+    btnAdminClose && btnAdminClose.addEventListener("click", showLogin);
+    adminLoginForm && adminLoginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      loginAdmin();
     });
 
-    const data = await res.json();
+    btnAdminReload && btnAdminReload.addEventListener("click", loadAdminSubmissions);
+    btnAdminReport && btnAdminReport.addEventListener("click", downloadAdminReport);
 
-    console.log(data);
+    btnAdminLogout && btnAdminLogout.addEventListener("click", () => {
+      localStorage.removeItem("adminToken");
+      adminToken = "";
+      showLogin();
+    });
 
-    /* IMPORTANTE */
-    if (!res.ok || !data.token) {
-
-      adminMsg.textContent = "Contraseña incorrecta.";
-
-      return;
+    if (adminToken) {
+      showPanel();
+      loadAdminSubmissions();
+    } else {
+      showLogin();
     }
-
-    adminToken = data.token;
-
-    localStorage.setItem("adminToken", adminToken);
-
-    adminMsg.textContent = "";
-
-    showPanel();
-
-    await loadAdminSubmissions();
-
-  } catch (err) {
-
-    console.error(err);
-
-    adminMsg.textContent =
-      "No fue posible conectar con el servidor.";
-
-  }
-
-}
-
-/* ========================= */
-/* CARGAR TABLA */
-/* ========================= */
-
-async function loadAdminSubmissions() {
-
-  adminTableBody.innerHTML = "";
-
-  try {
-
-    const res = await fetch(
-      ADMIN_SUBMISSIONS_URL,
-      {
-        method: "GET",
-        headers: {
-          "x-admin-token": adminToken
-        }
-      }
-    );
-
-    const data = await res.json();
-
-    const list = Array.isArray(data)
-      ? data
-      : [];
-
-    if (!list.length) {
-
-      adminTableBody.innerHTML =
-        `<tr>
-          <td colspan="6">
-            Sin registros
-          </td>
-        </tr>`;
-
-      return;
-    }
-
-    for (const item of list) {
-
-      const tr = document.createElement("tr");
-
-      tr.innerHTML = `
-        <td>${item.id || ""}</td>
-        <td>${item.hospitalNombre || ""}</td>
-        <td>${item.hospitalClave || ""}</td>
-        <td>${item.categoria || ""}</td>
-        <td>${item.savedAt || ""}</td>
-        <td>${Array.isArray(item.items)
-          ? item.items.length
-          : 0}</td>
-      `;
-
-      adminTableBody.appendChild(tr);
-
-    }
-
-  } catch (err) {
-
-    console.error(err);
-
-    adminTableBody.innerHTML =
-      `<tr>
-        <td colspan="6">
-          Error cargando registros
-        </td>
-      </tr>`;
-
-  }
-
-}
-
-/* ========================= */
-/* REPORTE */
-/* ========================= */
-
-async function downloadAdminReport() {
-
-  try {
-
-    const res = await fetch(
-      ADMIN_REPORT_URL,
-      {
-        method: "GET",
-        headers: {
-          "x-admin-token": adminToken
-        }
-      }
-    );
-
-    const blob = await res.blob();
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-
-    a.href = url;
-
-    a.download = "reporte.csv";
-
-    document.body.appendChild(a);
-
-    a.click();
-
-    a.remove();
-
-    URL.revokeObjectURL(url);
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert("Error descargando reporte");
-
-  }
-
-}
-
-/* ========================= */
-/* LOGOUT */
-/* ========================= */
-
-function logoutAdmin() {
-
-  localStorage.removeItem("adminToken");
-
-  adminToken = "";
-
-  showLogin();
-
-}
-
-/* ========================= */
-/* EVENTOS */
-/* ========================= */
-
-btnAdminLogin.addEventListener(
-  "click",
-  loginAdmin
-);
-
-adminPass.addEventListener(
-  "keydown",
-  (e) => {
-
-    if (e.key === "Enter") {
-      loginAdmin();
-    }
-
-  }
-);
-
-btnAdminReload.addEventListener(
-  "click",
-  loadAdminSubmissions
-);
-
-btnAdminReport.addEventListener(
-  "click",
-  downloadAdminReport
-);
-
-btnAdminLogout.addEventListener(
-  "click",
-  logoutAdmin
-);
-
-btnBackHome.addEventListener(
-  "click",
-  () => {
-
-    window.location.href = "index.html";
-
-  }
-);
-
-/* ========================= */
-/* AUTOLOGIN */
-/* ========================= */
-
-if (adminToken) {
-
-  showPanel();
-
-  loadAdminSubmissions();
-
-} else {
-
-  showLogin();
-
-}
-
-</script>
-
+  </script>
 </body>
 </html>
