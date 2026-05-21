@@ -345,3 +345,6 @@ textarea:focus {
     white-space: nowrap;
   }
 }
+.admin-panel-large{
+  max-width: 1200px;
+}
