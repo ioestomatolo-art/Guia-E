@@ -1413,7 +1413,7 @@ if (adminToken) {
     if (errors.length) { alert("Errores:\n\n" + errors.join("\n")); return; }
     if (!filasExport || filasExport.length === 0) { alert("No hay datos para exportar."); return; }
 
-    const cols = ["hombre_hospital","categoria","uid","clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
+    const cols = ["uid","clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
     const escapeCell = s => {
       if (s===null||s===undefined) return "";
       const str = String(s);
