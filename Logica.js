@@ -1,3 +1,5 @@
+
+
 document.addEventListener("DOMContentLoaded", () => {
   // =========================
   // CONFIG
@@ -18,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // Mantén aquí tu catálogo completo, tal como ya lo tienes en tu proyecto.
+  // Pega aquí tu catálogo completo
   const catalogo = {
     insumos: [
       { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
@@ -525,9 +527,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const thead = tabla.querySelector("thead");
     if (!thead) return;
 
-    const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent || "").trim().toLowerCase());
     const tr = thead.querySelector("tr");
     if (!tr) return;
+
+    const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent || "").trim().toLowerCase());
 
     if (!ths.includes("observaciones")) {
       const th = document.createElement("th");
@@ -535,11 +538,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tr.appendChild(th);
     }
 
-    if (!ths.includes("selección") && !ths.includes("seleccion")) {
-      const th = document.createElement("th");
-      th.textContent = "Selección";
-      tr.appendChild(th);
-    }
+    // No se agrega columna de selección; la tabla se mantiene como la tienes en el HTML.
   }
 
   ensureHeaders();
@@ -807,7 +806,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const list = getCatalogIndex();
     const matchByKey = findResourceByClave(raw);
     if (matchByKey) {
       applyMatchedProductToRow(tr, matchByKey, "clave-exacta");
@@ -904,7 +902,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (estadoSpan) {
       if (stockVal === null) estadoSpan.textContent = "";
-      else estadoSpan.textContent = (stockVal < minVal) ? "Bajo stock" : "Stock suficiente";
+      else estadoSpan.textContent = stockVal < minVal ? "Bajo stock" : "Stock suficiente";
     }
 
     tr.classList.remove("expired", "warning-expiry", "valid-expiry");
@@ -1040,6 +1038,9 @@ document.addEventListener("DOMContentLoaded", () => {
     tdObs.appendChild(textareaObs);
     tr.appendChild(tdObs);
 
+    // En la tabla no se agrega una columna de selección extra.
+    // Si tu HTML ya tiene la columna final para selección, se usa.
+    // Si no la tiene, este bloque queda oculto por no existir el th/celda correspondiente.
     const tdSel = document.createElement("td");
     tdSel.style.display = "flex";
     tdSel.style.alignItems = "center";
@@ -1066,9 +1067,6 @@ document.addEventListener("DOMContentLoaded", () => {
     inputDesc.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === "Tab") {
         syncDescriptionToCatalog(tr);
-        if (tr.dataset.matchOk === "1") {
-          return;
-        }
       }
     });
 
@@ -1094,7 +1092,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       refreshDisabledOptions();
       setTimeout(() => {
-        try { inputDesc.focus(); } catch (e) {}
+        try {
+          inputDesc.focus();
+        } catch (e) {}
       }, 0);
       sortRowsByCaducidad();
     });
@@ -1209,17 +1209,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (item.uid) tr.dataset.uid = item.uid;
         if (item.manual) tr.dataset.manual = "true";
 
-        // Primero intenta por clave, luego por descripción.
         const clave = String(item.clave || "").trim();
         const desc = String(item.descripcion || "").trim();
 
-        let matchedByKey = null;
-        if (clave) {
-          matchedByKey = findResourceByClave(clave);
-        }
+        const matchByKey = clave ? findResourceByClave(clave) : null;
 
-        if (matchedByKey) {
-          applyMatchedProductToRow(tr, matchedByKey, "carga-clave");
+        if (matchByKey) {
+          applyMatchedProductToRow(tr, matchByKey, "carga-clave");
         } else if (desc) {
           syncDescriptionToCatalog(tr);
         } else {
@@ -1237,7 +1233,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // PERSISTENCIA
+  // VALIDACIÓN Y PERSISTENCIA
   // =========================
   function buildPayloadRows() {
     const filasExport = [];
@@ -1322,8 +1318,7 @@ document.addEventListener("DOMContentLoaded", () => {
       throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
     }
 
-    const data = await resp.json().catch(() => null);
-    return data;
+    return await resp.json().catch(() => null);
   }
 
   function downloadCSV() {
@@ -1425,12 +1420,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // BOTONES / NAV
+  // BOTÓN ADMIN
   // =========================
   btnAdminAccess && btnAdminAccess.addEventListener("click", () => {
     window.location.href = "./admin.html";
   });
 
+  // =========================
+  // NAV / BOTONES
+  // =========================
   btnSiguiente && (btnSiguiente.onclick = async (ev) => {
     ev && ev.preventDefault();
 
@@ -1521,7 +1519,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         btnEnviar.disabled = true;
-        const originalText = btnEnviar.textContent;
         btnEnviar.textContent = "Guardando...";
 
         await saveInventoryToServer(
@@ -1557,15 +1554,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // MANTENIMIENTO
+  // ESTILO EXTRA: inválido sin chocar con semáforo
   // =========================
-  window.addEventListener("resize", moveButtonsToCardBottom);
-
-  // Clase visual para filas inválidas
   const extraStyle = document.createElement("style");
   extraStyle.textContent = `
     #tablaInsumos tbody tr.row-invalid td {
-      background: rgba(239, 68, 68, 0.10) !important;
+      box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.35);
     }
   `;
   document.head.appendChild(extraStyle);
@@ -1576,13 +1570,9 @@ document.addEventListener("DOMContentLoaded", () => {
   cargarHospitales().catch(() => {});
   moveButtonsToCardBottom();
 
-  // Si el usuario ya había escrito hospital válido antes de cargar
   if (inputHospital && inputHospital.value) {
     syncHospitalClave();
   } else {
     btnSiguiente.disabled = true;
   }
 });
-
-
-
