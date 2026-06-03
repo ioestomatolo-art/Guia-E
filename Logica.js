@@ -1,25 +1,7 @@
-async function cargarInventarioDesdeDB(clave) {
-  try {
-    console.log("Consultando base de datos para el hospital:", clave);
-
-    const res = await fetch(
-      `${SERVER_BASE}/inventory-base?hospitalClave=${encodeURIComponent(clave)}`,
-      { method: "GET" }
-    );
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`HTTP ${res.status} ${txt}`);
-    }
-
-    const registros = await res.json();
-    return Array.isArray(registros) ? registros : [];
-  } catch (error) {
-    console.error("Error al conectar con el servidor:", error);
-    return [];
-  }
-  }
-  // ======== Config ========
+document.addEventListener("DOMContentLoaded", () => {
+  // =========================
+  // CONFIG
+  // =========================
   let categoriaActiva = null;
   let filaContador = 0;
   let lastAddTime = 0;
@@ -28,7 +10,7 @@ async function cargarInventarioDesdeDB(clave) {
   let rowCreationCounter = 0;
 
   const SERVER_BASE = "https://servidor-4wu6.onrender.com";
-  const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
+  const HOSPITALES_URL = `${SERVER_BASE}/hospitales`;
   const INVENTORY_GET_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_POST_URL = `${SERVER_BASE}/inventory`;
   const INVENTORY_DELETE_ITEM_URL = `${SERVER_BASE}/inventory/item/delete`;
@@ -36,314 +18,314 @@ async function cargarInventarioDesdeDB(clave) {
 
   const adquisicionCats = new Set(["equipo", "mobiliario", "bienesInformaticos", "instrumental"]);
 
-  // placeholder de catálogo (mantener o rellenar con tus datos)
-  const catalogo = {  
-      insumos: [
-        { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "MEPIVACAÍNA 3% SIN VASOCONSTRICTOR. CAJA CON 50 CARTUCHOS DENTALES DE 1.8 ML CADA UNO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "010.000.0267.00", descripcion: "LIDOCAÍNA, EPINEFRINA. SOLUCIÓN INYECTABLE AL 2%. CAJA CON 50 CARTUCHOS DENTALES CON 1.8 ML", stock: "", minimo: "", caducidad: "" },
-        { clave: "070.817.0550", descripcion: "SOLUCIÓN PARA REVELADO PARA SISTEMA MANUAL DE REVELADOR CONCENTRADO. ENVASE 828 ML. (LA MARCA DE ESTE PRODUCTO DEBE SER LA MISMA DE LA CLAVE 070.426.0363)1", stock: "", minimo: "", caducidad: "" },
-        { clave: "070.426.0363", descripcion: "SOLUCIÓN PARA FIJADO PARA SISTEMA MANUAL DE FIJADOR CONCENTRADO. ENVASE 828 ML. (LA MARCA DE ESTE PRODUCTO DEBE SER LA MISMA DE LA CLAVE 070.817.0550)1", stock: "", minimo: "", caducidad: "" },
-        { clave: "070.707.0496", descripcion: "PELÍCULA RADIOGRÁFICA, DENTAL ADULTO, MEDIDAS: EN UN RANGO DE 3 A 3.5 CM POR 4 A 4.5 CM. CAJA CON 150 PELÍCULAS1", stock: "", minimo: "", caducidad: "" },
-        { clave: "070.707.0587", descripcion: "PELÍCULA RADIOGRÁFICA INFANTIL SENCILLA PERIAPICAL DE 2.2 * 3.5 CM. CAJA CON 100 PELÍCULAS1", stock: "", minimo: "", caducidad: "" }
-      ],
-      material: [
-        { clave: "060.016.0204", descripcion: "ACEITES. LUBRICANTE PARA PIEZA DE MANO DE BAJA VELOCIDAD. ENVASE CON APLICADOR CON 120 ML.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "060.016.0253", descripcion: "ACEITES. ACEITE LUBRICANTE PARA TURBINA DE PIEZA DE MANO DE ALTA VELOCIDAD. APLICADOR EN FORMA DE JERINGA. ENVASE CON 2 ML.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "S/C", descripcion: "ÁCIDO FOSFÓRICO AL 34% O 37% PARA GRABADO DE ESMALTE O DENTINA.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "060.031.0072", descripcion: "ADHESIVO. ADHESIVO DENTAL PARA RESINAS DIRECTAS AUTOPOLIMERIZABLE O FOTOPOLIMERIZABLE. FRASCO DE 5 ML.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "060.040.8058", descripcion: "AGUJAS DENTAL. TIPO CARPULE. DESECHABLE. LONGITUD. 25-42 MM CALIBRE. 27 G TAMAÑO. LARGA.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "060.040.8041", descripcion: "AGUJAS DENTALES. TIPO CARPULE. DESECHABLE. LONGITUD. 20-25 MM CALIBRE: 30 G TAMAÑO: CORTA.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "060.797.0019", descripcion: "ALGODONES. PARA USO DENTAL. MEDIDA: 3.8 X 0.8 CM. ENVASE CON 500 ROLLOS.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "S/C", descripcion: "ANTISÉPTICO BUCAL, SOLUCIÓN ELECTROLIZADA CON PH NEUTRO AL 0.0015% (15PPM) DE CL ACTIVO. CADA 100 ML. CONTIENE: IONES ACTIVOS: 7.5 - 9.5 MG. RANGO DE PH DE 6.4 A 7.5. ORP DE 650 A 900 MV", stock: "", minimo: "1", caducidad: "" },
-        { clave: "060.066.0401", descripcion: "ANTISÉPTICOS. EUGENOL.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.082.0310", descripcion: "APLICADORES, APLICADOR PLASTICO DESECHABLE PARA MATERIALES, ENVASE CON 100 APLICADORES GRUESOS", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.082.0294", descripcion: "APLICADORES, APLICADOR PLASTICO DESECHABLE PARA MATERIALES, ENVASE CON 100 APLICADORES FINO", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.082.0286", descripcion: "APLICADORES, APLICADOR PLASTICO DESECHABLE PARA MATERIALES, ENVASE CON 100 APLICADORES EXTRAFINO", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.082.0104", descripcion: "APLICADORES DE MADERA CON ALGODON", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "APLICADORES MULTIPROPÓSITO (MICROBRUSH) CON PUNTAS DE FIBRA NO ABSORBENTE Y CUELLO FLEXIBLE. TAMAÑO: FINO, SUPERFINO O REGULAR.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.203.0058", descripcion: "BANDA MATRIZ 5MM", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.111.0208", descripcion: "BARNICES. DE COPAL. PARA REVESTIMIENTO DE CAVIDADES.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.066.1078", descripcion: "BARNIZ DE FLUORURO DE SODIO AL 5% EN UNA CONCENTRACIÓN DE 22600 PPM AUTOPOLIMERIZABLE, EN UN VEHÍCULO DE RESINA MODIFICADO.", stock: "", minimo: "1", caducidad: "" },
-        { clave: "S/C", descripcion: "CAMPO DESECHABLE. CUENTA CON DOS CAPAS DE PROTECCIÓN: 1 CAPA DE PAPEL Y UNA DE POLIETILENO. MED. 45 CM X 35 CM, DIFERENTES COLORES", stock: "", minimo: "1", caducidad: "" },
-        { clave: "060.182.0178", descripcion: "CEMENTO DE IONOMERO, DE VIDRIO RESTAURATIVO II. COLOR NO 21. POLVO 15 G. SILICATO DE ALUMINIO 95% - 97%. ACIDO POLIACRILICO 3% - 5%. LIQUIDO: 10 G, 8 ML. ACIDO POLIACRILICO 75%. ACIDO TARTÁRICO 10% - 15%. BARNIZ COMPATIBLE LIQUIDO 10 G.", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "CEMENTO DENTAL. PROTECTOR PULPAR PARA BASE. HIDRÓXIDO DE CALCIO COMPUESTO FOTOPOLIMERIZABLE.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.0160", descripcion: "CEMENTO: IONÓMERO DE VIDRIO I. PARA CEMENTACIONES DEFINITIVAS. POLVO 35 G. SILICATO DE ALUMINIO 95% -97%. ÁCIDO POLIACRÍLICO 3% - 5%. LÍQUIDO 25 G, 20 ML. ÁCIDO POLIACRÍLICO 75%. ÁCIDO POLIBÁSICO 10-15%. JUEGO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.1366", descripcion: "CEMENTOS DENTALES. PARA USO QUIRÚRGICO. DE OXIDO DE ZINC CON ENDURECEDOR (POLVO) 65 G Y EUGENOL (LIQUIDO) 30 ML. CON GOTERO DE PLÁSTICO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.1150", descripcion: "CEMENTOS PROTECTOR PULPAR PARA SELLAR CAVIDADES DENTALES. DE HIDRÓXIDO DE CALCIO, COMPUESTO Y APLICADOR AUTOPOLIMERIZABLE, DOS PASTAS SEMILÍQUIDAS, BASE 13 G Y CATALIZADOR 11 G CON BLOQUE DE PAPEL PARA MEZCLAR.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.0236", descripcion: "CEMENTOS. DENTAL PARA USO QUIRÚRGICO. POLVO ÓXIDO DE ZINC. POLVO ROSA. TALCO. LÍQUIDO: EUGENOL. ALCOHOL ISOPROPÍLICO AL 10%. RESINA DE PINO. ACEITE DE PINO. ACEITE DE CLAVO. ACEITE DE CACAHUATE. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.1176", descripcion: "CEMENTOS. DENTALES. DE OXIFOSFATO DE ZINC. POLVO Y LÍQUIDO. CAJA CON 32 G DE POLVO Y 15 ML DE SOLVENTE. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.1275", descripcion: "CEMENTOS. DENTALES. PARA RESTAURACIÓN INTERMEDIA. DE ÓXIDO DE ZINC (POLVO) 38 G Y EUGENOL (LÍQUIDO) 14 ML. CON GOTERO DE PLÁSTICO. JUEGO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.0194", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO CON ALEACIÓN DE LIMADURA DE PLATA. POLVO 15 G. SILICATO DE ALUMINIO 100%. LÍQUIDO 10 G 8 ML. ÁCIDO POLIACRÍLICO 45%. POLVO DE LIMADURA DE PLATA 17 G. PLATA 56% ESTAÑO 29% COBRE 15%.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.1424", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO I. PARA CEMENTACIONES DEFINITIVAS. POLVO 35 G. VIDRIO DE SILICATO DE ALUMINIO TRATADO con SILANO 98%. POLÍMERO DE CELULOSA < 1.5%. DIÓXIDO DE TITANIO < 1%. CATALIZADOR PARA POLIMERIZACIÓN <1%. LÍQUIDO 22.5 ML. COPO LIMERO DE ÁCIDO ACRÍLICO Y ÁCIDO ITACÓNICO 35%. AGUA 35%. 2-HIDROXIETIL-METACRILATO 30%. ÁCIDO DI CARBOXÍLICO 1%.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.0186", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO RESTAURATIVO II. COLOR NO. 22. POLVO 15 G. SILICATO DE ALUMINIO 95% -97%. ÁCIDO POLIACRÍLICO 3% -5%. LÍQUIDO 10 G 8 ML. ÁCIDO POLIACRÍLICO 75%. ÁCIDO TARTÁRICO 10% - 15%. BARNIZ COMPATIBLE LÍQUIDO 10 G. JUEGO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.1440", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO RESTAURATIVO TIPO II. PARA TRATAMIENTO RESTAURATIVO ATRAUMÁTICO (TRA). PARA RESTAURACIONES INTERMEDIAS. PARA BASES. PARA ODONTOLOGÍA MÍNIMAMENTE INVASIVA (OMI). TONO A3. POLVO GRANULADO RADIOPACO: 12.5 G. VIDRIO DE FLUOROSILICATO DE CALCIO LANTANO. ALUMINIO RECUBIERTO 90%. ÁCIDO POLIACRÍLICO. 10% ÁCIDO BENZÓICO <0.1% PIGMENTOS <0.1% LÍQUIDO DE 8.5 ML (10GR). AGUA 55%-65% COPOLÍMERO DE ÁCIDO ACRÍLICO Y ÁCIDO MALÉICO. 25-35% ÁCIDO TARTÁRICO. 9.1% ÁCIDO BENZÓICO. 0.1% LOSETA DE PAPEL ENCERADO CUCHARILLA DISPENSADORA GUÍA DE APLICACIÓN E INSTRUCTIVO. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.182.0228", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO. PARA TRATAMIENTO RESTAURATIVO ATRAUMÁTICO. POLVO: 10 G. SILICATO DE ALUMINIO 89 -95%. ÁCIDO POLIACRÍLICO 0.-10%. LÍQUIDO 6 G 4.8 ML AGUA DESTILADA. ÁCIDO POLIACRÍLICO 40 -50%. BARNIZ 5 G. CLORURO DE POLIVINIL 10 -20%. ACETATO ETÍLICO 75 -85%. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.189.0254", descripcion: "CEPILLO PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS BLANCAS EN FORMA DE COPA. PARA CONTRA-ÁNGULO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.189.0106", descripcion: "CEPILLOS. DENTAL INFANTIL, CON MANGO DE PLÁSTICO Y CERDAS RECTAS DE NYLON 6.12, 100 % VIRGEN O POLIÉSTER P.B.T. 100 % VIRGEN, DE PUNTAS REDONDEADAS EN 3 HILERAS, CABEZA CORTA, CONSISTENCIA MEDIANA.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.189.0015", descripcion: "CEPILLOS. DENTAL, PARA ADULTO, CON MANGO DE PLÁSTICO Y CERDAS RECTAS DE NYLON 6.12, 100 % VIRGEN O POLIÉSTER P.B.T. 100 % VIRGEN, DE PUNTAS REDONDEADAS EN 4 HILERAS, CABEZA CORTA, CONSISTENCIA MEDIANA.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.189.0023", descripcion: "CEPILLOS. PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS BLANCAS EN FORMA DE COPA. PARA PIEZA DE MANO. PIEZA", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.189.0031", descripcion: "CEPILLOS. PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS NEGRAS EN FORMA DE BROCHA. PARA CONTRA-ÁNGULO. PIEZA.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.189.0205", descripcion: "CEPILLOS. PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS NEGRAS EN FORMA DE BROCHA. PARA PIEZA DE MANO. PIEZA.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.219.0068", descripcion: "COLORANTES. REVELADORES DE PLACAS DENTOBACTERIANAS. TABLETAS SIN SABOR. ENVASE CON 100 PIEZAS.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.235.0019", descripcion: "COPAS. PARA PIEZA DE MANO. DE HULE SUAVE BLANCO EN FORMA DE CONO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.272.0039", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA ADOLESCENTES.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.272.0047", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA ADULTOS.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.272.0013", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA NIÑOS DE 2 A 3 AÑOS.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.272.0021", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA NIÑOS DE 4 A 7 AÑOS.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.276.0050", descripcion: "CUÑAS. DE MADERA PARA ESPACIOS INTERDENTARIOS. ENVASE CON 100 PIEZAS.", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "DIQUE DE HULE. 6*6 GROSOR MEDIO .18 A .23.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.910.0011", descripcion: "EYECTORES. PARA SALIVA DE PLÁSTICO DESECHABLE. ENVASE CON 100 PIEZAS.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.066.1086", descripcion: "FLUORURO DE SODIO EN BARNIZ AL 5%, CONCENTRACIÓN DE 22,600PPM, AUTOPOLIMERIZABLE EN VEHÍCULO DE RESINA MODIFICADO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.066.0500", descripcion: "FLUORURO DE SODIO. PARA PREVENCIÓN DE CARIES. ACIDULADO AL 2%. EN GEL DE SABOR. ENVASE CON 480 ML.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.066.0112", descripcion: "FLUORURO DE SODIO. SOLUCIÓN INGERIBLE. CADA 100 ML CONTIENEN: FLUORURO DE SODIO EQUIVALENTE A: 248.8 MG DE ION FLÚOR.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0037", descripcion: "FRESA DE CARBURO, PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD, FORMA DE PERA, NO. 331.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0672", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO FORMA DE CONO INVERTIDO. NO. 33 1/2.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0656", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA CILÍNDRICA NO. 556.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0664", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA CILÍNDRICA NO. 557.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0433", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA DE CONO INVERTIDO. NO. 37 L.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0631", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. ½.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0649", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. 1.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0409", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. 3.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0417", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. 5.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0466", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA TRONCO CÓNICO NO. 701.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0318", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, NO. 559.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0334", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, NO. 701 L.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0342", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, NO. 702 L.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0011", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA DE PERA, NO. 330.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0581", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA CILÍNDRICA. NO. 009.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0599", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA CILÍNDRICA. NO. 012.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0540", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE CONO INVERTIDO, NO. 010.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0557", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE CONO INVERTIDO, NO. 012.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0565", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE RUEDA. NO. 035.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0573", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE RUEDA. NO. 042.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0524", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA REDONDA, NO. 010", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0532", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA REDONDA, NO. 014.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0615", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, PARA TERMINACIÓN DE COMPOSITES FORMA CILÍNDRICA NO. 012", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.431.0623", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, PARA TERMINACIÓN DE COMPOSITES FORMA CILÍNDRICA NO. 018", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.811.0078", descripcion: "HILOS. HILO DENTAL DE MONOFILAMENTO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.203.0439", descripcion: "HILOS. RETRACTOR DE ENCÍAS. DE ALGODÓN SECO Y SUAVE IMPREGNADO CON SAL DE ALUMINIO. CALIBRE: MEDIANO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.811.0060", descripcion: "HILOS. SEDA DENTAL SIN CERA. ENVASE CON ROLLO DE 50 M.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.593.0106", descripcion: "LOSETA. PARA BATIR CEMENTO. DE VIDRIO. TAMAÑO: 8 X 12 X 0.5 CM. PIEZA.", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "MATERIAL ALCASITE DE OBTURACIÓN DEFINITIVO PARA LOS DIENTES POSTERIORES CONTIENE 15 GR DE POLVO Y 4 GR LIQUIDO", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.491.0018", descripcion: "PAPELES. INDICADOR DE CONTACTO OCLUSAL. EN TIRAS con PEGAMENTO EN AMBAS CARAS. BLOCK CON 15 HOJAS.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.749.0703", descripcion: "PASTAS. PARA PROFILAXIS DENTAL. ABRASIVA. CON ABRASIVOS BLANDOS. ENVASE CON 200 G.", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "PELÍCULA DE PLÁSTICO AUTOADHERIBLE DE 30 CM DE 280 A 600 MTS DE LARGO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.749.0836", descripcion: "PULIDOR. SISTEMA DE PULIDO PARA USO DENTAL. KIT. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DEL SISTEMA.", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "PUNTAS DE ACABADO Y PULIDO PARA APLICACIONES OCLUSALES E INTERPROXIMALES. TRES GRADOS DE ABRASIÓN Y CUATRO FORMAS DIFERENTES: LLAMA PEQUEÑA, LLAMA GRANDE, COPA Y DISCO. (PIEDRAS PARA PULIR COMPOSITES)", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.791.0106", descripcion: "RESINA. FOTOPOLIMERIZABLE PARA RESTAURACIÓN DE DIENTES ANTERIORES Y POSTERIORES. JERINGA 3.5G. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DE COLOR Y COMPOSICIÓN.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.791.0122", descripcion: "RESINA. FOTOPOLIMERIZABLE PARA RESTAURACIÓN DE DIENTES ANTERIORES Y POSTERIORES. JERINGA 3G. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DE COLOR Y COMPOSICIÓN.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.791.0114", descripcion: "RESINA. FOTOPOLIMERIZABLE PARA RESTAURACIÓN DE DIENTES ANTERIORES Y POSTERIORES. JERINGA 4G. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DE COLOR Y COMPOSICIÓN.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.597.0037", descripcion: "RESINAS. AUTOPOLIMERIZABLES. PARA RESTAURACIÓN DE DIENTES ANTERIORES. EPÓXICAS A BASE DE CUARZO Y AGLUTINANTES. ESTUCHE CON BASE Y CATALIZADOR.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.960.0024", descripcion: "RESTAURADOR EN BLOQUE DE VIDRIO HIBRIDO/CAPA AUTOADHESIVA FOTOPOLIMERISABLE (CEMENTO DENTAL DE RESINA COMPUESTA)", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.815.0058", descripcion: "SELLADORES. DE FISURAS Y FOSETAS. ENVASE CON 3 ML DE BOND BASE. ENVASE CON 3 ML DE SELLADOR DE FISURAS. 2 ENVASES CON 3 ML CADA UNO CON BOND CATALIZADOR. JERINGA CON 2 ML DE GEL GRABADOR. 2 PORTAPINCELES. 10 CÁNULAS. 1 BLOCK DE MEZCLA. 5 POZOS DE MEZCLA. 30 PINCELES. 1 INSTRUCTIVO. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "SELLADORES. DE FISURAS Y FOSETAS. KIT CON DOS JERINGAS DE 1.2 ML. INCLUYE UNA JERINGA DE 3ML DE GEL GRABADOR, 20 PUNTAS PARA JERINGA DE SELLADOR Y 10 PUNTAS PARA JERINGA DE GEL GRABADOR.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.833.0197", descripcion: "SOLUCIONES. DE ACETATO DE CLORHEXIDINA AL 10% SUMATRA BENZOICO 20 MG Y ALCOHOL ETÍLICO CBP 1 ML; BARNIZ DE CLORURO DE METILENO POLIURETANO Y ACETATO DE ETILO 1 ML PARA LA PREVENCIÓN DE CARIES DENTAL.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.889.0158", descripcion: "TIRAS. DE CELULOIDE PARA CONFORMAR RESTAURACIONES DE RESINA. ANCHO: 8 A 10 MM CALIBRE:", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.889.0224", descripcion: "TIRAS. DE LIJA PARA PULIR RESTAURACIONES DE RESINA. EXTRA FINO MEDIANO Y GRUESO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.889.0232", descripcion: "TIRAS. DE LIJA PARA PULIR RESTAURACIONES DE RESINA. EXTRA FINO MEDIANO Y GRUESO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "060.889.0208", descripcion: "TIRAS. DE LIJA PARA PULIR RESTAURACIONES DE RESINA. GRUESO Y MEDIANO.", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "VASOS DESECHABLES BIODEGRADABLES DE 4 ONZAS. 100 PIEZAS", stock: "", minimo: "", caducidad: "" }
-      ],
-      equipo: [
-        { clave: "S/C", descripcion: "TINA ULTRASÓNICA PARA ESTOMATOLOGÍA", stock: "", minimo: "0", caducidad: "" },
-        { clave: "531.385.1080", descripcion: "ESTERILIZADOR CON VAPOR AUTOGENERADO PARA DENTAL Y MAXILOFACIAL", stock: "", minimo: "0", caducidad: "" },
-        { clave: "531.291.0028", descripcion: "UNIDAD ESTOMATOLÓGICA CON MÓDULO INTEGRADO", stock: "", minimo: "1", caducidad: "" },
-        { clave: "515.957.0109", descripcion: "UNIDAD ULTRASÓNICA ESTOMATOLÓGICA", stock: "", minimo: "0", caducidad: "" },
-        { clave: "531.562.0020", descripcion: "LÁMPARA DE FOTOCURADO DE RESINAS Y CEMENTOS FOTOPOLIMERIZABLES", stock: "", minimo: "1", caducidad: "" },
-        { clave: "531.291.0424", descripcion: "UNIDAD ESTOMATOLÓGICA PORTÁTIL *", stock: "", minimo: "0", caducidad: "" },
-        { clave: "531.032.0055", descripcion: "MEZCLADOR DE CÁPSULAS DENTALES, TIPO DOSIFICADOR-AMALGAMADOR (MEZCLA CÁPSULAS DE CEMENTO DE IONÓMERO DE VIDRIO Y OTROS CEMENTOS PREDOSIFICADOS EN CÁPSULAS) 4000 RPM", stock: "", minimo: "", caducidad: "" },
-        { clave: "531.601.0056", descripcion: "MANDIL EMPLOMADO", stock: "", minimo: "", caducidad: "" },
-        { clave: "531.695.0061", descripcion: "PORTA MANDIL", stock: "", minimo: "", caducidad: "" },
-        { clave: "531.786.0079", descripcion: "REVELADOR MANUAL DE PLACAS DENTALES", stock: "", minimo: "", caducidad: "" },
-        { clave: "531.341.2305", descripcion: "UNIDAD RADIOLÓGICA DENTAL INCLUYE SENSOR DIGITAL INTRAORAL (RADIOVISIÓGRAFO)", stock: "", minimo: "1", caducidad: "" },
-        { clave: "S/C", descripcion: "CÁMARA INTRAORAL DIGITAL.", stock: "", minimo: "", caducidad: "" },
-        { clave: "537.480.0042", descripcion: "PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "1", caducidad: "" },
-        { clave: "437.480.0034", descripcion: "PIEZA DE MANO DE BAJA VELOCIDAD CON CONTRAÁNGULO", stock: "", minimo: "1", caducidad: "" }
-      ],
-      mobiliario: [
-        { clave: "511.232.0022", descripcion: "CESTO DE PAPELES", stock: "", minimo: "", caducidad: "" },
-        { clave: "519.132.0059", descripcion: "BOTE DE CAMPANA", stock: "", minimo: "", caducidad: "" },
-        { clave: "511.814.0127", descripcion: "SILLA FIJA ACOJINADA APILABLE", stock: "", minimo: "", caducidad: "" },
-        { clave: "515.957.0109", descripcion: "VITRINA DE 75 CM CONTRA MURO", stock: "", minimo: "", caducidad: "" },
-        { clave: "511.836.0295", descripcion: "SILLÓN GIRATORIO DE RESPALDO BAJO", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "VITRINA DOBLE ESMALTADA DOS PUERTAS SUPERIORES DE CRISTAL CON CERRADURA Y ENTREPAÑOS DE CRISTAL, DOS CAJONES CENTRALES, DOS PUERTAS DE LÁMINA DE HACER O INFERIORES CON ENTREPAÑOS", stock: "", minimo: "", caducidad: "" },
-        { clave: "511.339.0206", descripcion: "ESCRITORIO CHICO CON PEDESTAL DERECHO", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "CARRO CAJONERO CON RUEDAS", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "MESA ALTA CON RESPALDO Y FREGADERO DE 120 CM", stock: "", minimo: "", caducidad: "" },
-        { clave: "511.076.0203", descripcion: "ARCHIVERO DE 4 GAVETAS", stock: "", minimo: "", caducidad: "" },
-        { clave: "350.308.0040", descripcion: "DESPCHADOR DE TOALLA DE PAPEL INTERDOBLADA GRANDE", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "LAVABO CONTRA MURO", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "ESPEJO DE PARED", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "ESPEJO INDIVIDUAL PARA PACIENTES", stock: "", minimo: "", caducidad: "" },
-        { clave: "S/C", descripcion: "AIRE ACONDICIONADO", stock: "", minimo: "", caducidad: "" }
-      ],
-      bienesInformaticos: [
-        { clave: "S/C", descripcion: "COMPUTADORA DE ESCRITORIO MEDIO RENDIMIENTO WINDOWS", stock: "", minimo: "1", caducidad: "" },
-        { clave: "S/C", descripcion: "UNIDAD DE ENERGÍA ININTERRUMPIDA TIPO 3. INTERACTIVO, CAPACIDAD DE 500 VA/300 WATSS.", stock: "", minimo: "0", caducidad: "" },
-        { clave: "S/C", descripcion: "EQUIPO MULTIFUNCIONAL LÁSER MONOCROMÁTICO", stock: "", minimo: "0", caducidad: "" }
-      ],
-        instrumental: [
-          { clave: "537.025.0069", descripcion: "ALVEOLOTOMO MEAD PINZA GUBIA LONGITUD 17CM", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.065.0052", descripcion: "APLICADOR DE HIDROXIDO DE CALCIO", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.079.0015", descripcion: "ARCO YOUNG PORTA DIQUE DE HULE", stock: "", minimo: "1", caducidad: "" },
-          { clave: "535.137.0035", descripcion: "BISTURÍ QUIRÚRGICO. MANGO N° 3, CON ESCALA", stock: "0", minimo: "", caducidad: "" },
-          { clave: "537.105.0179", descripcion: "BISTURÍ GOLDMAN FOX. NO.7", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.151.0016", descripcion: "BOTA FRESA BRODEN: ADITAMIENTO PARA PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "0", caducidad: "" },
-          { clave: "537.147.0017", descripcion: "BUDINERA DE ACERO INOXIDABLE 25 X 16 CM Y 700 ML.", stock: "", minimo: "0", caducidad: "" },
-          { clave: "S/C", descripcion: "CAJA METALICA CON TAPA PARA INSTRUMENTAL 20 X 10 X 4.5 CM", stock: "", minimo: "0", caducidad: "" },
-          { clave: "535.260.2154", descripcion: "CUCHARILLA LUCAS DE DOBLE EXTREMO 17CM DE LONGITUD", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.251.0098", descripcion: "CURETA CK-6 DE DOBLE EXTREMO", stock: "", minimo: "", caducidad: "1" },
-          { clave: "537.251.0015", descripcion: "CURETA MC CALL DERECHA E IZQUIERDA. JUEGO.", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.327.0452", descripcion: "ELEVADOR BEIN CON MANGO METALICO RECTO ACANALADO DE 2 O 3 MM ANCHO DE HOJA", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.327.0551", descripcion: "ELEVADOR APICAL FLOHR MANGO METALICO BRAZO ANGULAR EXTREMO FINO CORTO DERECHO", stock: "", minimo: "0", caducidad: "" },
-          { clave: "537.327.0700", descripcion: "ELEVADOR APICAL FLOHR MANGO METALICO BRAZO ANGULAR EXTREMO FINO CORTO IZQUIERDO", stock: "", minimo: "0", caducidad: "" },
-          { clave: "537.327.2664", descripcion: "ELEVADOR BEIN CON MANGO METALICO RECTO ACALANADO DE 4MM.", stock: "", minimo: "0", caducidad: "" },
-          { clave: "537.327.0957", descripcion: "ELEVADOR TIPO CRYER WHITE DE BANDERA DERECHO HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.327.1104", descripcion: "ELEVADOR TIPO CRYER WHITE DE BANDERA IZQUIERDO HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.327.1534", descripcion: "ELEVADOR SELDIN DE BANDERA DERECHO HOJA GRANDE", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.327.1609", descripcion: "ELEVADOR SELDIN DE BANDERA IZQUIERDO HOJA GRANDE", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.327.2805", descripcion: "ELEVADOR SELDIN DE BANDERA DERECHO HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.327.2813", descripcion: "ELEVADOR SELDIN DE BANDERA IZQUIERDA HOJA PEQUEÑA", stock: "", minimo: "0", caducidad: "" },
-          { clave: "537.370.0029", descripcion: "ESPÁTULA METÁLICA No.3 DOBLE EXTREMO (RECTANGULAR Y PUNTA LANZA)", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.370.0128", descripcion: "ESPÁTULA PARA RESINA, DE PLÁSTICO, DOBLE PUNTA", stock: "", minimo: "0", caducidad: "" },
-          { clave: "537.383.0081", descripcion: "ESPEJO DENTAL ROSCA SENCILLA PLANO SIN AUMENTO NO.5", stock: "", minimo: "0", caducidad: "" },
-          { clave: "537.397.0168", descripcion: "EXCAVADOR TIPO WHITE No.17", stock: "", minimo: "5", caducidad: "" },
-          { clave: "537.397.0150", descripcion: "EXCAVADOR TIPO WHITE No.5", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.409.0531", descripcion: "EXPLORADOR DE UNA PIEZA CON DOBLE EXTREMO NO.5", stock: "", minimo: "3", caducidad: "" },
-          { clave: "537.426.0015", descripcion: "FÓRCEPS DENTAL TIPO KLEIN, INFANTIL No. 151 1/2 S", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.426.0189", descripcion: "FÓRCEPS NO. 151", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.426.0221", descripcion: "FÓRCEPS NO.101", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.426.0197", descripcion: "FÓRCEPS NO.150", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.426.0171", descripcion: "FÓRCEPS NO.17", stock: "", minimo: "1", caducidad: "" },
-          { clave: "537.426.0460", descripcion: "FÓRCEPS NO.53 DERECHO", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0270", descripcion: "FÓRCEPS NO.53 IZQUIERDO", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0155", descripcion: "FÓRCEPS NO.65", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0411", descripcion: "FÓRCEPS NO.69", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0205", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS DEL No. 151 B", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0726", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS DEL No. 210", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0734", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS DEL No. 222", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0544", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS TIPO KLEIN, DEL No. 3", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0502", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS TIPO KLEIN, DEL No. 6", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.426.0023", descripcion: "FÓRCEPS. NO 23.", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.547.0019", descripcion: "JERINGA CARPULE CON ADAPTADOR PARA AGUJA DESECHABLE", stock: "", minimo: "", caducidad: "" },
-          { clave: "S/C", descripcion: "JUEGO DE ALGODONERA SUCIO Y LIMPIO. ENVASE DE ACERO", stock: "", minimo: "", caducidad: "" },
-          { clave: "S/C", descripcion: "JUEGO DE 4 O 5 ESPATULAS PARA RESINA DE TEFLON", stock: "", minimo: "", caducidad: "" },
-          { clave: "S/C", descripcion: "JUEGO DE GRAPAS", stock: "", minimo: "", caducidad: "" },
-          { clave: "S/C", descripcion: "JUEGO DE PROFILAXIS 8 INSTRUMENTOS", stock: "", minimo: "", caducidad: "" },
-          { clave: "535.567.0059", descripcion: "LEGRA MEAD MANGO RECTO DOBLE EXTREMO", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.583.0105", descripcion: "LIMA MILLER O COLBURN, DOBLE EXTREMO No. 10c O No. 3", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.602.0409", descripcion: "MANGO PARA ESPEJO DENTAL METALICO MACIZO ROSCA SENCILLA", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.703.9598", descripcion: "PINZA COLLEGE O LONDON-COLLEGE TIPO BAYONETA", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.703.7493", descripcion: "PINZA AINSWORTH LONGITUD DE 160 A 165 MM", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.702.0531", descripcion: "PINZA BREWER PORTA GRAPAS PARA DIQUE DE HULE", stock: "", minimo: "", caducidad: "" },
-          { clave: "531.687.0012", descripcion: "PISTOLA APLICADORA DE CAPSULAS (PARA VIDRIO HIBRIO)", stock: "", minimo: "", caducidad: "" },
-          { clave: "531.687.0012", descripcion: "PORTA ABATELENGUAS CON TAPA, DE ACERO INOXIDABLE", stock: "", minimo: "", caducidad: "" },
-          { clave: "535.716.0190", descripcion: "PORTA AGUJA FINOCHIETO, LONGITUD 14.6 CM.", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.719.0052", descripcion: "PORTA MATRIZ PARA BANDA DE CELULOIDE", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.720.0018", descripcion: "PORTA SERVILLETAS. MODELO MARTIN O ADAMS CON CADENA", stock: "", minimo: "", caducidad: "" },
-          { clave: "060.830.7237", descripcion: "SONDA PARODONTAL ROMA Y MILIMETRADA DE 1 A 10", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.173.2511", descripcion: "SONDA PERIODONTAL W O WHO.", stock: "", minimo: "", caducidad: "" },
-          { clave: "535.859.2417", descripcion: "TIJERA MAYO, RECTA LONGITUD DE 170 MM", stock: "", minimo: "", caducidad: "" },
-          { clave: "535.859.1898", descripcion: "TIJERA QUINBY, CURVA, HOJAS CORTAS, LONGITUD 12.5 CM", stock: "", minimo: "", caducidad: "" },
-          { clave: "535.859.1286", descripcion: "TIJERAS IRIS, CURVA, LONGITUD 12 CM", stock: "", minimo: "", caducidad: "" },
-          { clave: "537.860.0018", descripcion: "TIRAPUENTE MILLER CON TRES PUNTAS DIFERENTES", stock: "", minimo: "", caducidad: "" },
-          { clave: "513.887.0059", descripcion: "TORUNDERA CON TAPA, ACERO INOXIDABLE 250 ML", stock: "", minimo: "", caducidad: "" }
-        ]
-      };
-    // -----------------------------------------------------------------------------------------------
-    
-    // ------------------ MINIMOS DEFINIDOS (categoria: material) ------------------
-    // Lista provista ; mantenida aquí como referencia para rellenar "mínimo" en 'material'.
-    const minimosDefinidos = {
-    "060.016.0204": 1,
-    "060.016.0253": 1,
-    "060.031.0072": 1,
-    "060.040.8058": 1,
-    "060.040.8041": 1,
-    "060.797.0019": 1,
-    "060.066.0401": 1,
-    "060.111.0208": 0,
-    "060.066.1078": 1,
-    "060.182.0178": 1,
-    "060.182.0160": 1,
-    "060.182.1366": 1,
-    "060.182.1150": 1,
-    "060.182.0236": 0,
-    "060.182.1176": 0,
-    "060.182.1275": 0,
-    "060.182.0194": 1,
-    "060.182.1424": 0,
-    "060.182.0186": 1,
-    "060.182.1440": 1,
-    "060.182.0228": 1,
-    "060.189.0254": 20,
-    "060.189.0106": 300,
-    "060.189.0015": 300,
-    "060.189.0023": 20,
-    "060.189.0031": 20,
-    "060.189.0205": 20,
-    "060.219.0068": 3,
-    "060.235.0019": 5,
-    "060.272.0039": 100,
-    "060.272.0047": 100,
-    "060.272.0013": 100,
-    "060.272.0021": 100,
-    "060.276.0050": 1,
-    "060.910.0011": 1,
-    "060.066.1086": 1,
-    "060.066.0500": 1,
-    "060.066.0112": 1,
-    "060.431.0037": 3,
-    "060.431.0672": 3,
-    "060.431.0656": 3,
-    "060.431.0664": 3,
-    "060.431.0433": 3,
-    "060.431.0631": 3,
-    "060.431.0649": 3,
-    "060.431.0409": 3,
-    "060.431.0466": 0,
-    "060.431.0318": 3,
-    "060.431.0334": 3,
-    "060.431.0342": 3,
-    "060.431.0011": 0,
-    "060.431.0581": 0,
-    "060.431.0599": 0,
-    "060.431.0540": 3,
-    "060.431.0557": 3,
-    "060.431.0565": 0,
-    "060.431.0573": 0,
-    "060.431.0524": 0,
-    "060.431.0532": 0,
-    "060.431.0615": 0,
-    "060.431.0623": 0,
-    "060.811.0078": 5,
-    "060.203.0439": 0,
-    "060.811.0060": 5,
-    "060.593.0106": 1,
-    "060.491.0018": 3,
-    "060.749.0703": 2,
-    "060.749.0836": 1,
-    "060.791.0106": 2,
-    "060.791.0122": 2,
-    "060.791.0114": 2,
-    "060.597.0037": 0,
-    "060.815.0058": 0,
-    "060.833.0197": 1,
-    "060.889.0158": 1,
-    "060.889.0224": 2,
-    "060.889.0232": 2,
-    "060.889.0208": 2
-    
+  // Mantén aquí tu catálogo completo, tal como ya lo tienes en tu proyecto.
+  const catalogo = {
+    insumos: [
+      { clave: "S/C", descripcion: "BENZOCAÍNA 20% GEL, FRASCO 30 g", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "MEPIVACAÍNA 3% SIN VASOCONSTRICTOR. CAJA CON 50 CARTUCHOS DENTALES DE 1.8 ML CADA UNO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "010.000.0267.00", descripcion: "LIDOCAÍNA, EPINEFRINA. SOLUCIÓN INYECTABLE AL 2%. CAJA CON 50 CARTUCHOS DENTALES CON 1.8 ML", stock: "", minimo: "", caducidad: "" },
+      { clave: "070.817.0550", descripcion: "SOLUCIÓN PARA REVELADO PARA SISTEMA MANUAL DE REVELADOR CONCENTRADO. ENVASE 828 ML. (LA MARCA DE ESTE PRODUCTO DEBE SER LA MISMA DE LA CLAVE 070.426.0363)1", stock: "", minimo: "", caducidad: "" },
+      { clave: "070.426.0363", descripcion: "SOLUCIÓN PARA FIJADO PARA SISTEMA MANUAL DE FIJADOR CONCENTRADO. ENVASE 828 ML. (LA MARCA DE ESTE PRODUCTO DEBE SER LA MISMA DE LA CLAVE 070.817.0550)1", stock: "", minimo: "", caducidad: "" },
+      { clave: "070.707.0496", descripcion: "PELÍCULA RADIOGRÁFICA, DENTAL ADULTO, MEDIDAS: EN UN RANGO DE 3 A 3.5 CM POR 4 A 4.5 CM. CAJA CON 150 PELÍCULAS1", stock: "", minimo: "", caducidad: "" },
+      { clave: "070.707.0587", descripcion: "PELÍCULA RADIOGRÁFICA INFANTIL SENCILLA PERIAPICAL DE 2.2 * 3.5 CM. CAJA CON 100 PELÍCULAS1", stock: "", minimo: "", caducidad: "" }
+    ],
+    material: [
+      { clave: "060.016.0204", descripcion: "ACEITES. LUBRICANTE PARA PIEZA DE MANO DE BAJA VELOCIDAD. ENVASE CON APLICADOR CON 120 ML.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.016.0253", descripcion: "ACEITES. ACEITE LUBRICANTE PARA TURBINA DE PIEZA DE MANO DE ALTA VELOCIDAD. APLICADOR EN FORMA DE JERINGA. ENVASE CON 2 ML.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "ÁCIDO FOSFÓRICO AL 34% O 37% PARA GRABADO DE ESMALTE O DENTINA.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.031.0072", descripcion: "ADHESIVO. ADHESIVO DENTAL PARA RESINAS DIRECTAS AUTOPOLIMERIZABLE O FOTOPOLIMERIZABLE. FRASCO DE 5 ML.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.040.8058", descripcion: "AGUJAS DENTAL. TIPO CARPULE. DESECHABLE. LONGITUD. 25-42 MM CALIBRE. 27 G TAMAÑO. LARGA.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.040.8041", descripcion: "AGUJAS DENTALES. TIPO CARPULE. DESECHABLE. LONGITUD. 20-25 MM CALIBRE: 30 G TAMAÑO: CORTA.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.797.0019", descripcion: "ALGODONES. PARA USO DENTAL. MEDIDA: 3.8 X 0.8 CM. ENVASE CON 500 ROLLOS.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "ANTISÉPTICO BUCAL, SOLUCIÓN ELECTROLIZADA CON PH NEUTRO AL 0.0015% (15PPM) DE CL ACTIVO. CADA 100 ML. CONTIENE: IONES ACTIVOS: 7.5 - 9.5 MG. RANGO DE PH DE 6.4 A 7.5. ORP DE 650 A 900 MV", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.066.0401", descripcion: "ANTISÉPTICOS. EUGENOL.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.082.0310", descripcion: "APLICADORES, APLICADOR PLASTICO DESECHABLE PARA MATERIALES, ENVASE CON 100 APLICADORES GRUESOS", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.082.0294", descripcion: "APLICADORES, APLICADOR PLASTICO DESECHABLE PARA MATERIALES, ENVASE CON 100 APLICADORES FINO", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.082.0286", descripcion: "APLICADORES, APLICADOR PLASTICO DESECHABLE PARA MATERIALES, ENVASE CON 100 APLICADORES EXTRAFINO", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.082.0104", descripcion: "APLICADORES DE MADERA CON ALGODON", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "APLICADORES MULTIPROPÓSITO (MICROBRUSH) CON PUNTAS DE FIBRA NO ABSORBENTE Y CUELLO FLEXIBLE. TAMAÑO: FINO, SUPERFINO O REGULAR.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.203.0058", descripcion: "BANDA MATRIZ 5MM", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.111.0208", descripcion: "BARNICES. DE COPAL. PARA REVESTIMIENTO DE CAVIDADES.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.066.1078", descripcion: "BARNIZ DE FLUORURO DE SODIO AL 5% EN UNA CONCENTRACIÓN DE 22600 PPM AUTOPOLIMERIZABLE, EN UN VEHÍCULO DE RESINA MODIFICADO.", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "CAMPO DESECHABLE. CUENTA CON DOS CAPAS DE PROTECCIÓN: 1 CAPA DE PAPEL Y UNA DE POLIETILENO. MED. 45 CM X 35 CM, DIFERENTES COLORES", stock: "", minimo: "1", caducidad: "" },
+      { clave: "060.182.0178", descripcion: "CEMENTO DE IONOMERO, DE VIDRIO RESTAURATIVO II. COLOR NO 21. POLVO 15 G. SILICATO DE ALUMINIO 95% - 97%. ACIDO POLIACRILICO 3% - 5%. LIQUIDO: 10 G, 8 ML. ACIDO POLIACRILICO 75%. ACIDO TARTÁRICO 10% - 15%. BARNIZ COMPATIBLE LIQUIDO 10 G.", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "CEMENTO DENTAL. PROTECTOR PULPAR PARA BASE. HIDRÓXIDO DE CALCIO COMPUESTO FOTOPOLIMERIZABLE.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.0160", descripcion: "CEMENTO: IONÓMERO DE VIDRIO I. PARA CEMENTACIONES DEFINITIVAS. POLVO 35 G. SILICATO DE ALUMINIO 95% -97%. ÁCIDO POLIACRÍLICO 3% - 5%. LÍQUIDO 25 G, 20 ML. ÁCIDO POLIACRÍLICO 75%. ÁCIDO POLIBÁSICO 10-15%. JUEGO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.1366", descripcion: "CEMENTOS DENTALES. PARA USO QUIRÚRGICO. DE OXIDO DE ZINC CON ENDURECEDOR (POLVO) 65 G Y EUGENOL (LIQUIDO) 30 ML. CON GOTERO DE PLÁSTICO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.1150", descripcion: "CEMENTOS PROTECTOR PULPAR PARA SELLAR CAVIDADES DENTALES. DE HIDRÓXIDO DE CALCIO, COMPUESTO Y APLICADOR AUTOPOLIMERIZABLE, DOS PASTAS SEMILÍQUIDAS, BASE 13 G Y CATALIZADOR 11 G CON BLOQUE DE PAPEL PARA MEZCLAR.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.0236", descripcion: "CEMENTOS. DENTAL PARA USO QUIRÚRGICO. POLVO ÓXIDO DE ZINC. POLVO ROSA. TALCO. LÍQUIDO: EUGENOL. ALCOHOL ISOPROPÍLICO AL 10%. RESINA DE PINO. ACEITE DE PINO. ACEITE DE CLAVO. ACEITE DE CACAHUATE. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.1176", descripcion: "CEMENTOS. DENTALES. DE OXIFOSFATO DE ZINC. POLVO Y LÍQUIDO. CAJA CON 32 G DE POLVO Y 15 ML DE SOLVENTE. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.1275", descripcion: "CEMENTOS. DENTALES. PARA RESTAURACIÓN INTERMEDIA. DE ÓXIDO DE ZINC (POLVO) 38 G Y EUGENOL (LÍQUIDO) 14 ML. CON GOTERO DE PLÁSTICO. JUEGO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.0194", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO CON ALEACIÓN DE LIMADURA DE PLATA. POLVO 15 G. SILICATO DE ALUMINIO 100%. LÍQUIDO 10 G 8 ML. ÁCIDO POLIACRÍLICO 45%. POLVO DE LIMADURA DE PLATA 17 G. PLATA 56% ESTAÑO 29% COBRE 15%.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.1424", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO I. PARA CEMENTACIONES DEFINITIVAS. POLVO 35 G. VIDRIO DE SILICATO DE ALUMINIO TRATADO con SILANO 98%. POLÍMERO DE CELULOSA < 1.5%. DIÓXIDO DE TITANIO < 1%. CATALIZADOR PARA POLIMERIZACIÓN <1%. LÍQUIDO 22.5 ML. COPO LIMERO DE ÁCIDO ACRÍLICO Y ÁCIDO ITACÓNICO 35%. AGUA 35%. 2-HIDROXIETIL-METACRILATO 30%. ÁCIDO DI CARBOXÍLICO 1%.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.0186", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO RESTAURATIVO II. COLOR NO. 22. POLVO 15 G. SILICATO DE ALUMINIO 95% -97%. ÁCIDO POLIACRÍLICO 3% -5%. LÍQUIDO 10 G 8 ML. ÁCIDO POLIACRÍLICO 75%. ÁCIDO TARTÁRICO 10% - 15%. BARNIZ COMPATIBLE LÍQUIDO 10 G. JUEGO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.1440", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO RESTAURATIVO TIPO II. PARA TRATAMIENTO RESTAURATIVO ATRAUMÁTICO (TRA). PARA RESTAURACIONES INTERMEDIAS. PARA BASES. PARA ODONTOLOGÍA MÍNIMAMENTE INVASIVA (OMI). TONO A3. POLVO GRANULADO RADIOPACO: 12.5 G. VIDRIO DE FLUOROSILICATO DE CALCIO LANTANO. ALUMINIO RECUBIERTO 90%. ÁCIDO POLIACRÍLICO. 10% ÁCIDO BENZÓICO <0.1% PIGMENTOS <0.1% LÍQUIDO DE 8.5 ML (10GR). AGUA 55%-65% COPOLÍMERO DE ÁCIDO ACRÍLICO Y ÁCIDO MALÉICO. 25-35% ÁCIDO TARTÁRICO. 9.1% ÁCIDO BENZÓICO. 0.1% LOSETA DE PAPEL ENCERADO CUCHARILLA DISPENSADORA GUÍA DE APLICACIÓN E INSTRUCTIVO. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.182.0228", descripcion: "CEMENTOS. IONÓMERO DE VIDRIO. PARA TRATAMIENTO RESTAURATIVO ATRAUMÁTICO. POLVO: 10 G. SILICATO DE ALUMINIO 89 -95%. ÁCIDO POLIACRÍLICO 0.-10%. LÍQUIDO 6 G 4.8 ML AGUA DESTILADA. ÁCIDO POLIACRÍLICO 40 -50%. BARNIZ 5 G. CLORURO DE POLIVINIL 10 -20%. ACETATO ETÍLICO 75 -85%. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.189.0254", descripcion: "CEPILLO PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS BLANCAS EN FORMA DE COPA. PARA CONTRA-ÁNGULO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.189.0106", descripcion: "CEPILLOS. DENTAL INFANTIL, CON MANGO DE PLÁSTICO Y CERDAS RECTAS DE NYLON 6.12, 100 % VIRGEN O POLIÉSTER P.B.T. 100 % VIRGEN, DE PUNTAS REDONDEADAS EN 3 HILERAS, CABEZA CORTA, CONSISTENCIA MEDIANA.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.189.0015", descripcion: "CEPILLOS. DENTAL, PARA ADULTO, CON MANGO DE PLÁSTICO Y CERDAS RECTAS DE NYLON 6.12, 100 % VIRGEN O POLIÉSTER P.B.T. 100 % VIRGEN, DE PUNTAS REDONDEADAS EN 4 HILERAS, CABEZA CORTA, CONSISTENCIA MEDIANA.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.189.0023", descripcion: "CEPILLOS. PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS BLANCAS EN FORMA DE COPA. PARA PIEZA DE MANO. PIEZA", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.189.0031", descripcion: "CEPILLOS. PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS NEGRAS EN FORMA DE BROCHA. PARA CONTRA-ÁNGULO. PIEZA.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.189.0205", descripcion: "CEPILLOS. PARA PULIDO DE AMALGAMAS Y PROFILAXIS. DE CERDAS NEGRAS EN FORMA DE BROCHA. PARA PIEZA DE MANO. PIEZA.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.219.0068", descripcion: "COLORANTES. REVELADORES DE PLACAS DENTOBACTERIANAS. TABLETAS SIN SABOR. ENVASE CON 100 PIEZAS.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.235.0019", descripcion: "COPAS. PARA PIEZA DE MANO. DE HULE SUAVE BLANCO EN FORMA DE CONO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.272.0039", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA ADOLESCENTES.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.272.0047", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA ADULTOS.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.272.0013", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA NIÑOS DE 2 A 3 AÑOS.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.272.0021", descripcion: "CUCHARILLAS. PARA APLICACIÓN TÓPICA DE FLÚOR EN GEL DE VINIL ATÓXICO DESECHABLES. ESTUCHE QUE CONSTA DE: 1 PAR PARA NIÑOS DE 4 A 7 AÑOS.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.276.0050", descripcion: "CUÑAS. DE MADERA PARA ESPACIOS INTERDENTARIOS. ENVASE CON 100 PIEZAS.", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "DIQUE DE HULE. 6*6 GROSOR MEDIO .18 A .23.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.910.0011", descripcion: "EYECTORES. PARA SALIVA DE PLÁSTICO DESECHABLE. ENVASE CON 100 PIEZAS.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.066.1086", descripcion: "FLUORURO DE SODIO EN BARNIZ AL 5%, CONCENTRACIÓN DE 22,600PPM, AUTOPOLIMERIZABLE EN VEHÍCULO DE RESINA MODIFICADO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.066.0500", descripcion: "FLUORURO DE SODIO. PARA PREVENCIÓN DE CARIES. ACIDULADO AL 2%. EN GEL DE SABOR. ENVASE CON 480 ML.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.066.0112", descripcion: "FLUORURO DE SODIO. SOLUCIÓN INGERIBLE. CADA 100 ML CONTIENEN: FLUORURO DE SODIO EQUIVALENTE A: 248.8 MG DE ION FLÚOR.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0037", descripcion: "FRESA DE CARBURO, PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD, FORMA DE PERA, NO. 331.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0672", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO FORMA DE CONO INVERTIDO. NO. 33 1/2.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0656", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA CILÍNDRICA NO. 556.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0664", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA CILÍNDRICA NO. 557.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0433", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA DE CONO INVERTIDO. NO. 37 L.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0631", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. ½.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0649", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. 1.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0409", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. 3.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0417", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA REDONDA NO. 5.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0466", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA TRONCO CÓNICO NO. 701.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0318", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, NO. 559.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0334", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, NO. 701 L.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0342", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, NO. 702 L.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0011", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE CARBURO, FORMA DE PERA, NO. 330.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0581", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA CILÍNDRICA. NO. 009.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0599", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA CILÍNDRICA. NO. 012.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0540", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE CONO INVERTIDO, NO. 010.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0557", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE CONO INVERTIDO, NO. 012.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0565", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE RUEDA. NO. 035.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0573", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA DE RUEDA. NO. 042.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0524", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA REDONDA, NO. 010", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0532", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, GRANO GRUESO, FORMA REDONDA, NO. 014.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0615", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, PARA TERMINACIÓN DE COMPOSITES FORMA CILÍNDRICA NO. 012", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.431.0623", descripcion: "FRESAS DENTALES PARA UTILIZARSE EN LA PIEZA DE MANO DE ALTA VELOCIDAD. DE DIAMANTE, PARA TERMINACIÓN DE COMPOSITES FORMA CILÍNDRICA NO. 018", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.811.0078", descripcion: "HILOS. HILO DENTAL DE MONOFILAMENTO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.203.0439", descripcion: "HILOS. RETRACTOR DE ENCÍAS. DE ALGODÓN SECO Y SUAVE IMPREGNADO CON SAL DE ALUMINIO. CALIBRE: MEDIANO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.811.0060", descripcion: "HILOS. SEDA DENTAL SIN CERA. ENVASE CON ROLLO DE 50 M.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.593.0106", descripcion: "LOSETA. PARA BATIR CEMENTO. DE VIDRIO. TAMAÑO: 8 X 12 X 0.5 CM. PIEZA.", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "MATERIAL ALCASITE DE OBTURACIÓN DEFINITIVO PARA LOS DIENTES POSTERIORES CONTIENE 15 GR DE POLVO Y 4 GR LIQUIDO", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.491.0018", descripcion: "PAPELES. INDICADOR DE CONTACTO OCLUSAL. EN TIRAS con PEGAMENTO EN AMBAS CARAS. BLOCK CON 15 HOJAS.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.749.0703", descripcion: "PASTAS. PARA PROFILAXIS DENTAL. ABRASIVA. CON ABRASIVOS BLANDOS. ENVASE CON 200 G.", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "PELÍCULA DE PLÁSTICO AUTOADHERIBLE DE 30 CM DE 280 A 600 MTS DE LARGO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.749.0836", descripcion: "PULIDOR. SISTEMA DE PULIDO PARA USO DENTAL. KIT. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DEL SISTEMA.", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "PUNTAS DE ACABADO Y PULIDO PARA APLICACIONES OCLUSALES E INTERPROXIMALES. TRES GRADOS DE ABRASIÓN Y CUATRO FORMAS DIFERENTES: LLAMA PEQUEÑA, LLAMA GRANDE, COPA Y DISCO. (PIEDRAS PARA PULIR COMPOSITES)", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.791.0106", descripcion: "RESINA. FOTOPOLIMERIZABLE PARA RESTAURACIÓN DE DIENTES ANTERIORES Y POSTERIORES. JERINGA 3.5G. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DE COLOR Y COMPOSICIÓN.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.791.0122", descripcion: "RESINA. FOTOPOLIMERIZABLE PARA RESTAURACIÓN DE DIENTES ANTERIORES Y POSTERIORES. JERINGA 3G. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DE COLOR Y COMPOSICIÓN.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.791.0114", descripcion: "RESINA. FOTOPOLIMERIZABLE PARA RESTAURACIÓN DE DIENTES ANTERIORES Y POSTERIORES. JERINGA 4G. LAS INSTITUCIONES PODRÁN ELEGIR LAS VARIANTES DE COLOR Y COMPOSICIÓN.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.597.0037", descripcion: "RESINAS. AUTOPOLIMERIZABLES. PARA RESTAURACIÓN DE DIENTES ANTERIORES. EPÓXICAS A BASE DE CUARZO Y AGLUTINANTES. ESTUCHE CON BASE Y CATALIZADOR.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.960.0024", descripcion: "RESTAURADOR EN BLOQUE DE VIDRIO HIBRIDO/CAPA AUTOADHESIVA FOTOPOLIMERISABLE (CEMENTO DENTAL DE RESINA COMPUESTA)", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.815.0058", descripcion: "SELLADORES. DE FISURAS Y FOSETAS. ENVASE CON 3 ML DE BOND BASE. ENVASE CON 3 ML DE SELLADOR DE FISURAS. 2 ENVASES CON 3 ML CADA UNO CON BOND CATALIZADOR. JERINGA CON 2 ML DE GEL GRABADOR. 2 PORTAPINCELES. 10 CÁNULAS. 1 BLOCK DE MEZCLA. 5 POZOS DE MEZCLA. 30 PINCELES. 1 INSTRUCTIVO. ESTUCHE.", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "SELLADORES. DE FISURAS Y FOSETAS. KIT CON DOS JERINGAS DE 1.2 ML. INCLUYE UNA JERINGA DE 3ML DE GEL GRABADOR, 20 PUNTAS PARA JERINGA DE SELLADOR Y 10 PUNTAS PARA JERINGA DE GEL GRABADOR.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.833.0197", descripcion: "SOLUCIONES. DE ACETATO DE CLORHEXIDINA AL 10% SUMATRA BENZOICO 20 MG Y ALCOHOL ETÍLICO CBP 1 ML; BARNIZ DE CLORURO DE METILENO POLIURETANO Y ACETATO DE ETILO 1 ML PARA LA PREVENCIÓN DE CARIES DENTAL.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.889.0158", descripcion: "TIRAS. DE CELULOIDE PARA CONFORMAR RESTAURACIONES DE RESINA. ANCHO: 8 A 10 MM CALIBRE:", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.889.0224", descripcion: "TIRAS. DE LIJA PARA PULIR RESTAURACIONES DE RESINA. EXTRA FINO MEDIANO Y GRUESO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.889.0232", descripcion: "TIRAS. DE LIJA PARA PULIR RESTAURACIONES DE RESINA. EXTRA FINO MEDIANO Y GRUESO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "060.889.0208", descripcion: "TIRAS. DE LIJA PARA PULIR RESTAURACIONES DE RESINA. GRUESO Y MEDIANO.", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "VASOS DESECHABLES BIODEGRADABLES DE 4 ONZAS. 100 PIEZAS", stock: "", minimo: "", caducidad: "" }
+    ],
+    equipo: [
+      { clave: "S/C", descripcion: "TINA ULTRASÓNICA PARA ESTOMATOLOGÍA", stock: "", minimo: "0", caducidad: "" },
+      { clave: "531.385.1080", descripcion: "ESTERILIZADOR CON VAPOR AUTOGENERADO PARA DENTAL Y MAXILOFACIAL", stock: "", minimo: "0", caducidad: "" },
+      { clave: "531.291.0028", descripcion: "UNIDAD ESTOMATOLÓGICA CON MÓDULO INTEGRADO", stock: "", minimo: "1", caducidad: "" },
+      { clave: "515.957.0109", descripcion: "UNIDAD ULTRASÓNICA ESTOMATOLÓGICA", stock: "", minimo: "0", caducidad: "" },
+      { clave: "531.562.0020", descripcion: "LÁMPARA DE FOTOCURADO DE RESINAS Y CEMENTOS FOTOPOLIMERIZABLES", stock: "", minimo: "1", caducidad: "" },
+      { clave: "531.291.0424", descripcion: "UNIDAD ESTOMATOLÓGICA PORTÁTIL *", stock: "", minimo: "0", caducidad: "" },
+      { clave: "531.032.0055", descripcion: "MEZCLADOR DE CÁPSULAS DENTALES, TIPO DOSIFICADOR-AMALGAMADOR (MEZCLA CÁPSULAS DE CEMENTO DE IONÓMERO DE VIDRIO Y OTROS CEMENTOS PREDOSIFICADOS EN CÁPSULAS) 4000 RPM", stock: "", minimo: "", caducidad: "" },
+      { clave: "531.601.0056", descripcion: "MANDIL EMPLOMADO", stock: "", minimo: "", caducidad: "" },
+      { clave: "531.695.0061", descripcion: "PORTA MANDIL", stock: "", minimo: "", caducidad: "" },
+      { clave: "531.786.0079", descripcion: "REVELADOR MANUAL DE PLACAS DENTALES", stock: "", minimo: "", caducidad: "" },
+      { clave: "531.341.2305", descripcion: "UNIDAD RADIOLÓGICA DENTAL INCLUYE SENSOR DIGITAL INTRAORAL (RADIOVISIÓGRAFO)", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "CÁMARA INTRAORAL DIGITAL.", stock: "", minimo: "", caducidad: "" },
+      { clave: "537.480.0042", descripcion: "PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "1", caducidad: "" },
+      { clave: "437.480.0034", descripcion: "PIEZA DE MANO DE BAJA VELOCIDAD CON CONTRAÁNGULO", stock: "", minimo: "1", caducidad: "" }
+    ],
+    mobiliario: [
+      { clave: "511.232.0022", descripcion: "CESTO DE PAPELES", stock: "", minimo: "", caducidad: "" },
+      { clave: "519.132.0059", descripcion: "BOTE DE CAMPANA", stock: "", minimo: "", caducidad: "" },
+      { clave: "511.814.0127", descripcion: "SILLA FIJA ACOJINADA APILABLE", stock: "", minimo: "", caducidad: "" },
+      { clave: "515.957.0109", descripcion: "VITRINA DE 75 CM CONTRA MURO", stock: "", minimo: "", caducidad: "" },
+      { clave: "511.836.0295", descripcion: "SILLÓN GIRATORIO DE RESPALDO BAJO", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "VITRINA DOBLE ESMALTADA DOS PUERTAS SUPERIORES DE CRISTAL CON CERRADURA Y ENTREPAÑOS DE CRISTAL, DOS CAJONES CENTRALES, DOS PUERTAS DE LÁMINA DE HACER O INFERIORES CON ENTREPAÑOS", stock: "", minimo: "", caducidad: "" },
+      { clave: "511.339.0206", descripcion: "ESCRITORIO CHICO CON PEDESTAL DERECHO", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "CARRO CAJONERO CON RUEDAS", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "MESA ALTA CON RESPALDO Y FREGADERO DE 120 CM", stock: "", minimo: "", caducidad: "" },
+      { clave: "511.076.0203", descripcion: "ARCHIVERO DE 4 GAVETAS", stock: "", minimo: "", caducidad: "" },
+      { clave: "350.308.0040", descripcion: "DESPCHADOR DE TOALLA DE PAPEL INTERDOBLADA GRANDE", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "LAVABO CONTRA MURO", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "ESPEJO DE PARED", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "ESPEJO INDIVIDUAL PARA PACIENTES", stock: "", minimo: "", caducidad: "" },
+      { clave: "S/C", descripcion: "AIRE ACONDICIONADO", stock: "", minimo: "", caducidad: "" }
+    ],
+    bienesInformaticos: [
+      { clave: "S/C", descripcion: "COMPUTADORA DE ESCRITORIO MEDIO RENDIMIENTO WINDOWS", stock: "", minimo: "1", caducidad: "" },
+      { clave: "S/C", descripcion: "UNIDAD DE ENERGÍA ININTERRUMPIDA TIPO 3. INTERACTIVO, CAPACIDAD DE 500 VA/300 WATSS.", stock: "", minimo: "0", caducidad: "" },
+      { clave: "S/C", descripcion: "EQUIPO MULTIFUNCIONAL LÁSER MONOCROMÁTICO", stock: "", minimo: "0", caducidad: "" }
+    ],
+      instrumental: [
+        { clave: "537.025.0069", descripcion: "ALVEOLOTOMO MEAD PINZA GUBIA LONGITUD 17CM", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.065.0052", descripcion: "APLICADOR DE HIDROXIDO DE CALCIO", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.079.0015", descripcion: "ARCO YOUNG PORTA DIQUE DE HULE", stock: "", minimo: "1", caducidad: "" },
+        { clave: "535.137.0035", descripcion: "BISTURÍ QUIRÚRGICO. MANGO N° 3, CON ESCALA", stock: "0", minimo: "", caducidad: "" },
+        { clave: "537.105.0179", descripcion: "BISTURÍ GOLDMAN FOX. NO.7", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.151.0016", descripcion: "BOTA FRESA BRODEN: ADITAMIENTO PARA PIEZA DE MANO DE ALTA VELOCIDAD", stock: "", minimo: "0", caducidad: "" },
+        { clave: "537.147.0017", descripcion: "BUDINERA DE ACERO INOXIDABLE 25 X 16 CM Y 700 ML.", stock: "", minimo: "0", caducidad: "" },
+        { clave: "S/C", descripcion: "CAJA METALICA CON TAPA PARA INSTRUMENTAL 20 X 10 X 4.5 CM", stock: "", minimo: "0", caducidad: "" },
+        { clave: "535.260.2154", descripcion: "CUCHARILLA LUCAS DE DOBLE EXTREMO 17CM DE LONGITUD", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.251.0098", descripcion: "CURETA CK-6 DE DOBLE EXTREMO", stock: "", minimo: "", caducidad: "1" },
+        { clave: "537.251.0015", descripcion: "CURETA MC CALL DERECHA E IZQUIERDA. JUEGO.", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.327.0452", descripcion: "ELEVADOR BEIN CON MANGO METALICO RECTO ACANALADO DE 2 O 3 MM ANCHO DE HOJA", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.327.0551", descripcion: "ELEVADOR APICAL FLOHR MANGO METALICO BRAZO ANGULAR EXTREMO FINO CORTO DERECHO", stock: "", minimo: "0", caducidad: "" },
+        { clave: "537.327.0700", descripcion: "ELEVADOR APICAL FLOHR MANGO METALICO BRAZO ANGULAR EXTREMO FINO CORTO IZQUIERDO", stock: "", minimo: "0", caducidad: "" },
+        { clave: "537.327.2664", descripcion: "ELEVADOR BEIN CON MANGO METALICO RECTO ACALANADO DE 4MM.", stock: "", minimo: "0", caducidad: "" },
+        { clave: "537.327.0957", descripcion: "ELEVADOR TIPO CRYER WHITE DE BANDERA DERECHO HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.327.1104", descripcion: "ELEVADOR TIPO CRYER WHITE DE BANDERA IZQUIERDO HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.327.1534", descripcion: "ELEVADOR SELDIN DE BANDERA DERECHO HOJA GRANDE", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.327.1609", descripcion: "ELEVADOR SELDIN DE BANDERA IZQUIERDO HOJA GRANDE", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.327.2805", descripcion: "ELEVADOR SELDIN DE BANDERA DERECHO HOJA PEQUEÑA", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.327.2813", descripcion: "ELEVADOR SELDIN DE BANDERA IZQUIERDA HOJA PEQUEÑA", stock: "", minimo: "0", caducidad: "" },
+        { clave: "537.370.0029", descripcion: "ESPÁTULA METÁLICA No.3 DOBLE EXTREMO (RECTANGULAR Y PUNTA LANZA)", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.370.0128", descripcion: "ESPÁTULA PARA RESINA, DE PLÁSTICO, DOBLE PUNTA", stock: "", minimo: "0", caducidad: "" },
+        { clave: "537.383.0081", descripcion: "ESPEJO DENTAL ROSCA SENCILLA PLANO SIN AUMENTO NO.5", stock: "", minimo: "0", caducidad: "" },
+        { clave: "537.397.0168", descripcion: "EXCAVADOR TIPO WHITE No.17", stock: "", minimo: "5", caducidad: "" },
+        { clave: "537.397.0150", descripcion: "EXCAVADOR TIPO WHITE No.5", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.409.0531", descripcion: "EXPLORADOR DE UNA PIEZA CON DOBLE EXTREMO NO.5", stock: "", minimo: "3", caducidad: "" },
+        { clave: "537.426.0015", descripcion: "FÓRCEPS DENTAL TIPO KLEIN, INFANTIL No. 151 1/2 S", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.426.0189", descripcion: "FÓRCEPS NO. 151", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.426.0221", descripcion: "FÓRCEPS NO.101", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.426.0197", descripcion: "FÓRCEPS NO.150", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.426.0171", descripcion: "FÓRCEPS NO.17", stock: "", minimo: "1", caducidad: "" },
+        { clave: "537.426.0460", descripcion: "FÓRCEPS NO.53 DERECHO", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0270", descripcion: "FÓRCEPS NO.53 IZQUIERDO", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0155", descripcion: "FÓRCEPS NO.65", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0411", descripcion: "FÓRCEPS NO.69", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0205", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS DEL No. 151 B", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0726", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS DEL No. 210", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0734", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS DEL No. 222", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0544", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS TIPO KLEIN, DEL No. 3", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0502", descripcion: "FÓRCEPS PARA ODONTECTOMÍAS TIPO KLEIN, DEL No. 6", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.426.0023", descripcion: "FÓRCEPS. NO 23.", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.547.0019", descripcion: "JERINGA CARPULE CON ADAPTADOR PARA AGUJA DESECHABLE", stock: "", minimo: "", caducidad: "" },
+        { clave: "S/C", descripcion: "JUEGO DE ALGODONERA SUCIO Y LIMPIO. ENVASE DE ACERO", stock: "", minimo: "", caducidad: "" },
+        { clave: "S/C", descripcion: "JUEGO DE 4 O 5 ESPATULAS PARA RESINA DE TEFLON", stock: "", minimo: "", caducidad: "" },
+        { clave: "S/C", descripcion: "JUEGO DE GRAPAS", stock: "", minimo: "", caducidad: "" },
+        { clave: "S/C", descripcion: "JUEGO DE PROFILAXIS 8 INSTRUMENTOS", stock: "", minimo: "", caducidad: "" },
+        { clave: "535.567.0059", descripcion: "LEGRA MEAD MANGO RECTO DOBLE EXTREMO", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.583.0105", descripcion: "LIMA MILLER O COLBURN, DOBLE EXTREMO No. 10c O No. 3", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.602.0409", descripcion: "MANGO PARA ESPEJO DENTAL METALICO MACIZO ROSCA SENCILLA", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.703.9598", descripcion: "PINZA COLLEGE O LONDON-COLLEGE TIPO BAYONETA", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.703.7493", descripcion: "PINZA AINSWORTH LONGITUD DE 160 A 165 MM", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.702.0531", descripcion: "PINZA BREWER PORTA GRAPAS PARA DIQUE DE HULE", stock: "", minimo: "", caducidad: "" },
+        { clave: "531.687.0012", descripcion: "PISTOLA APLICADORA DE CAPSULAS (PARA VIDRIO HIBRIO)", stock: "", minimo: "", caducidad: "" },
+        { clave: "531.687.0012", descripcion: "PORTA ABATELENGUAS CON TAPA, DE ACERO INOXIDABLE", stock: "", minimo: "", caducidad: "" },
+        { clave: "535.716.0190", descripcion: "PORTA AGUJA FINOCHIETO, LONGITUD 14.6 CM.", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.719.0052", descripcion: "PORTA MATRIZ PARA BANDA DE CELULOIDE", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.720.0018", descripcion: "PORTA SERVILLETAS. MODELO MARTIN O ADAMS CON CADENA", stock: "", minimo: "", caducidad: "" },
+        { clave: "060.830.7237", descripcion: "SONDA PARODONTAL ROMA Y MILIMETRADA DE 1 A 10", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.173.2511", descripcion: "SONDA PERIODONTAL W O WHO.", stock: "", minimo: "", caducidad: "" },
+        { clave: "535.859.2417", descripcion: "TIJERA MAYO, RECTA LONGITUD DE 170 MM", stock: "", minimo: "", caducidad: "" },
+        { clave: "535.859.1898", descripcion: "TIJERA QUINBY, CURVA, HOJAS CORTAS, LONGITUD 12.5 CM", stock: "", minimo: "", caducidad: "" },
+        { clave: "535.859.1286", descripcion: "TIJERAS IRIS, CURVA, LONGITUD 12 CM", stock: "", minimo: "", caducidad: "" },
+        { clave: "537.860.0018", descripcion: "TIRAPUENTE MILLER CON TRES PUNTAS DIFERENTES", stock: "", minimo: "", caducidad: "" },
+        { clave: "513.887.0059", descripcion: "TORUNDERA CON TAPA, ACERO INOXIDABLE 250 ML", stock: "", minimo: "", caducidad: "" }
+      ]
     };
+  // -----------------------------------------------------------------------------------------------
   
-
+  // ------------------ MINIMOS DEFINIDOS (categoria: material) ------------------
+  // Lista provista ; mantenida aquí como referencia para rellenar "mínimo" en 'material'.
+  const minimosDefinidos = {
+  "060.016.0204": 1,
+  "060.016.0253": 1,
+  "060.031.0072": 1,
+  "060.040.8058": 1,
+  "060.040.8041": 1,
+  "060.797.0019": 1,
+  "060.066.0401": 1,
+  "060.111.0208": 0,
+  "060.066.1078": 1,
+  "060.182.0178": 1,
+  "060.182.0160": 1,
+  "060.182.1366": 1,
+  "060.182.1150": 1,
+  "060.182.0236": 0,
+  "060.182.1176": 0,
+  "060.182.1275": 0,
+  "060.182.0194": 1,
+  "060.182.1424": 0,
+  "060.182.0186": 1,
+  "060.182.1440": 1,
+  "060.182.0228": 1,
+  "060.189.0254": 20,
+  "060.189.0106": 300,
+  "060.189.0015": 300,
+  "060.189.0023": 20,
+  "060.189.0031": 20,
+  "060.189.0205": 20,
+  "060.219.0068": 3,
+  "060.235.0019": 5,
+  "060.272.0039": 100,
+  "060.272.0047": 100,
+  "060.272.0013": 100,
+  "060.272.0021": 100,
+  "060.276.0050": 1,
+  "060.910.0011": 1,
+  "060.066.1086": 1,
+  "060.066.0500": 1,
+  "060.066.0112": 1,
+  "060.431.0037": 3,
+  "060.431.0672": 3,
+  "060.431.0656": 3,
+  "060.431.0664": 3,
+  "060.431.0433": 3,
+  "060.431.0631": 3,
+  "060.431.0649": 3,
+  "060.431.0409": 3,
+  "060.431.0466": 0,
+  "060.431.0318": 3,
+  "060.431.0334": 3,
+  "060.431.0342": 3,
+  "060.431.0011": 0,
+  "060.431.0581": 0,
+  "060.431.0599": 0,
+  "060.431.0540": 3,
+  "060.431.0557": 3,
+  "060.431.0565": 0,
+  "060.431.0573": 0,
+  "060.431.0524": 0,
+  "060.431.0532": 0,
+  "060.431.0615": 0,
+  "060.431.0623": 0,
+  "060.811.0078": 5,
+  "060.203.0439": 0,
+  "060.811.0060": 5,
+  "060.593.0106": 1,
+  "060.491.0018": 3,
+  "060.749.0703": 2,
+  "060.749.0836": 1,
+  "060.791.0106": 2,
+  "060.791.0122": 2,
+  "060.791.0114": 2,
+  "060.597.0037": 0,
+  "060.815.0058": 0,
+  "060.833.0197": 1,
+  "060.889.0158": 1,
+  "060.889.0224": 2,
+  "060.889.0232": 2,
+  "060.889.0208": 2
+  
+  };
   const fallbackHospitals = [
     { nombre: "Hospital General Boca del Río", clave: "VZIM010212" },
     { nombre: "Hospital General Martínez de la Torre", clave: "VZIM003361" }
   ];
 
-  // ================= DOM =================
+  // =========================
+  // DOM
+  // =========================
   const selCategoria = document.getElementById("categoria");
   const btnSiguiente = document.getElementById("btnSiguiente");
   const btnRegresar = document.getElementById("btnRegresar1");
@@ -354,344 +336,72 @@ async function cargarInventarioDesdeDB(clave) {
   const btnEnviar = document.getElementById("btnEnviarInsumos");
   const inputHospital = document.getElementById("hospitalNombre");
   const datalistHospitales = document.getElementById("listaHospitales");
+  const btnAdminAccess = document.getElementById("btnAdminAccess");
 
   let btnAgregarManual = null;
   let btnDescargarPage1 = null;
 
-  function safeEscapeCss(s) { try { return CSS.escape(s); } catch(e) { return String(s).replace(/[[\\\]"']/g,"\\$&"); } }
-
-  function ensureHeaders() {
-    if (!tabla) return;
-    const thead = tabla.querySelector("thead");
-    if (!thead) return;
-    const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent||"").trim().toLowerCase());
-    if (!ths.includes("observaciones")) {
-      const th = document.createElement("th"); th.textContent = "Observaciones"; thead.querySelector("tr").appendChild(th);
-    }
-    
-  }
-  ensureHeaders();
-
-  function genUid() { return `uid-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
-
-  function updateCaducidadHeader() {
-    if (!tabla) return;
-    const thead = tabla.querySelector("thead"); if (!thead) return;
-    const ths = Array.from(thead.querySelectorAll("th"));
-    const idx = ths.findIndex(t => ((t.textContent||"").trim().toLowerCase().includes("caduc")));
-    const idxFecha = idx >= 0 ? idx : ths.findIndex(t => ((t.textContent||"").trim().toLowerCase().includes("fecha")));
-    const targetIndex = idx >= 0 ? idx : idxFecha;
-    if (targetIndex === -1) return;
-    const isAdq = adquisicionCats.has(categoriaActiva);
-    thead.querySelectorAll("th")[targetIndex].textContent = isAdq ? "Fecha de adquisición" : "Caducidad";
-    const diasIdx = targetIndex + 1;
-    if (thead.querySelectorAll("th")[diasIdx]) thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
-  }
-
-  function moveButtonsToCardBottom() {
-    const page2 = document.getElementById("page2"); if (!page2 || !tabla) return;
-    const card = page2.querySelector(".card") || page2;
-    let bottom = card.querySelector("#controls-bottom");
-    if (!bottom) {
-      bottom = document.createElement("div");
-      bottom.id = "controls-bottom";
-      bottom.style.display = "flex";
-      bottom.style.justifyContent = "flex-end";
-      bottom.style.gap = "8px";
-      bottom.style.marginTop = "12px";
-      if (tabla.parentElement && tabla.parentElement === card) card.insertBefore(bottom, tabla.nextSibling);
-      else card.appendChild(bottom);
-    }
-
-    if (!btnAgregarManual) {
-      btnAgregarManual = document.createElement("button");
-      btnAgregarManual.id = "btnAgregarManual";
-      btnAgregarManual.textContent = "Agregar no listado";
-      btnAgregarManual.title = "Agregar producto que no está en la lista (se genera clave automática)";
-      btnAgregarManual.addEventListener("click", (ev) => {
-        ev && ev.preventDefault();
-        if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
-        const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-        btnAgregarManual.disabled = true; setTimeout(()=>btnAgregarManual.disabled=false,300);
-        agregarFilaManual();
-      });
-    }
-
-    let btnEliminarSeleccionados = document.getElementById("btnEliminarSeleccionados");
-    if (!btnEliminarSeleccionados) {
-      btnEliminarSeleccionados = document.createElement("button");
-      btnEliminarSeleccionados.id = "btnEliminarSeleccionados";
-      btnEliminarSeleccionados.textContent = "Eliminar seleccionados";
-      btnEliminarSeleccionados.title = "Eliminar filas marcadas";
-      btnEliminarSeleccionados.style.background = "#fee2e2";
-      btnEliminarSeleccionados.style.color = "#7f1d1d";
-      btnEliminarSeleccionados.style.border = "none";
-      btnEliminarSeleccionados.style.padding = "8px 12px";
-      btnEliminarSeleccionados.style.borderRadius = "8px";
-      btnEliminarSeleccionados.addEventListener("click", (ev) => { ev&&ev.preventDefault(); deleteSelectedRows(); });
-    }
-
-    const btns = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarSeleccionados];
-    btns.forEach(b => {
-      if (!b) return;
-      if (b.parentElement !== bottom) bottom.appendChild(b);
-      b.style.borderRadius = "8px";
-      b.style.padding = "8px 14px";
-      b.style.fontSize = "0.95rem";
-      b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
-      b.style.border = "none";
-      b.style.cursor = "pointer";
-      if (b === btnEnviar) { b.style.background = "#b91c6a"; b.style.color = "#fff"; }
-      else { b.style.background = "#f3f4f6"; b.style.color = "#0b1220"; }
-    });
-
+  function safeEscapeCss(s) {
     try {
-      const page1 = document.getElementById("page1");
-      const card1 = page1.querySelector(".card");
-      let actions = card1.querySelector(".actions");
-      if (!actions) {
-        actions = document.createElement("div");
-        actions.className = "actions";
-        actions.style.marginTop = "12px";
-        actions.style.display = "flex";
-        actions.style.justifyContent = "flex-end";
-        card1.appendChild(actions);
-      }
-      if (!document.getElementById("btnDescargarPage1")) {
-        btnDescargarPage1 = document.createElement("button");
-        btnDescargarPage1.id = "btnDescargarPage1";
-        btnDescargarPage1.textContent = "Descargar reporte (CSV)";
-        btnDescargarPage1.title = "Descargar CSV del inventario actual";
-        btnDescargarPage1.style.marginLeft = "8px";
-        btnDescargarPage1.addEventListener("click", (ev) => { ev&&ev.preventDefault(); downloadCSV(); });
-        btnDescargarPage1.style.background = "#111827";
-        btnDescargarPage1.style.color = "#fff";
-        btnDescargarPage1.style.padding = "8px 12px";
-        btnDescargarPage1.style.borderRadius = "8px";
-        actions.appendChild(btnDescargarPage1);
-       }
-
-       //================
-       const btnAdminAccess = document.getElementById("btnAdminAccess");
-if (btnAdminAccess) {
-  btnAdminAccess.addEventListener("click", () => {
-    window.location.href = "./admin.html";
-  });
-}
-//=======================
+      return CSS.escape(s);
     } catch (e) {
-      console.warn("No se pudo crear botón de descarga en page1:", e);
+      return String(s).replace(/[[\\\]"']/g, "\\$&");
     }
-
-
-
-
-// =================== ADMIN PANEL ===================
-const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
-const ADMIN_SUBMISSIONS_URL = `${SERVER_BASE}/submissions`;
-const ADMIN_REPORT_URL = `${SERVER_BASE}/report?format=csv`;
-
-let adminToken = localStorage.getItem("adminToken") || "";
-
-const btnAdminAccess = document.getElementById("btnAdminAccess");
-const adminModal = document.getElementById("adminModal");
-const adminPass = document.getElementById("adminPass");
-const btnAdminLogin = document.getElementById("btnAdminLogin");
-const btnAdminClose = document.getElementById("btnAdminClose");
-const adminMsg = document.getElementById("adminMsg");
-
-const adminSection = document.getElementById("adminSection");
-const adminTableBody = document.querySelector("#adminTable tbody");
-const btnAdminReload = document.getElementById("btnAdminReload");
-const btnAdminReport = document.getElementById("btnAdminReport");
-const btnAdminLogout = document.getElementById("btnAdminLogout");
-
-function openAdminModal() {
-  if (!adminModal) return;
-  adminMsg.textContent = "";
-  adminPass.value = "";
-  adminModal.classList.remove("oculto");
-  adminModal.setAttribute("aria-hidden", "false");
-  setTimeout(() => adminPass.focus(), 50);
-}
-
-function closeAdminModal() {
-  if (!adminModal) return;
-  adminModal.classList.add("oculto");
-  adminModal.setAttribute("aria-hidden", "true");
-}
-
-function showAdminSection() {
-  if (adminSection) {
-    adminSection.classList.remove("oculto");
-    adminSection.classList.add("activo");
-  }
-}
-
-function hideAdminSection() {
-  if (adminSection) {
-    adminSection.classList.add("oculto");
-    adminSection.classList.remove("activo");
-  }
-}
-
-function adminHeaders(extra = {}) {
-  return {
-    "Content-Type": "application/json",
-    "x-admin-token": adminToken,
-    ...extra
-  };
-}
-
-async function loginAdmin() {
-  const password = (adminPass.value || "").trim();
-  if (!password) {
-    adminMsg.textContent = "Escribe la contraseña.";
-    return;
   }
 
-  adminMsg.textContent = "Validando...";
-  try {
-    const res = await fetch(ADMIN_LOGIN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password })
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok || !data.token) {
-      adminMsg.textContent = "Contraseña incorrecta.";
-      return;
-    }
-
-    adminToken = data.token;
-    localStorage.setItem("adminToken", adminToken);
-    adminMsg.textContent = "";
-    closeAdminModal();
-    showAdminSection();
-    await loadAdminSubmissions();
-  } catch (err) {
-    console.error("Error login admin:", err);
-    adminMsg.textContent = "No fue posible conectar con el servidor.";
-  }
-}
-
-async function loadAdminSubmissions() {
-  if (!adminTableBody) return;
-  adminTableBody.innerHTML = "";
-
-  try {
-    const res = await fetch(ADMIN_SUBMISSIONS_URL, {
-      method: "GET",
-      headers: { "x-admin-token": adminToken }
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(txt || `HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : [];
-
-    if (!list.length) {
-      adminTableBody.innerHTML = `<tr><td colspan="6">Sin registros</td></tr>`;
-      return;
-    }
-
-    for (const item of list) {
-      const tr = document.createElement("tr");
-
-      const itemsCount = Array.isArray(item.items) ? item.items.length : 0;
-      const fecha = item.savedAt || item.receivedAt || "";
-
-      tr.innerHTML = `
-        <td>${escapeHtml(item.id || "")}</td>
-        <td>${escapeHtml(item.hospitalNombre || "")}</td>
-        <td>${escapeHtml(item.hospitalClave || "")}</td>
-        <td>${escapeHtml(item.categoria || "")}</td>
-        <td>${escapeHtml(fecha)}</td>
-        <td>${itemsCount}</td>
-      `;
-
-      adminTableBody.appendChild(tr);
-    }
-  } catch (err) {
-    console.error("Error cargando admin submissions:", err);
-    adminTableBody.innerHTML = `<tr><td colspan="6">Error al cargar registros</td></tr>`;
-  }
-}
-
-async function downloadAdminReport() {
-  try {
-    const res = await fetch(ADMIN_REPORT_URL, {
-      method: "GET",
-      headers: { "x-admin-token": adminToken }
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(txt || `HTTP ${res.status}`);
-    }
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reporte_admin_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"_")}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  } catch (err) {
-    console.error("Error descargando reporte admin:", err);
-    alert("No fue posible descargar el reporte.");
-  }
-}
-
-btnAdminAccess && btnAdminAccess.addEventListener("click", openAdminModal);
-btnAdminClose && btnAdminClose.addEventListener("click", closeAdminModal);
-btnAdminLogin && btnAdminLogin.addEventListener("click", loginAdmin);
-adminPass && adminPass.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") loginAdmin();
-});
-
-btnAdminReload && btnAdminReload.addEventListener("click", loadAdminSubmissions);
-btnAdminReport && btnAdminReport.addEventListener("click", downloadAdminReport);
-
-btnAdminLogout && btnAdminLogout.addEventListener("click", () => {
-  localStorage.removeItem("adminToken");
-  adminToken = "";
-  hideAdminSection();
-  openAdminModal();
-});
-
-if (adminToken) {
-  showAdminSection();
-  loadAdminSubmissions();
-} else {
-  hideAdminSection();
-}
-
-
-
-
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;");
   }
 
-  moveButtonsToCardBottom();
-
-  // -------------------------
-  // Normalización y búsqueda de hospitales (EXACT MATCH required)
-  // -------------------------
+  // =========================
+  // NORMALIZACIÓN
+  // =========================
   function stripAccents(str) {
     if (str === null || str === undefined) return "";
-    return String(str).normalize ? String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '') : String(str);
-  }
-  function normalizeStr(s) {
-    return stripAccents(String(s || "")).trim().toLowerCase();
+    return String(str).normalize
+      ? String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      : String(str);
   }
 
-  let hospitalesIndex = []; // { nombre, clave, norm }
+  function normalizeStr(s) {
+    return stripAccents(String(s || "")).trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function getCatalogList() {
+    return Array.isArray(catalogo?.[categoriaActiva]) ? catalogo[categoriaActiva] : [];
+  }
+
+  function getCatalogIndex() {
+    return getCatalogList().map((p, idx) => ({
+      ...p,
+      __idx: idx,
+      __claveNorm: normalizeStr(p.clave || ""),
+      __descNorm: normalizeStr(p.descripcion || "")
+    }));
+  }
+
+  function getMinimoValue(clave) {
+    if (!clave) return "";
+    if (typeof minimosDefinidos !== "undefined" && Object.prototype.hasOwnProperty.call(minimosDefinidos, clave)) {
+      return String(minimosDefinidos[clave]);
+    }
+    return "";
+  }
+
+  function genUid() {
+    return `uid-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  // =========================
+  // HOSPITALES
+  // =========================
+  let hospitalesIndex = [];
+
   function buildHospitalIndex() {
     hospitalesIndex = (hospitales || []).map(h => ({
       nombre: (h.nombre || "").trim(),
@@ -700,12 +410,11 @@ if (adminToken) {
     }));
   }
 
-  // Busca coincidencia exacta normalizada (nombre o clave)
   function findExactHospitalMatch(input) {
     if (!input) return null;
     const q = normalizeStr(input);
     if (!q) return null;
-    return hospitalesIndex.find(h => (h.norm === q) || (normalizeStr(h.clave) === q)) || null;
+    return hospitalesIndex.find(h => h.norm === q || normalizeStr(h.clave) === q) || null;
   }
 
   function ensureHospitalStatusEl() {
@@ -721,24 +430,26 @@ if (adminToken) {
     }
     return el;
   }
+
   function showHospitalStatus(msg, ok) {
     const el = ensureHospitalStatusEl();
     if (!el) return;
     el.textContent = msg || "";
     el.style.color = ok ? "#065f46" : "#92400e";
   }
+
   function updateHospitalValidationUI() {
-    const v = (inputHospital.value || "").trim();
-  
+    const v = (inputHospital?.value || "").trim();
+
     if (!v) {
       selectedHospitalClave = "";
       showHospitalStatus("Ingresa o selecciona un hospital de la lista.", false);
       btnSiguiente.disabled = true;
       return;
     }
-  
+
     const match = findExactHospitalMatch(v);
-  
+
     if (match) {
       selectedHospitalClave = match.clave || "";
       showHospitalStatus(`Hospital válido: ${match.nombre} (${selectedHospitalClave})`, true);
@@ -749,87 +460,379 @@ if (adminToken) {
       btnSiguiente.disabled = true;
     }
   }
-  // NAV: ahora Siguiente sólo avanza si selectedHospitalClave está presente (match exacto)
-  btnSiguiente.onclick = async (ev) => {
-    ev && ev.preventDefault();
-  
-    const cat = selCategoria.value;
-    if (!cat) return alert("Selecciona una categoría.");
-  
-    updateHospitalValidationUI();
-    if (!selectedHospitalClave) {
-      inputHospital.focus();
-      return alert("Selecciona un hospital válido de la lista antes de continuar.");
-    }
-  
-    const categoriaCambio = categoriaActiva && categoriaActiva !== cat;
-    if (categoriaCambio) limpiarTabla();
-  
-    categoriaActiva = cat;
-    tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
-  
+
+  async function tryFetchHospitals(urlToTry) {
+    const resp = await fetch(urlToTry, { method: "GET", cache: "no-store" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    return Array.isArray(data)
+      ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" }))
+      : [];
+  }
+
+  async function cargarHospitales() {
+    if (!datalistHospitales) return;
+
+    datalistHospitales.innerHTML = "";
+
     try {
-      await loadInventoryAndPopulate(selectedHospitalClave, categoriaActiva);
-    } catch (err) {
-      console.warn("No se pudo cargar inventory:", err);
+      hospitales = await tryFetchHospitals(HOSPITALES_URL);
+    } catch (err1) {
+      try {
+        const alt = `${location.origin}/hospitales`;
+        hospitales = await tryFetchHospitals(alt);
+      } catch (err2) {
+        hospitales = fallbackHospitals;
+      }
     }
-  
-    document.getElementById("page1").classList.remove("activo");
-    document.getElementById("page1").classList.add("oculto");
-    document.getElementById("page2").classList.remove("oculto");
-    document.getElementById("page2").classList.add("activo");
-  
-    updateCaducidadHeader();
-    if (!tbody.rows.length) agregarFila();
-    moveButtonsToCardBottom();
-    sortRowsByCaducidad();
-  };
 
-  btnRegresar.onclick = (ev) => {
-    ev && ev.preventDefault();
-    document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
-    document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
-    updateCaducidadHeader();
-  };
+    datalistHospitales.innerHTML = "";
+    hospitales.forEach(h => {
+      const opt = document.createElement("option");
+      opt.value = h.nombre;
+      if (h.clave) opt.dataset.clave = h.clave;
+      datalistHospitales.appendChild(opt);
+    });
 
-  function limpiarTabla() { if (tbody) tbody.innerHTML = ""; filaContador = 0; refreshDisabledOptions(); }
+    buildHospitalIndex();
 
-  btnAgregar.onclick = (ev) => {
-    ev && ev.preventDefault();
-    if (!categoriaActiva) { alert("Selecciona primero una categoría."); return; }
-    const now = Date.now(); if (now - lastAddTime < 250) return; lastAddTime = now;
-    btnAgregar.disabled = true; setTimeout(()=>btnAgregar.disabled=false,300);
-    agregarFila();
-    sortRowsByCaducidad();
-  };
+    btnSiguiente.disabled = true;
+    if (inputHospital && inputHospital.value) updateHospitalValidationUI();
+    else showHospitalStatus("Selecciona un hospital de la lista.", false);
+  }
 
-  function getAllSelects() { return Array.from(tbody.querySelectorAll("select")); }
+  function syncHospitalClave() {
+    const v = (inputHospital.value || "").trim();
+    if (!v) {
+      selectedHospitalClave = "";
+      updateHospitalValidationUI();
+      return;
+    }
+    const match = findExactHospitalMatch(v);
+    selectedHospitalClave = match ? (match.clave || "") : "";
+    updateHospitalValidationUI();
+  }
 
-  function refreshDisabledOptions() {
-    const selects = getAllSelects();
-    const selectedValues = selects.map(s => s.value).filter(v => v && v !== "");
-    selects.forEach(s => {
-      Array.from(s.options).forEach(opt => {
-        if (!opt.value) { opt.disabled = false; return; }
-        const chosenElsewhere = selectedValues.includes(opt.value) && s.value !== opt.value;
-        opt.disabled = !!chosenElsewhere;
+  inputHospital && inputHospital.addEventListener("change", syncHospitalClave);
+  inputHospital && inputHospital.addEventListener("blur", syncHospitalClave);
+  inputHospital && inputHospital.addEventListener("input", syncHospitalClave);
+
+  // =========================
+  // TABLA / ENCABEZADOS
+  // =========================
+  function ensureHeaders() {
+    if (!tabla) return;
+    const thead = tabla.querySelector("thead");
+    if (!thead) return;
+
+    const ths = Array.from(thead.querySelectorAll("th")).map(t => (t.textContent || "").trim().toLowerCase());
+    const tr = thead.querySelector("tr");
+    if (!tr) return;
+
+    if (!ths.includes("observaciones")) {
+      const th = document.createElement("th");
+      th.textContent = "Observaciones";
+      tr.appendChild(th);
+    }
+
+    if (!ths.includes("selección") && !ths.includes("seleccion")) {
+      const th = document.createElement("th");
+      th.textContent = "Selección";
+      tr.appendChild(th);
+    }
+  }
+
+  ensureHeaders();
+
+  function updateCaducidadHeader() {
+    if (!tabla) return;
+    const thead = tabla.querySelector("thead");
+    if (!thead) return;
+
+    const ths = Array.from(thead.querySelectorAll("th"));
+    const idx = ths.findIndex(t => (t.textContent || "").trim().toLowerCase().includes("caduc"));
+    const idxFecha = idx >= 0 ? idx : ths.findIndex(t => (t.textContent || "").trim().toLowerCase().includes("fecha"));
+    const targetIndex = idx >= 0 ? idx : idxFecha;
+    if (targetIndex === -1) return;
+
+    const isAdq = adquisicionCats.has(categoriaActiva);
+    thead.querySelectorAll("th")[targetIndex].textContent = isAdq ? "Fecha de adquisición" : "Caducidad";
+
+    const diasIdx = targetIndex + 1;
+    if (thead.querySelectorAll("th")[diasIdx]) {
+      thead.querySelectorAll("th")[diasIdx].textContent = isAdq ? "Días desde adquisición" : "Días restantes";
+    }
+  }
+
+  function moveButtonsToCardBottom() {
+    const page2 = document.getElementById("page2");
+    if (!page2 || !tabla) return;
+
+    const card = page2.querySelector(".card") || page2;
+    let bottom = card.querySelector("#controls-bottom");
+
+    if (!bottom) {
+      bottom = document.createElement("div");
+      bottom.id = "controls-bottom";
+      bottom.style.display = "flex";
+      bottom.style.justifyContent = "flex-end";
+      bottom.style.gap = "8px";
+      bottom.style.marginTop = "12px";
+      if (tabla.parentElement && tabla.parentElement === card) card.insertBefore(bottom, tabla.nextSibling);
+      else card.appendChild(bottom);
+    }
+
+    if (!btnAgregarManual) {
+      btnAgregarManual = document.createElement("button");
+      btnAgregarManual.id = "btnAgregarManual";
+      btnAgregarManual.textContent = "Agregar no listado";
+      btnAgregarManual.title = "Agregar producto que no está en la lista";
+      btnAgregarManual.addEventListener("click", (ev) => {
+        ev && ev.preventDefault();
+        if (!categoriaActiva) {
+          alert("Selecciona primero una categoría.");
+          return;
+        }
+        const now = Date.now();
+        if (now - lastAddTime < 250) return;
+        lastAddTime = now;
+        btnAgregarManual.disabled = true;
+        setTimeout(() => (btnAgregarManual.disabled = false), 300);
+        agregarFilaManual();
       });
-      if (s.value) {
-        const selectedOption = s.querySelector(`option[value="${safeEscapeCss(s.value)}"]`);
-        if (selectedOption) selectedOption.disabled = false;
+    }
+
+    let btnEliminarSeleccionados = document.getElementById("btnEliminarSeleccionados");
+    if (!btnEliminarSeleccionados) {
+      btnEliminarSeleccionados = document.createElement("button");
+      btnEliminarSeleccionados.id = "btnEliminarSeleccionados";
+      btnEliminarSeleccionados.textContent = "Eliminar seleccionadas";
+      btnEliminarSeleccionados.title = "Eliminar filas marcadas";
+      btnEliminarSeleccionados.style.background = "#fee2e2";
+      btnEliminarSeleccionados.style.color = "#7f1d1d";
+      btnEliminarSeleccionados.style.border = "none";
+      btnEliminarSeleccionados.style.padding = "8px 12px";
+      btnEliminarSeleccionados.style.borderRadius = "8px";
+      btnEliminarSeleccionados.addEventListener("click", (ev) => {
+        ev && ev.preventDefault();
+        deleteSelectedRows();
+      });
+    }
+
+    const btns = [btnRegresar, btnAgregar, btnAgregarManual, btnEnviar, btnEliminarSeleccionados];
+    btns.forEach(b => {
+      if (!b) return;
+      if (b.parentElement !== bottom) bottom.appendChild(b);
+      b.style.borderRadius = "8px";
+      b.style.padding = "8px 14px";
+      b.style.fontSize = "0.95rem";
+      b.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+      b.style.border = "none";
+      b.style.cursor = "pointer";
+      if (b === btnEnviar) {
+        b.style.background = "#b91c6a";
+        b.style.color = "#fff";
+      } else {
+        b.style.background = "#f3f4f6";
+        b.style.color = "#0b1220";
       }
     });
+
+    try {
+      const page1 = document.getElementById("page1");
+      const card1 = page1?.querySelector(".card");
+      if (card1) {
+        let actions = card1.querySelector(".actions");
+        if (!actions) {
+          actions = document.createElement("div");
+          actions.className = "actions";
+          actions.style.marginTop = "12px";
+          actions.style.display = "flex";
+          actions.style.justifyContent = "flex-end";
+          card1.appendChild(actions);
+        }
+        if (!document.getElementById("btnDescargarPage1")) {
+          btnDescargarPage1 = document.createElement("button");
+          btnDescargarPage1.id = "btnDescargarPage1";
+          btnDescargarPage1.textContent = "Descargar reporte (CSV)";
+          btnDescargarPage1.title = "Descargar CSV del inventario actual";
+          btnDescargarPage1.style.marginLeft = "8px";
+          btnDescargarPage1.addEventListener("click", (ev) => {
+            ev && ev.preventDefault();
+            downloadCSV();
+          });
+          btnDescargarPage1.style.background = "#111827";
+          btnDescargarPage1.style.color = "#fff";
+          btnDescargarPage1.style.padding = "8px 12px";
+          btnDescargarPage1.style.borderRadius = "8px";
+          actions.appendChild(btnDescargarPage1);
+        }
+      }
+    } catch (e) {
+      console.warn("No se pudo crear botón de descarga en page1:", e);
+    }
   }
 
-  function getMinimoValue(clave) {
-    if (!clave) return "";
-    if (typeof minimosDefinidos !== "undefined" && minimosDefinidos.hasOwnProperty(clave)) return String(minimosDefinidos[clave]);
-    return "";
+  // =========================
+  // VALIDACIÓN DE RECURSOS
+  // =========================
+  function findResourceByClave(rawClave) {
+    const q = normalizeStr(rawClave);
+    if (!q) return null;
+
+    const list = getCatalogIndex();
+    return list.find(p => p.__claveNorm && p.__claveNorm === q) || null;
   }
 
+  function findResourceByDescripcion(rawText) {
+    const q = normalizeStr(rawText);
+    if (!q) return null;
+
+    const list = getCatalogIndex();
+    if (!list.length) return null;
+
+    const exact = list.filter(p => p.__descNorm && p.__descNorm === q);
+    if (exact.length === 1) return { producto: exact[0], matchType: "descripcion-exacta" };
+    if (exact.length > 1) return null;
+
+    if (q.length >= 5) {
+      const pref = list.filter(p => p.__descNorm && p.__descNorm.startsWith(q));
+      if (pref.length === 1) return { producto: pref[0], matchType: "unico-prefijo" };
+      if (pref.length > 1) return null;
+    }
+
+    if (q.length >= 8) {
+      const contains = list.filter(p => p.__descNorm && p.__descNorm.includes(q));
+      if (contains.length === 1) return { producto: contains[0], matchType: "unico-contiene" };
+      if (contains.length > 1) return null;
+    }
+
+    return null;
+  }
+
+  function setRowValidity(tr, ok, message = "") {
+    tr.dataset.matchOk = ok ? "1" : "0";
+    tr.dataset.matchMsg = message || "";
+    tr.classList.toggle("row-invalid", !ok);
+  }
+
+  function clearRowDerivedFields(tr) {
+    const inputStock = tr.cells[3]?.querySelector("input");
+    const inputMin = tr.cells[4]?.querySelector("input");
+    const inputCad = tr.cells[6]?.querySelector("input");
+    const inputDias = tr.cells[7]?.querySelector("input");
+    const estadoSpan = tr.cells[5]?.querySelector("span");
+    const select = tr.cells[1]?.querySelector("select");
+
+    if (select) select.value = "";
+    if (inputStock) inputStock.value = "";
+    if (inputMin) inputMin.value = "";
+    if (inputCad) inputCad.value = "";
+    if (inputDias) inputDias.value = "";
+    if (estadoSpan) estadoSpan.textContent = "";
+
+    tr.classList.remove("expired", "warning-expiry", "valid-expiry");
+  }
+
+  function applyMatchedProductToRow(tr, producto, matchType = "") {
+    if (!producto) return;
+
+    const select = tr.cells[1]?.querySelector("select");
+    const inputDesc = tr.cells[2]?.querySelector("input");
+    const inputStock = tr.cells[3]?.querySelector("input");
+    const inputMin = tr.cells[4]?.querySelector("input");
+    const inputCad = tr.cells[6]?.querySelector("input");
+
+    tr.dataset.resourceClave = (producto.clave || "").trim();
+    tr.dataset.resourceDescripcion = (producto.descripcion || "").trim();
+    tr.dataset.resourceMatchType = matchType || "confirmed";
+    setRowValidity(tr, true, "");
+
+    if (inputDesc) inputDesc.value = producto.descripcion || "";
+
+    if (select) {
+      const clave = (producto.clave || "").trim();
+      if (clave) {
+        let matchedOpt = Array.from(select.options).find(o => {
+          const valClave = (o.value || "").split("||")[0].trim();
+          return valClave === clave;
+        });
+
+        if (matchedOpt) {
+          select.value = matchedOpt.value;
+        } else {
+          const opt = document.createElement("option");
+          opt.value = `${clave}||server`;
+          opt.textContent = clave;
+          opt.dataset.fromServer = "true";
+          select.appendChild(opt);
+          select.value = opt.value;
+        }
+      } else {
+        select.value = "";
+      }
+    }
+
+    if (inputStock) inputStock.value = producto.stock || "";
+    if (inputMin) {
+      if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo).trim() !== "") {
+        inputMin.value = producto.minimo;
+      } else {
+        inputMin.value = getMinimoValue(producto.clave || "");
+      }
+    }
+    if (inputCad) inputCad.value = producto.caducidad || "";
+
+    actualizarFila(tr);
+    sortRowsByCaducidad();
+  }
+
+  function invalidateRow(tr, reason = "La descripción no coincide de forma confiable con el catálogo.") {
+    tr.dataset.resourceClave = "";
+    tr.dataset.resourceDescripcion = "";
+    tr.dataset.resourceMatchType = "";
+    setRowValidity(tr, false, reason);
+    clearRowDerivedFields(tr);
+    actualizarFila(tr);
+  }
+
+  function syncDescriptionToCatalog(tr) {
+    const inputDesc = tr.cells[2]?.querySelector("input");
+    if (!inputDesc) return;
+
+    const raw = (inputDesc.value || "").trim();
+
+    if (!raw) {
+      invalidateRow(tr, "Escribe una descripción o selecciona un recurso válido.");
+      return;
+    }
+
+    const list = getCatalogIndex();
+    const matchByKey = findResourceByClave(raw);
+    if (matchByKey) {
+      applyMatchedProductToRow(tr, matchByKey, "clave-exacta");
+      return;
+    }
+
+    const matchByDesc = findResourceByDescripcion(raw);
+    if (matchByDesc && matchByDesc.producto) {
+      applyMatchedProductToRow(tr, matchByDesc.producto, matchByDesc.matchType);
+      return;
+    }
+
+    invalidateRow(tr, "La descripción escrita no coincide con un recurso válido del catálogo.");
+  }
+
+  // =========================
+  // FILAS
+  // =========================
   function renumerarFilas() {
     filaContador = 0;
-    for (const r of tbody.rows) { filaContador++; const noCell = r.cells[0]; if (noCell) noCell.textContent = filaContador; }
+    for (const r of tbody.rows) {
+      filaContador++;
+      const noCell = r.cells[0];
+      if (noCell) noCell.textContent = filaContador;
+    }
   }
 
   function getRowDateValue(tr) {
@@ -839,7 +842,7 @@ if (adminToken) {
       if (!v) return Number.POSITIVE_INFINITY;
       const d = new Date(v);
       if (isNaN(d.getTime())) return Number.POSITIVE_INFINITY;
-      return d.setHours(0,0,0,0);
+      return d.setHours(0, 0, 0, 0);
     } catch (e) {
       return Number.POSITIVE_INFINITY;
     }
@@ -849,7 +852,8 @@ if (adminToken) {
     if (!tbody) return;
     const rows = Array.from(tbody.rows);
     if (!rows.length) return;
-    rows.sort((a,b) => {
+
+    rows.sort((a, b) => {
       const da = getRowDateValue(a);
       const db = getRowDateValue(b);
       if (da === db) {
@@ -859,6 +863,7 @@ if (adminToken) {
       }
       return da - db;
     });
+
     const fragment = document.createDocumentFragment();
     rows.forEach(r => fragment.appendChild(r));
     tbody.appendChild(fragment);
@@ -866,220 +871,25 @@ if (adminToken) {
     refreshDisabledOptions();
   }
 
-  // Construye fila estándar
-  function agregarFila() {
-    filaContador++;
-    rowCreationCounter++;
-    const tr = document.createElement("tr");
-    tr.dataset.order = String(rowCreationCounter);
+  function refreshDisabledOptions() {
+    const selects = Array.from(tbody.querySelectorAll("select"));
+    const selectedValues = selects.map(s => s.value).filter(v => v && v !== "");
 
-    // No.
-    const tdNo = document.createElement("td"); tdNo.textContent = filaContador; tr.appendChild(tdNo);
-
-    // Clave (select)
-    const tdClave = document.createElement("td");
-    const select = document.createElement("select");
-    const optDefault = document.createElement("option"); optDefault.value = ""; optDefault.textContent = "--Seleccione--"; select.appendChild(optDefault);
-    if (catalogo[categoriaActiva] && catalogo[categoriaActiva].length > 0) {
-      catalogo[categoriaActiva].forEach((p, idx) => {
-        const o = document.createElement("option");
-        o.value = `${p.clave}||${idx}`;
-        o.textContent = p.clave;
-        o.dataset.descripcion = p.descripcion || "";
-        o.dataset.idx = String(idx);
-        select.appendChild(o);
+    selects.forEach(s => {
+      Array.from(s.options).forEach(opt => {
+        if (!opt.value) {
+          opt.disabled = false;
+          return;
+        }
+        const chosenElsewhere = selectedValues.includes(opt.value) && s.value !== opt.value;
+        opt.disabled = !!chosenElsewhere;
       });
-    }
-    tdClave.appendChild(select); tr.appendChild(tdClave);
 
-    // Descripción
-    const tdDesc = document.createElement("td");
-    const inputDesc = document.createElement("input"); inputDesc.type = "text"; inputDesc.placeholder = "Escribe descripción o selecciona sugerencia"; inputDesc.tabIndex = 0;
-    const datalistId = `datalist-desc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
-    const dl = document.createElement("datalist"); dl.id = datalistId;
-    if (catalogo[categoriaActiva]) catalogo[categoriaActiva].forEach(p => { const opt = document.createElement("option"); opt.value = p.descripcion; dl.appendChild(opt); });
-    inputDesc.setAttribute("list", datalistId);
-    tdDesc.appendChild(inputDesc); tdDesc.appendChild(dl); tr.appendChild(tdDesc);
-
-    // Stock
-    const tdStock = document.createElement("td"); const inputStock = document.createElement("input"); inputStock.type = "number"; inputStock.min = 0; tdStock.appendChild(inputStock); tr.appendChild(tdStock);
-
-    // Min
-    const tdMin = document.createElement("td"); const inputMin = document.createElement("input"); inputMin.type = "number"; inputMin.min = 0; inputMin.readOnly = true; inputMin.style.background="#f3f4f6"; inputMin.style.cursor="not-allowed"; tdMin.appendChild(inputMin); tr.appendChild(tdMin);
-
-    // Estado
-    const tdEstado = document.createElement("td"); const spanEstado = document.createElement("span"); tdEstado.appendChild(spanEstado); tr.appendChild(tdEstado);
-
-    // Caducidad
-    const tdCad = document.createElement("td"); const inputCad = document.createElement("input"); inputCad.type = "date"; inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad"); tdCad.appendChild(inputCad); tr.appendChild(tdCad);
-
-    // Días
-    const tdDias = document.createElement("td"); const inputDias = document.createElement("input"); inputDias.type="text"; inputDias.readOnly=true; inputDias.value=""; tdDias.appendChild(inputDias); tr.appendChild(tdDias);
-
-    // Observaciones
-    const tdObs = document.createElement("td"); const textareaObs = document.createElement("textarea"); textareaObs.placeholder="Observaciones"; textareaObs.rows=2; textareaObs.style.resize="vertical"; textareaObs.style.width="100%"; textareaObs.style.boxSizing="border-box"; tdObs.appendChild(textareaObs); tr.appendChild(tdObs);
-
-    // Acciones: checkbox + eliminar
-    const tdAcc = document.createElement("td"); tdAcc.style.display="flex"; tdAcc.style.gap="8px"; tdAcc.style.alignItems="center";
-    const chk = document.createElement("input"); chk.type="checkbox"; chk.className="row-select"; chk.title="Seleccionar fila para eliminar"; tdAcc.appendChild(chk);
-
-    const btnDel = document.createElement("button");
-    btnDel.type = "button";
-    btnDel.textContent = "Eliminar";
-    btnDel.title = "Eliminar esta fila";
-    btnDel.style.padding = "6px 10px";
-    btnDel.style.borderRadius = "6px";
-    btnDel.style.border = "none";
-    btnDel.style.cursor = "pointer";
-    btnDel.style.background = "#fee2e2";
-    btnDel.style.color = "#7f1d1d";
-
-    btnDel.addEventListener("click", async (ev) => {
-      ev && ev.preventDefault();
-      const descripcion = (tr.cells[2].querySelector("input").value || "").trim();
-      const stock = (tr.cells[3].querySelector("input").value || "").trim();
-      const fecha = (tr.cells[6].querySelector("input").value || "").trim();
-      const obs = (tr.cells[tr.cells.length-2].querySelector("textarea") ? tr.cells[tr.cells.length-2].querySelector("textarea").value : "").trim();
-      const clave = (tr.cells[1].querySelector("select").value || "").trim();
-      const hasData = !!(descripcion || stock || fecha || obs || clave);
-      if (hasData && !confirm("La fila contiene datos. ¿Eliminarla de todas formas?")) return;
-
-      const rowUid = tr.dataset.uid;
-      const hospitalKey = selectedHospitalClave || (inputHospital ? inputHospital.value.trim() : "");
-      if (rowUid && hospitalKey && categoriaActiva) {
-        // pedir borrado remoto
-        try {
-          btnDel.disabled = true;
-          const body = { hospitalClave: hospitalKey, categoria: categoriaActiva, uids: [rowUid] };
-          const headers = { "Content-Type": "application/json" };
-          if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
-          const resp = await fetch(INVENTORY_DELETE_ITEM_URL, { method: "POST", headers, body: JSON.stringify(body) });
-          if (!resp.ok) {
-            const text = await resp.text().catch(()=>"");
-            throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
-          }
-          const data = await resp.json().catch(()=>({ok:true}));
-          if (data && data.ok) {
-            // eliminar en UI
-            tr.remove();
-            renumerarFilas();
-            refreshDisabledOptions();
-            if (!tbody.rows.length) agregarFila();
-            return;
-          } else {
-            throw new Error("Servidor respondió sin ok.");
-          }
-        } catch (err) {
-          console.error("Error borrando item en servidor:", err);
-          if (!confirm("No se pudo eliminar item en servidor. ¿Eliminar localmente de todas formas?")) {
-            btnDel.disabled = false;
-            return;
-          }
-          // fallback: eliminar localmente
-        } finally {
-          try { btnDel.disabled = false; } catch(e){}
-        }
-      }
-
-      // si no hay uid/hospital -> eliminar localmente
-      tr.remove(); renumerarFilas(); refreshDisabledOptions(); if (!tbody.rows.length) agregarFila();
-    });
-
-    tdAcc.appendChild(btnDel);
-
-    tr.appendChild(tdAcc);
-    tbody.appendChild(tr);
-
-    // listeners y helpers 
-    function fillProduct(producto) {
-      if (!producto) return;
-      inputDesc.value = producto.descripcion || inputDesc.value;
-      inputStock.value = producto.stock || "";
-      if (producto.minimo !== undefined && producto.minimo !== null && String(producto.minimo) !== "") inputMin.value = producto.minimo;
-      else inputMin.value = getMinimoValue(producto.clave || "");
-      inputCad.value = producto.caducidad || "";
-      const lista = catalogo[categoriaActiva] || [];
-      const idx = lista.indexOf(producto);
-      if (idx >= 0) {
-        for (let i=0;i<select.options.length;i++){ const opt = select.options[i]; if (opt.dataset && ('idx' in opt.dataset) && parseInt(opt.dataset.idx,10)===idx) { select.value = opt.value; break; } }
-      } else {
-        select.value = `${producto.clave}||0`;
-      }
-      refreshDisabledOptions(); actualizarFila(tr);
-      sortRowsByCaducidad();
-    }
-
-    inputDesc.addEventListener("input", () => {
-      const v = (inputDesc.value||"").trim();
-      if (!v) { refreshDisabledOptions(); actualizarFila(tr); return; }
-      const lista = catalogo[categoriaActiva] || [];
-      const vLower = v.toLowerCase();
-      const productoExact = lista.find(p => p.descripcion && p.descripcion.trim().toLowerCase() === vLower);
-      if (productoExact) { fillProduct(productoExact); return; }
-      refreshDisabledOptions(); actualizarFila(tr);
-    });
-
-    inputDesc.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" || ev.key === "Tab") {
-        const v = (inputDesc.value||"").trim(); if (!v) return;
-        const lista = catalogo[categoriaActiva] || []; const vLower = v.toLowerCase();
-        const matchesStarts = lista.filter(p=>p.descripcion && p.descripcion.trim().toLowerCase().startsWith(vLower));
-        const matchesContains = lista.filter(p=>p.descripcion && p.descripcion.trim().toLowerCase().includes(vLower));
-        let producto = null;
-        if (matchesStarts.length >= 1) producto = matchesStarts[0];
-        else if (matchesContains.length === 1) producto = matchesContains[0];
-        if (producto) { if (ev.key === "Enter") ev.preventDefault(); fillProduct(producto); }
+      if (s.value) {
+        const selectedOption = s.querySelector(`option[value="${safeEscapeCss(s.value)}"]`);
+        if (selectedOption) selectedOption.disabled = false;
       }
     });
-
-    select.addEventListener("change", () => {
-      const selectedOption = select.selectedOptions[0];
-      let producto = null;
-      if (selectedOption && selectedOption.dataset && ('idx' in selectedOption.dataset)) {
-        const idx = parseInt(selectedOption.dataset.idx,10);
-        producto = (catalogo[categoriaActiva]||[])[idx] || null;
-      }
-      if (!producto) {
-        const claveSimple = select.value ? select.value.split("||")[0] : "";
-        producto = (catalogo[categoriaActiva]||[]).find(p => p.clave === claveSimple) || null;
-        if (!producto && claveSimple) {
-          const val = getMinimoValue(claveSimple);
-          inputMin.value = val;
-        }
-      }
-      if (producto) fillProduct(producto);
-      refreshDisabledOptions();
-      setTimeout(()=>{ try{ inputDesc.focus(); }catch(e){} }, 0);
-      sortRowsByCaducidad();
-    });
-
-    inputStock.addEventListener("input", () => { if (inputStock.value === "") return actualizarFila(tr); let v = parseInt(inputStock.value,10); if (isNaN(v)||v<0) v = 0; inputStock.value = v; actualizarFila(tr); });
-    inputCad.addEventListener("change", () => { actualizarFila(tr); sortRowsByCaducidad(); });
-    [select, inputDesc].forEach(el => { el.addEventListener("change", refreshDisabledOptions); el.addEventListener("input", refreshDisabledOptions); el.addEventListener("blur", refreshDisabledOptions); });
-    refreshDisabledOptions();
-  } // fin agregarFila
-
-  function agregarFilaManual() {
-    agregarFila();
-    const tr = tbody.rows[tbody.rows.length-1];
-    if (!tr) return;
-    const select = tr.cells[1].querySelector("select");
-    const inputDesc = tr.cells[2].querySelector("input");
-    const btnDel = tr.cells[tr.cells.length-1].querySelector("button");
-    const gen = `MAN-${Date.now().toString(36).slice(-6)}`;
-    const opt = document.createElement("option");
-    opt.value = gen;
-    opt.textContent = gen + " (no listado)";
-    select.appendChild(opt);
-    select.value = gen;
-    select.disabled = true;
-    tr.dataset.manual = "true";
-    inputDesc.required = true;
-    inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
-    inputDesc.focus();
-    if (btnDel) { btnDel.style.background="#fee2e2"; btnDel.style.color="#7f1d1d"; }
-    refreshDisabledOptions();
-    sortRowsByCaducidad();
   }
 
   function actualizarFila(tr) {
@@ -1088,26 +898,37 @@ if (adminToken) {
     const inputCad = tr.cells[6].querySelector("input");
     const inputDias = tr.cells[7].querySelector("input");
     const estadoSpan = tr.cells[5].querySelector("span");
-    const stockVal = inputStock.value === "" ? null : Math.max(0, parseInt(inputStock.value||0,10));
-    const minVal = inputMin.value === "" ? 0 : Math.max(0, parseInt(inputMin.value||0,10));
-    if (stockVal === null) { estadoSpan.textContent = ""; } else { estadoSpan.textContent = (stockVal < minVal) ? "Bajo stock" : "Stock suficiente"; }
-    tr.classList.remove("expired","warning-expiry","valid-expiry");
-    inputDias.value = "";
-    if (inputCad.value) {
-      const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+    const stockVal = inputStock?.value === "" ? null : Math.max(0, parseInt(inputStock?.value || 0, 10));
+    const minVal = inputMin?.value === "" ? 0 : Math.max(0, parseInt(inputMin?.value || 0, 10));
+
+    if (estadoSpan) {
+      if (stockVal === null) estadoSpan.textContent = "";
+      else estadoSpan.textContent = (stockVal < minVal) ? "Bajo stock" : "Stock suficiente";
+    }
+
+    tr.classList.remove("expired", "warning-expiry", "valid-expiry");
+    if (inputDias) inputDias.value = "";
+
+    if (inputCad && inputCad.value) {
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
       const fecha = new Date(inputCad.value);
-      const msPorDia = 1000*60*60*24;
+      const msPorDia = 1000 * 60 * 60 * 24;
       const isAdq = adquisicionCats.has(categoriaActiva);
+
       if (isAdq) {
         const diffMs = hoy - fecha;
         const diasDesde = Math.ceil(diffMs / msPorDia);
-        inputDias.value = diasDesde < 0 ? "En futuro" : String(diasDesde);
+        if (inputDias) inputDias.value = diasDesde < 0 ? "En futuro" : String(diasDesde);
       } else {
         const diffMs = fecha - hoy;
         const diasRest = Math.ceil(diffMs / msPorDia);
-        inputDias.value = diasRest < 0 ? "Caducado" : String(diasRest);
+        if (inputDias) inputDias.value = diasRest < 0 ? "Caducado" : String(diasRest);
+
         let meses = (fecha.getFullYear() - hoy.getFullYear()) * 12 + (fecha.getMonth() - hoy.getMonth());
         if (fecha.getDate() < hoy.getDate()) meses -= 1;
+
         if (meses < 0) tr.classList.add("expired");
         else if (meses < 6) tr.classList.add("expired");
         else if (meses <= 12) tr.classList.add("warning-expiry");
@@ -1116,258 +937,451 @@ if (adminToken) {
     }
   }
 
-  const semaforoColor = { expired: "#FDE2E5", "warning-expiry": "#FFF7E0", "valid-expiry": "#E8F9F0", default: "#FFFFFF" };
+  function agregarFila() {
+    filaContador++;
+    rowCreationCounter++;
 
-  function escapeHtml(str) { if (str===null||str===undefined) return ""; return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;"); }
+    const tr = document.createElement("tr");
+    tr.dataset.order = String(rowCreationCounter);
+    tr.dataset.matchOk = "0";
+    tr.dataset.matchMsg = "";
 
-  // Ahora devuelve uid por fila y actualiza dataset.uid para que server y cliente compartan ids
-  function buildPayloadRows() {
-    const filasExport = [];
-    const errors = [];
-    for (const row of tbody.rows) {
-      const select = row.cells[1].querySelector("select");
-      const raw = select ? select.value : "";
-      const claveReal = raw ? raw.split("||")[0] : "";
-      const descripcion = (row.cells[2].querySelector("input").value || "").trim();
-      const obsCellIndex = row.cells.length - 2;
-      const observacionesEl = row.cells[obsCellIndex].querySelector("textarea");
-      const observaciones = (observacionesEl ? (observacionesEl.value || "").trim() : "");
-      const isManual = row.dataset && row.dataset.manual === "true";
+    const tdNo = document.createElement("td");
+    tdNo.textContent = filaContador;
+    tr.appendChild(tdNo);
 
-      // generar/usar uid (asegura existencia)
-      const uidExisting = row.dataset && row.dataset.uid ? row.dataset.uid : null;
-      const uid = uidExisting || genUid();
-      row.dataset.uid = uid; // aseguro que DOM tenga uid
+    const tdClave = document.createElement("td");
+    const select = document.createElement("select");
+    const optDefault = document.createElement("option");
+    optDefault.value = "";
+    optDefault.textContent = "--Seleccione--";
+    select.appendChild(optDefault);
 
-      if (!claveReal && !descripcion && !observaciones) continue;
-      if (isManual && !descripcion) { errors.push(`Fila ${row.rowIndex}: Falta descripción para producto no listado`); continue; }
-      let color = semaforoColor.default;
-      if (!adquisicionCats.has(categoriaActiva)) {
-        if (row.classList.contains("expired")) color = semaforoColor.expired;
-        else if (row.classList.contains("warning-expiry")) color = semaforoColor["warning-expiry"];
-        else if (row.classList.contains("valid-expiry")) color = semaforoColor["valid-expiry"];
-      }
-
-      filasExport.push({
-        uid,
-        clave: claveReal,
-        descripcion,
-        stock: row.cells[3].querySelector("input").value || "",
-        minimo: row.cells[4].querySelector("input").value || "",
-        fecha: row.cells[6].querySelector("input").value || "",
-        dias: row.cells[7].querySelector("input").value || "",
-        observaciones,
-        color,
-        manual: !!isManual
+    const list = getCatalogList();
+    if (list.length > 0) {
+      list.forEach((p, idx) => {
+        const o = document.createElement("option");
+        o.value = `${p.clave || ""}||${idx}`;
+        o.textContent = p.clave || p.descripcion || `Recurso ${idx + 1}`;
+        o.dataset.descripcion = p.descripcion || "";
+        o.dataset.idx = String(idx);
+        select.appendChild(o);
       });
     }
-    return { filasExport, errors };
-  }
 
-  async function saveInventoryToServer(hospitalNombre, hospitalClave, categoria, items) {
-    if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
-    const payload = { hospitalNombre: hospitalNombre||"", hospitalClave: hospitalClave||"", categoria: categoria||"", items };
-    const headers = { "Content-Type": "application/json" };
-    if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
-    const resp = await fetch(INVENTORY_POST_URL, { method: "POST", headers, body: JSON.stringify(payload) });
-    if (!resp.ok) {
-      const txt = await resp.text().catch(()=>"");
-      throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
-    }
-    const data = await resp.json().catch(()=>null);
-    return data;
-  }
+    tdClave.appendChild(select);
+    tr.appendChild(tdClave);
 
-  if (btnEnviar) {
-    btnEnviar.onclick = async (ev) => {
-      ev && ev.preventDefault();
-      const { filasExport, errors } = buildPayloadRows();
-      if (errors.length) { alert("Errores:\n\n" + errors.join("\n")); return; }
-      if (filasExport.length === 0) { alert("No hay datos para enviar."); return; }
-      if (!INVENTORY_POST_URL) { alert("INVENTORY_POST_URL no configurada."); return; }
-      const hospitalNombre = inputHospital ? (inputHospital.value || "").trim() : "";
-      // Asegurar que el hospital sea válido antes de guardar
-      if (!selectedHospitalClave) { alert("Selecciona un hospital válido de la lista antes de enviar."); inputHospital.focus(); return; }
-      try {
-        btnEnviar.disabled = true; const originalText = btnEnviar.textContent; btnEnviar.textContent = "Guardando...";
-        await saveInventoryToServer(hospitalNombre, selectedHospitalClave || hospitalNombre, categoriaActiva, filasExport);
-        alert("Inventario guardado correctamente en el servidor.");
-        limpiarTabla();
-        categoriaActiva = null; selCategoria.value = ""; if (inputHospital) inputHospital.value = ""; selectedHospitalClave = "";
-        updateCaducidadHeader();
-        document.getElementById("page2").classList.remove("activo"); document.getElementById("page2").classList.add("oculto");
-        document.getElementById("page1").classList.remove("oculto"); document.getElementById("page1").classList.add("activo");
-        showHospitalStatus("", true);
-        btnSiguiente.disabled = true;
-      } catch (err) {
-        console.error("Error al guardar inventario:", err);
-        alert("No fue posible guardar el inventario en el servidor:\n\n" + (err.message || err));
-      } finally {
-        btnEnviar.disabled = false; btnEnviar.textContent = "Enviar";
-      }
-    };
-  }
+    const tdDesc = document.createElement("td");
+    const inputDesc = document.createElement("input");
+    inputDesc.type = "text";
+    inputDesc.placeholder = "Escribe clave o descripción y confirma con coincidencia válida";
+    inputDesc.tabIndex = 0;
 
-  // ---- HOSPITALES ----
-  async function tryFetchHospitals(urlToTry) {
-    try {
-      const resp = await fetch(urlToTry, { method: "GET", cache: "no-store" });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      return Array.isArray(data) ? data.map(d => (typeof d === "string" ? { nombre: d, clave: "" } : { nombre: d.nombre || "", clave: d.clave || "" })) : [];
-    } catch (err) { throw err; }
-  }
+    const datalistId = `datalist-desc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const dl = document.createElement("datalist");
+    dl.id = datalistId;
 
-  async function cargarHospitales() {
-    if (!datalistHospitales) return;
-    datalistHospitales.innerHTML = "";
-    try {
-      hospitales = await tryFetchHospitals(HOSPITALES_URL);
-      console.log("hospitales cargados desde HOSPITALES_URL:", HOSPITALES_URL);
-    } catch (err1) {
-      console.warn("Intento 1 falló:", err1);
-      try {
-        const alt = `${location.origin}/hospitales`;
-        hospitales = await tryFetchHospitals(alt);
-        console.log("hospitales cargados desde origen alterno:", alt);
-      } catch (err2) {
-        console.warn("Intento 2 falló:", err2);
-        hospitales = fallbackHospitals;
-        console.warn("Usando fallback local de hospitales.");
-      }
-    }
-    datalistHospitales.innerHTML = "";
-    hospitales.forEach(h => {
-      const opt = document.createElement("option"); opt.value = h.nombre;
-      if (h.clave) opt.dataset.clave = h.clave;
-      datalistHospitales.appendChild(opt);
+    list.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.descripcion || "";
+      dl.appendChild(opt);
     });
 
-    // Construir índice normalizado para búsqueda robusta
-    buildHospitalIndex();
+    inputDesc.setAttribute("list", datalistId);
+    tdDesc.appendChild(inputDesc);
+    tdDesc.appendChild(dl);
+    tr.appendChild(tdDesc);
 
-    // Inicialmente deshabilitar avanzar hasta que el usuario seleccione válido
-    btnSiguiente.disabled = true;
-    if (inputHospital && inputHospital.value) updateHospitalValidationUI();
-    else showHospitalStatus("Selecciona un hospital de la lista.", false);
+    const tdStock = document.createElement("td");
+    const inputStock = document.createElement("input");
+    inputStock.type = "number";
+    inputStock.min = 0;
+    tdStock.appendChild(inputStock);
+    tr.appendChild(tdStock);
+
+    const tdMin = document.createElement("td");
+    const inputMin = document.createElement("input");
+    inputMin.type = "number";
+    inputMin.min = 0;
+    inputMin.readOnly = true;
+    inputMin.style.background = "#f3f4f6";
+    inputMin.style.cursor = "not-allowed";
+    tdMin.appendChild(inputMin);
+    tr.appendChild(tdMin);
+
+    const tdEstado = document.createElement("td");
+    const spanEstado = document.createElement("span");
+    tdEstado.appendChild(spanEstado);
+    tr.appendChild(tdEstado);
+
+    const tdCad = document.createElement("td");
+    const inputCad = document.createElement("input");
+    inputCad.type = "date";
+    inputCad.setAttribute("aria-label", adquisicionCats.has(categoriaActiva) ? "Fecha de adquisición" : "Fecha de caducidad");
+    tdCad.appendChild(inputCad);
+    tr.appendChild(tdCad);
+
+    const tdDias = document.createElement("td");
+    const inputDias = document.createElement("input");
+    inputDias.type = "text";
+    inputDias.readOnly = true;
+    inputDias.value = "";
+    tdDias.appendChild(inputDias);
+    tr.appendChild(tdDias);
+
+    const tdObs = document.createElement("td");
+    const textareaObs = document.createElement("textarea");
+    textareaObs.placeholder = "Observaciones";
+    textareaObs.rows = 2;
+    textareaObs.style.resize = "vertical";
+    textareaObs.style.width = "100%";
+    textareaObs.style.boxSizing = "border-box";
+    tdObs.appendChild(textareaObs);
+    tr.appendChild(tdObs);
+
+    const tdSel = document.createElement("td");
+    tdSel.style.display = "flex";
+    tdSel.style.alignItems = "center";
+    tdSel.style.justifyContent = "center";
+    tdSel.style.minHeight = "100%";
+
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.className = "row-select";
+    chk.title = "Seleccionar fila para eliminar";
+    tdSel.appendChild(chk);
+    tr.appendChild(tdSel);
+
+    tbody.appendChild(tr);
+    setRowValidity(tr, false, "Pendiente de validar");
+
+    function validateFromDescription() {
+      syncDescriptionToCatalog(tr);
+      refreshDisabledOptions();
+    }
+
+    inputDesc.addEventListener("input", validateFromDescription);
+    inputDesc.addEventListener("blur", validateFromDescription);
+    inputDesc.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === "Tab") {
+        syncDescriptionToCatalog(tr);
+        if (tr.dataset.matchOk === "1") {
+          return;
+        }
+      }
+    });
+
+    select.addEventListener("change", () => {
+      const selectedOption = select.selectedOptions[0];
+      let producto = null;
+
+      if (selectedOption && selectedOption.dataset && ("idx" in selectedOption.dataset)) {
+        const idx = parseInt(selectedOption.dataset.idx, 10);
+        producto = getCatalogList()[idx] || null;
+      }
+
+      if (!producto) {
+        const claveSimple = select.value ? select.value.split("||")[0] : "";
+        producto = getCatalogList().find(p => normalizeStr(p.clave || "") === normalizeStr(claveSimple)) || null;
+      }
+
+      if (producto) {
+        applyMatchedProductToRow(tr, producto, "seleccion-clave");
+      } else {
+        invalidateRow(tr, "Selecciona un recurso válido del listado.");
+      }
+
+      refreshDisabledOptions();
+      setTimeout(() => {
+        try { inputDesc.focus(); } catch (e) {}
+      }, 0);
+      sortRowsByCaducidad();
+    });
+
+    inputStock.addEventListener("input", () => {
+      if (inputStock.value === "") return actualizarFila(tr);
+      let v = parseInt(inputStock.value, 10);
+      if (isNaN(v) || v < 0) v = 0;
+      inputStock.value = v;
+      actualizarFila(tr);
+    });
+
+    inputCad.addEventListener("change", () => {
+      actualizarFila(tr);
+      sortRowsByCaducidad();
+    });
+
+    [select, inputDesc].forEach(el => {
+      el.addEventListener("change", refreshDisabledOptions);
+      el.addEventListener("input", refreshDisabledOptions);
+      el.addEventListener("blur", refreshDisabledOptions);
+    });
+
+    refreshDisabledOptions();
   }
-  cargarHospitales().catch(()=>{/* no crítico */});
 
-  // sincronización y validación en tiempo real: solo coincidencia EXACTA es válida
-  function syncHospitalClave() {
-    const v = (inputHospital.value || "").trim();
-    if (!v) { selectedHospitalClave = ""; updateHospitalValidationUI(); return; }
-    // buscar coincidencia exacta normalizada
-    const match = findExactHospitalMatch(v);
-    if (match) selectedHospitalClave = match.clave || "";
-    else selectedHospitalClave = "";
-    updateHospitalValidationUI();
+  function agregarFilaManual() {
+    agregarFila();
+    const tr = tbody.rows[tbody.rows.length - 1];
+    if (!tr) return;
+
+    const inputDesc = tr.cells[2].querySelector("input");
+    const chk = tr.cells[tr.cells.length - 1].querySelector("input[type='checkbox']");
+
+    tr.dataset.manual = "true";
+
+    if (inputDesc) {
+      inputDesc.required = true;
+      inputDesc.placeholder = "Descripción obligatoria (producto no listado)";
+      inputDesc.focus();
+    }
+
+    if (chk) chk.checked = false;
+
+    refreshDisabledOptions();
+    sortRowsByCaducidad();
   }
-  inputHospital && inputHospital.addEventListener("change", syncHospitalClave);
-  inputHospital && inputHospital.addEventListener("blur", syncHospitalClave);
-  inputHospital && inputHospital.addEventListener("input", () => {
-    // actualiza UI y mantiene la posibilidad de seguir escribiendo, pero no se habilita Siguiente hasta match exacto
-    syncHospitalClave();
-  });
 
+  // =========================
+  // CARGA DE INVENTARIO
+  // =========================
+  async function cargarInventarioDesdeDB(clave) {
+    try {
+      console.log("Consultando base de datos para el hospital:", clave);
 
+      const res = await fetch(
+        `${SERVER_BASE}/inventory-base?hospitalClave=${encodeURIComponent(clave)}`,
+        { method: "GET" }
+      );
 
-  
-  // ---- INVENTORY: cargar y poblar 
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${txt}`);
+      }
+
+      const registros = await res.json();
+      return Array.isArray(registros) ? registros : [];
+    } catch (error) {
+      console.error("Error al conectar con el servidor:", error);
+      return [];
+    }
+  }
+
   async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     if (!hospitalClaveOrName || !categoria) return;
-  
+
     try {
       const registros = await cargarInventarioDesdeDB(hospitalClaveOrName);
       const categoriaNorm = String(categoria || "").trim().toLowerCase();
-  
+
       const registrosCat = registros.filter(r =>
         String(r.categoria || "").trim().toLowerCase() === categoriaNorm
       );
-  
-      const registrosPorClave = new Map(
-        registrosCat.map(r => [String(r.clave || "").trim(), r])
-      );
-  
+
       limpiarTabla();
-  
-      // Si no hay registros guardados, deja una sola fila vacía
+
       if (!registrosCat.length) {
         agregarFila();
         return;
       }
-  
-      // Si sí hay registros, pinta solo esos
+
       for (const item of registrosCat) {
         agregarFila();
         const tr = tbody.rows[tbody.rows.length - 1];
         if (!tr) continue;
-  
+
         const selectEl = tr.cells[1].querySelector("select");
         const inputDescEl = tr.cells[2].querySelector("input");
         const inputStockEl = tr.cells[3].querySelector("input");
         const inputMinEl = tr.cells[4].querySelector("input");
         const inputFechaEl = tr.cells[6].querySelector("input");
         const inputDiasEl = tr.cells[7].querySelector("input");
-        const textareaObs = tr.cells[tr.cells.length - 2].querySelector("textarea");
-  
-        const clave = String(item.clave || "").trim();
-  
-        inputDescEl.value = item.descripcion || "";
-        inputStockEl.value = item.stock ?? "";
-        inputMinEl.value = item.minimo ?? getMinimoValue(clave) ?? "";
-        inputFechaEl.value = item.fecha ?? "";
-        inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
-        textareaObs.value = item.observaciones ?? "";
-  
+        const textareaObs = tr.cells[8].querySelector("textarea");
+
+        if (inputDescEl) inputDescEl.value = item.descripcion || "";
+        if (inputStockEl) inputStockEl.value = item.stock ?? "";
+        if (inputMinEl) inputMinEl.value = item.minimo ?? getMinimoValue(item.clave || "") ?? "";
+        if (inputFechaEl) inputFechaEl.value = item.fecha ?? "";
+        if (inputDiasEl) inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
+        if (textareaObs) textareaObs.value = item.observaciones ?? "";
+
         if (item.uid) tr.dataset.uid = item.uid;
         if (item.manual) tr.dataset.manual = "true";
-  
-        // Asignar la clave al select
-        let matchedOpt = Array.from(selectEl.options).find(o => {
-          const valClave = (o.value || "").split("||")[0].trim();
-          return valClave === clave;
-        });
-  
-        if (matchedOpt) {
-          selectEl.value = matchedOpt.value;
-        } else {
-          const opt = document.createElement("option");
-          opt.value = `${clave}||server`;
-          opt.textContent = clave;
-          opt.dataset.fromServer = "true";
-          selectEl.appendChild(opt);
-          selectEl.value = opt.value;
+
+        // Primero intenta por clave, luego por descripción.
+        const clave = String(item.clave || "").trim();
+        const desc = String(item.descripcion || "").trim();
+
+        let matchedByKey = null;
+        if (clave) {
+          matchedByKey = findResourceByClave(clave);
         }
-  
+
+        if (matchedByKey) {
+          applyMatchedProductToRow(tr, matchedByKey, "carga-clave");
+        } else if (desc) {
+          syncDescriptionToCatalog(tr);
+        } else {
+          invalidateRow(tr, "Registro sin clave ni descripción válida.");
+        }
+
         actualizarFila(tr);
       }
-  
+
       sortRowsByCaducidad();
       refreshDisabledOptions();
     } catch (err) {
       console.error("loadInventoryAndPopulate error:", err);
     }
   }
-    
-  
 
+  // =========================
+  // PERSISTENCIA
+  // =========================
+  function buildPayloadRows() {
+    const filasExport = [];
+    const errors = [];
 
+    for (const row of tbody.rows) {
+      const select = row.cells[1]?.querySelector("select");
+      const inputDesc = row.cells[2]?.querySelector("input");
+      const inputStock = row.cells[3]?.querySelector("input");
+      const inputMin = row.cells[4]?.querySelector("input");
+      const inputCad = row.cells[6]?.querySelector("input");
+      const inputDias = row.cells[7]?.querySelector("input");
+      const observacionesEl = row.cells[8]?.querySelector("textarea");
 
-  // Eliminar filas seleccionadas -> ahora con llamada al servidor
+      const rawSelect = select ? select.value : "";
+      const claveReal = row.dataset.resourceClave || (rawSelect ? rawSelect.split("||")[0].trim() : "");
+      const descripcionReal = row.dataset.resourceDescripcion || (inputDesc ? (inputDesc.value || "").trim() : "");
+      const observaciones = observacionesEl ? (observacionesEl.value || "").trim() : "";
+
+      const uidExisting = row.dataset && row.dataset.uid ? row.dataset.uid : null;
+      const uid = uidExisting || genUid();
+      row.dataset.uid = uid;
+
+      const isValid = row.dataset.matchOk === "1";
+
+      if (!claveReal && !descripcionReal && !observaciones) {
+        continue;
+      }
+
+      if (!isValid) {
+        const no = row.cells[0]?.textContent?.trim() || "?";
+        errors.push(`Fila ${no}: la descripción/clave no coincide con un recurso válido del catálogo.`);
+        continue;
+      }
+
+      let color = "default";
+      if (!adquisicionCats.has(categoriaActiva)) {
+        if (row.classList.contains("expired")) color = "expired";
+        else if (row.classList.contains("warning-expiry")) color = "warning-expiry";
+        else if (row.classList.contains("valid-expiry")) color = "valid-expiry";
+      }
+
+      filasExport.push({
+        uid,
+        clave: claveReal,
+        descripcion: descripcionReal,
+        stock: inputStock ? (inputStock.value || "") : "",
+        minimo: inputMin ? (inputMin.value || "") : "",
+        fecha: inputCad ? (inputCad.value || "") : "",
+        dias: inputDias ? (inputDias.value || "") : "",
+        observaciones,
+        color,
+        manual: row.dataset.manual === "true",
+        resourceMatchType: row.dataset.resourceMatchType || ""
+      });
+    }
+
+    return { filasExport, errors };
+  }
+
+  async function saveInventoryToServer(hospitalNombre, hospitalClave, categoria, items) {
+    if (!INVENTORY_POST_URL) throw new Error("INVENTORY_POST_URL no configurada.");
+
+    const payload = {
+      hospitalNombre: hospitalNombre || "",
+      hospitalClave: hospitalClave || "",
+      categoria: categoria || "",
+      items
+    };
+
+    const headers = { "Content-Type": "application/json" };
+    if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+
+    const resp = await fetch(INVENTORY_POST_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => "");
+      throw new Error(`Error guardando inventory: ${resp.status} ${resp.statusText} ${txt}`);
+    }
+
+    const data = await resp.json().catch(() => null);
+    return data;
+  }
+
+  function downloadCSV() {
+    const { filasExport, errors } = buildPayloadRows();
+    if (errors.length) {
+      alert("Errores:\n\n" + errors.join("\n"));
+      return;
+    }
+    if (!filasExport || filasExport.length === 0) {
+      alert("No hay datos para exportar.");
+      return;
+    }
+
+    const cols = ["uid", "clave", "descripcion", "stock", "minimo", "fecha", "dias", "observaciones", "color", "manual", "resourceMatchType"];
+    const escapeCell = s => {
+      if (s === null || s === undefined) return "";
+      const str = String(s);
+      return (str.includes('"') || str.includes(",") || str.includes("\n")) ? `"${str.replace(/"/g, '""')}"` : str;
+    };
+
+    const lines = [cols.join(",")];
+    for (const row of filasExport) {
+      const vals = cols.map(c => escapeCell(row[c]));
+      lines.push(vals.join(","));
+    }
+
+    const csv = lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const now = new Date().toISOString().replace(/[:.]/g, "-");
+    a.download = `inventario_${(selectedHospitalClave || inputHospital?.value || "no-hospital")}_${categoriaActiva || "no-cat"}_${now}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function deleteSelectedRows() {
     const checked = Array.from(tbody.querySelectorAll("input.row-select:checked"));
-    if (!checked.length) { alert("No hay filas seleccionadas para eliminar."); return; }
+    if (!checked.length) {
+      alert("No hay filas seleccionadas para eliminar.");
+      return;
+    }
+
     const detalles = checked.map(chk => {
       const tr = chk.closest("tr");
       const no = tr ? (tr.cells[0].textContent || "").trim() : "(?)";
       const desc = tr ? (tr.cells[2].querySelector("input").value || "").trim() : "";
-      return `Fila ${no}: ${desc ? (desc.length>60 ? desc.slice(0,60)+"…" : desc) : "(sin descripción)"}`;
+      return `Fila ${no}: ${desc ? (desc.length > 60 ? desc.slice(0, 60) + "…" : desc) : "(sin descripción)"}`;
     }).join("\n");
+
     if (!confirm(`Vas a eliminar ${checked.length} fila(s):\n\n${detalles}\n\n¿Continuar?`)) return;
 
     const uids = [];
     const rowsToRemove = [];
+
     for (const ch of checked) {
       const tr = ch.closest("tr");
       if (!tr) continue;
@@ -1381,14 +1395,19 @@ if (adminToken) {
         const body = { hospitalClave: hospitalKey, categoria: categoriaActiva, uids };
         const headers = { "Content-Type": "application/json" };
         if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
-        const resp = await fetch(INVENTORY_DELETE_ITEM_URL, { method: "POST", headers, body: JSON.stringify(body) });
+
+        const resp = await fetch(INVENTORY_DELETE_ITEM_URL, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body)
+        });
+
         if (!resp.ok) {
-          const text = await resp.text().catch(()=>"");
+          const text = await resp.text().catch(() => "");
           throw new Error(`Error servidor: ${resp.status} ${resp.statusText} ${text}`);
         }
-        const data = await resp.json().catch(()=>null);
-        // eliminar filas en UI si servidor confirmó (o si no devuelve, asumir ok)
-        for (const tr of rowsToRemove) { tr.remove(); }
+
+        for (const tr of rowsToRemove) tr.remove();
         renumerarFilas();
         refreshDisabledOptions();
         if (!tbody.rows.length) agregarFila();
@@ -1396,52 +1415,174 @@ if (adminToken) {
       } catch (err) {
         console.error("Error borrando items en servidor:", err);
         if (!confirm("No se pudo eliminar algunos items en el servidor. ¿Eliminar localmente de todas formas?")) return;
-        // el usuario confirmó: eliminar localmente
       }
     }
 
-    // eliminar localmente
-    for (const tr of rowsToRemove) { tr.remove(); }
+    for (const tr of rowsToRemove) tr.remove();
     renumerarFilas();
     refreshDisabledOptions();
     if (!tbody.rows.length) agregarFila();
   }
 
-  // Descarga CSV
-  function downloadCSV() {
-    const { filasExport, errors } = buildPayloadRows();
-    if (errors.length) { alert("Errores:\n\n" + errors.join("\n")); return; }
-    if (!filasExport || filasExport.length === 0) { alert("No hay datos para exportar."); return; }
+  // =========================
+  // BOTONES / NAV
+  // =========================
+  btnAdminAccess && btnAdminAccess.addEventListener("click", () => {
+    window.location.href = "./admin.html";
+  });
 
-    const cols = ["uid","clave","descripcion","stock","minimo","fecha","dias","observaciones","color","manual"];
-    const escapeCell = s => {
-      if (s===null||s===undefined) return "";
-      const str = String(s);
-      return (str.includes('"')||str.includes(',')||str.includes('\n')) ? `"${str.replace(/"/g,'""')}"` : str;
-    };
-    const lines = [ cols.join(",") ];
-    for (const row of filasExport) {
-      const vals = cols.map(c => escapeCell(row[c]));
-      lines.push(vals.join(","));
+  btnSiguiente && (btnSiguiente.onclick = async (ev) => {
+    ev && ev.preventDefault();
+
+    const cat = selCategoria.value;
+    if (!cat) return alert("Selecciona una categoría.");
+
+    updateHospitalValidationUI();
+    if (!selectedHospitalClave) {
+      inputHospital.focus();
+      return alert("Selecciona un hospital válido de la lista antes de continuar.");
     }
-    const csv = lines.join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const now = new Date().toISOString().replace(/[:.]/g,"-");
-    a.download = `inventario_${(selectedHospitalClave||inputHospital.value||"no-hospital")}_${categoriaActiva||"no-cat"}_${now}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
 
+    const categoriaCambio = categoriaActiva && categoriaActiva !== cat;
+    if (categoriaCambio) limpiarTabla();
 
+    categoriaActiva = cat;
+    tituloCategoria.textContent = `Formulario de ${selCategoria.options[selCategoria.selectedIndex].text}`;
+
+    try {
+      await loadInventoryAndPopulate(selectedHospitalClave, categoriaActiva);
+    } catch (err) {
+      console.warn("No se pudo cargar inventory:", err);
+    }
+
+    document.getElementById("page1").classList.remove("activo");
+    document.getElementById("page1").classList.add("oculto");
+    document.getElementById("page2").classList.remove("oculto");
+    document.getElementById("page2").classList.add("activo");
+
+    updateCaducidadHeader();
+    if (!tbody.rows.length) agregarFila();
+    moveButtonsToCardBottom();
+    sortRowsByCaducidad();
+  });
+
+  btnRegresar && (btnRegresar.onclick = (ev) => {
+    ev && ev.preventDefault();
+    document.getElementById("page2").classList.remove("activo");
+    document.getElementById("page2").classList.add("oculto");
+    document.getElementById("page1").classList.remove("oculto");
+    document.getElementById("page1").classList.add("activo");
+    updateCaducidadHeader();
+  });
+
+  function limpiarTabla() {
+    if (tbody) tbody.innerHTML = "";
+    filaContador = 0;
+    refreshDisabledOptions();
   }
 
-  // reubicar botones si se cambia el tamaño
+  btnAgregar && (btnAgregar.onclick = (ev) => {
+    ev && ev.preventDefault();
+    if (!categoriaActiva) {
+      alert("Selecciona primero una categoría.");
+      return;
+    }
+    const now = Date.now();
+    if (now - lastAddTime < 250) return;
+    lastAddTime = now;
+    btnAgregar.disabled = true;
+    setTimeout(() => (btnAgregar.disabled = false), 300);
+    agregarFila();
+    sortRowsByCaducidad();
+  });
+
+  if (btnEnviar) {
+    btnEnviar.onclick = async (ev) => {
+      ev && ev.preventDefault();
+
+      const { filasExport, errors } = buildPayloadRows();
+
+      if (errors.length) {
+        alert("Hay filas inválidas:\n\n" + errors.join("\n"));
+        return;
+      }
+
+      if (filasExport.length === 0) {
+        alert("No hay datos válidos para enviar.");
+        return;
+      }
+
+      const hospitalNombre = inputHospital ? (inputHospital.value || "").trim() : "";
+      if (!selectedHospitalClave) {
+        alert("Selecciona un hospital válido de la lista antes de enviar.");
+        inputHospital.focus();
+        return;
+      }
+
+      try {
+        btnEnviar.disabled = true;
+        const originalText = btnEnviar.textContent;
+        btnEnviar.textContent = "Guardando...";
+
+        await saveInventoryToServer(
+          hospitalNombre,
+          selectedHospitalClave || hospitalNombre,
+          categoriaActiva,
+          filasExport
+        );
+
+        alert("Inventario guardado correctamente en el servidor.");
+        limpiarTabla();
+        categoriaActiva = null;
+        selCategoria.value = "";
+        if (inputHospital) inputHospital.value = "";
+        selectedHospitalClave = "";
+        updateCaducidadHeader();
+
+        document.getElementById("page2").classList.remove("activo");
+        document.getElementById("page2").classList.add("oculto");
+        document.getElementById("page1").classList.remove("oculto");
+        document.getElementById("page1").classList.add("activo");
+
+        showHospitalStatus("", true);
+        btnSiguiente.disabled = true;
+      } catch (err) {
+        console.error("Error al guardar inventario:", err);
+        alert("No fue posible guardar el inventario en el servidor:\n\n" + (err.message || err));
+      } finally {
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = "Enviar";
+      }
+    };
+  }
+
+  // =========================
+  // MANTENIMIENTO
+  // =========================
   window.addEventListener("resize", moveButtonsToCardBottom);
 
-  
- 
- 
+  // Clase visual para filas inválidas
+  const extraStyle = document.createElement("style");
+  extraStyle.textContent = `
+    #tablaInsumos tbody tr.row-invalid td {
+      background: rgba(239, 68, 68, 0.10) !important;
+    }
+  `;
+  document.head.appendChild(extraStyle);
+
+  // =========================
+  // INICIO
+  // =========================
+  cargarHospitales().catch(() => {});
+  moveButtonsToCardBottom();
+
+  // Si el usuario ya había escrito hospital válido antes de cargar
+  if (inputHospital && inputHospital.value) {
+    syncHospitalClave();
+  } else {
+    btnSiguiente.disabled = true;
+  }
+});
+
+
+
