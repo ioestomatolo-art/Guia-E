@@ -457,19 +457,8 @@ async function cargarInventarioDesdeDB(clave) {
         actions.style.justifyContent = "flex-end";
         card1.appendChild(actions);
       }
-      if (!document.getElementById("btnDescargarPage1")) {
-        btnDescargarPage1 = document.createElement("button");
-        btnDescargarPage1.id = "btnDescargarPage1";
-        btnDescargarPage1.textContent = "Descargar reporte (CSV)";
-        btnDescargarPage1.title = "Descargar CSV del inventario actual";
-        btnDescargarPage1.style.marginLeft = "8px";
-        btnDescargarPage1.addEventListener("click", (ev) => { ev&&ev.preventDefault(); downloadCSV(); });
-        btnDescargarPage1.style.background = "#111827";
-        btnDescargarPage1.style.color = "#fff";
-        btnDescargarPage1.style.padding = "8px 12px";
-        btnDescargarPage1.style.borderRadius = "8px";
-        actions.appendChild(btnDescargarPage1);
-       }
+      
+       
 
        //================
        const btnAdminAccess = document.getElementById("btnAdminAccess");
@@ -489,7 +478,7 @@ if (btnAdminAccess) {
 // =================== ADMIN PANEL ===================
 const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
 const ADMIN_SUBMISSIONS_URL = `${SERVER_BASE}/submissions`;
-const ADMIN_REPORT_URL = `${SERVER_BASE}/report?format=csv`;
+const ADMIN_REPORT_URL = `${SERVER_BASE}/report/inventory?format=csv`;
 
 let adminToken = localStorage.getItem("adminToken") || "";
 
