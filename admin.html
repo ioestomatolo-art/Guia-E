@@ -6,7 +6,9 @@
   <title>Administrador | Estomatología</title>
   <link rel="shortcut icon" href="icono.ico" />
   <link rel="stylesheet" href="Formato.css" />
+
 </head>
+
 <body>
   <header class="site-header" role="banner">
     <button id="btnAdminAccess" class="admin-fab" type="button" title="Acceso administrador" aria-label="Acceso administrador">
@@ -19,7 +21,7 @@
   </header>
 
   <main class="admin-page">
-    <section id="adminLoginView" class="admin-panel">
+    <section id="adminLoginView" class="admin-panel admin-login-box">
       <h1>Acceso administrador</h1>
       <p>Ingresa la contraseña para entrar al panel.</p>
 
@@ -51,27 +53,15 @@
         <button id="btnAdminLogout" type="button">Salir</button>
       </div>
 
-
       <div class="admin-filters">
         <input id="filterHospital" type="text" placeholder="Filtrar por clave o hospital" />
         <select id="filterCategoria">
           <option value="">Todas las categorías</option>
-          <option value="material">material</option>
-          <option value="insumos">insumos</option>
-          <option value="equipo">equipo</option>
-          <option value="mobiliario">mobiliario</option>
-          <option value="bienesInformaticos">bienesInformaticos</option>
-          <option value="instrumental">instrumental</option>
         </select>
         <button id="btnApplyFilters" type="button">Filtrar</button>
         <button id="btnClearFilters" type="button">Limpiar</button>
       </div>
 
-
-
-
-
-      
       <div class="admin-table-wrap">
         <table id="adminTable" class="admin-table" aria-label="Registros de inventario">
           <thead>
@@ -91,31 +81,6 @@
           <tbody></tbody>
         </table>
       </div>
-
-
-
-      <table id="adminTable" class="admin-table" aria-label="Registros de inventario">
-        <thead>
-          <tr>
-            
-              
-                <th>Clave hospital</th>
-                <th>Hospital</th>
-                <th>Categoría</th>
-                <th>Clave</th>
-                <th>Descripción</th>
-                <th>Stock</th>
-                <th>Mínimo</th>
-                <th>Fecha</th>
-                <th>Días</th>
-                <th>Observaciones</th>
-            
-
-          
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
     </section>
   </main>
 
@@ -123,11 +88,12 @@
     const SERVER_BASE = "https://servidor-4wu6.onrender.com";
     const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
     const ADMIN_INVENTORY_URL = `${SERVER_BASE}/admin/inventory`;
-    const ADMIN_REPORT_URL = `${SERVER_BASE}/admin/inventory?format=csv`;
-  
-    let adminToken = localStorage.getItem("adminToken") || "";
+
+    let adminToken = "";
     let adminRows = [];
-  
+
+    localStorage.removeItem("adminToken");
+
     const btnAdminAccess = document.getElementById("btnAdminAccess");
     const adminLoginView = document.getElementById("adminLoginView");
     const adminSection = document.getElementById("adminSection");
@@ -139,12 +105,11 @@
     const btnAdminReport = document.getElementById("btnAdminReport");
     const btnAdminLogout = document.getElementById("btnAdminLogout");
     const adminTableBody = document.querySelector("#adminTable tbody");
-  
     const filterHospital = document.getElementById("filterHospital");
     const filterCategoria = document.getElementById("filterCategoria");
     const btnApplyFilters = document.getElementById("btnApplyFilters");
     const btnClearFilters = document.getElementById("btnClearFilters");
-  
+
     function showLogin() {
       adminLoginView.classList.remove("admin-hidden");
       adminSection.classList.add("admin-hidden");
@@ -152,12 +117,12 @@
       adminPass.value = "";
       setTimeout(() => adminPass.focus(), 50);
     }
-  
+
     function showPanel() {
       adminSection.classList.remove("admin-hidden");
       adminLoginView.classList.add("admin-hidden");
     }
-  
+
     function authHeaders(extra = {}) {
       return {
         "Content-Type": "application/json",
@@ -165,7 +130,7 @@
         ...extra
       };
     }
-  
+
     function escapeHtml(str) {
       return String(str ?? "")
         .replace(/&/g, "&amp;")
@@ -173,36 +138,78 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
     }
-  
+
+    function normalizeText(v) {
+      return String(v ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    }
+
     function getFilters() {
       return {
-        q: (filterHospital?.value || "").trim(),
-        categoria: (filterCategoria?.value || "").trim()
+        q: normalizeText(filterHospital?.value || ""),
+        categoria: normalizeText(filterCategoria?.value || "")
       };
     }
-  
+
     function matchesFilters(row) {
       const { q, categoria } = getFilters();
-      const rowHosp = `${row.hospital_clave || ""} ${row.hospital_nombre || ""}`.toLowerCase();
-      const rowCat = String(row.categoria || "").toLowerCase();
-      const qNorm = q.toLowerCase();
-  
-      if (qNorm && !rowHosp.includes(qNorm)) return false;
-      if (categoria && rowCat !== categoria.toLowerCase()) return false;
+
+      const hospitalClave = normalizeText(row.hospital_clave || row.hospitalClave || "");
+      const hospitalNombre = normalizeText(row.hospital_nombre || row.hospitalNombre || "");
+      const rowCat = normalizeText(row.categoria || "");
+
+      if (q) {
+        const hayMatch = hospitalClave.includes(q) || hospitalNombre.includes(q);
+        if (!hayMatch) return false;
+      }
+
+      if (categoria && rowCat !== categoria) return false;
+
       return true;
     }
-  
+
+    function getFilteredRows() {
+      return Array.isArray(adminRows) ? adminRows.filter(matchesFilters) : [];
+    }
+
+    function populateCategoryOptions(rows) {
+      if (!filterCategoria) return;
+
+      const current = filterCategoria.value;
+      const cats = [...new Set((rows || [])
+        .map(r => String(r.categoria || "").trim())
+        .filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "es"));
+
+      filterCategoria.innerHTML = `<option value="">Todas las categorías</option>`;
+      for (const c of cats) {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        filterCategoria.appendChild(opt);
+      }
+
+      if ([...filterCategoria.options].some(o => o.value === current)) {
+        filterCategoria.value = current;
+      } else {
+        filterCategoria.value = "";
+      }
+    }
+
     function renderAdminInventory() {
       if (!adminTableBody) return;
       adminTableBody.innerHTML = "";
-  
-      const list = adminRows.filter(matchesFilters);
-  
+
+      const list = getFilteredRows();
+
       if (!list.length) {
         adminTableBody.innerHTML = `<tr><td colspan="10">Sin registros</td></tr>`;
         return;
       }
-  
+
       for (const item of list) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -220,14 +227,14 @@
         adminTableBody.appendChild(tr);
       }
     }
-  
+
     async function loginAdmin() {
       const password = (adminPass.value || "").trim();
       if (!password) {
         adminMsg.textContent = "Escribe la contraseña.";
         return;
       }
-  
+
       adminMsg.textContent = "Validando...";
       try {
         const res = await fetch(ADMIN_LOGIN_URL, {
@@ -235,13 +242,13 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password })
         });
-  
+
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok || !data.token) {
           adminMsg.textContent = "Contraseña incorrecta.";
           return;
         }
-  
+
         adminToken = data.token;
         localStorage.setItem("adminToken", adminToken);
         adminMsg.textContent = "";
@@ -252,28 +259,27 @@
         adminMsg.textContent = "No fue posible conectar con el servidor.";
       }
     }
-  
+
     async function loadAdminInventory() {
+      if (!adminTableBody) return;
+
       try {
-        const { q, categoria } = getFilters();
-        const params = new URLSearchParams();
-        if (q) params.set("q", q);
-        if (categoria) params.set("categoria", categoria);
-  
-        const url = `${ADMIN_INVENTORY_URL}${params.toString() ? `?${params.toString()}` : ""}`;
-  
-        const res = await fetch(url, {
+        adminTableBody.innerHTML = `<tr><td colspan="10">Cargando...</td></tr>`;
+
+        const res = await fetch(ADMIN_INVENTORY_URL, {
           method: "GET",
           headers: authHeaders()
         });
-  
+
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `HTTP ${res.status}`);
         }
-  
+
         const data = await res.json();
         adminRows = Array.isArray(data) ? data : [];
+
+        populateCategoryOptions(adminRows);
         renderAdminInventory();
       } catch (err) {
         console.error("Error cargando inventario admin:", err);
@@ -281,26 +287,43 @@
         renderAdminInventory();
       }
     }
-  
+
+    function csvEscape(v) {
+      if (v === null || v === undefined) return "";
+      const s = String(v);
+      return /[,"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    }
+
     async function downloadAdminReport() {
       try {
-        const { q, categoria } = getFilters();
-        const params = new URLSearchParams();
-        if (q) params.set("q", q);
-        if (categoria) params.set("categoria", categoria);
-        params.set("format", "csv");
-  
-        const res = await fetch(`${ADMIN_INVENTORY_URL}?${params.toString()}`, {
-          method: "GET",
-          headers: authHeaders()
-        });
-  
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `HTTP ${res.status}`);
+        const rows = getFilteredRows();
+
+        const header = [
+          "hospital_clave",
+          "hospital_nombre",
+          "categoria",
+          "clave",
+          "descripcion",
+          "stock",
+          "minimo",
+          "fecha",
+          "dias_restantes",
+          "observaciones"
+        ];
+
+        const lines = [header.join(",")];
+
+        for (const r of rows) {
+          lines.push(header.map(k => csvEscape(
+            k === "hospital_clave" ? (r.hospital_clave || r.hospitalClave || "") :
+            k === "hospital_nombre" ? (r.hospital_nombre || r.hospitalNombre || "") :
+            k === "dias_restantes" ? (r.dias_restantes ?? r.dias ?? "") :
+            (r[k] ?? "")
+          )).join(","));
         }
-  
-        const blob = await res.blob();
+
+        const csv = "\uFEFF" + lines.join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -314,43 +337,49 @@
         alert("No fue posible descargar el reporte.");
       }
     }
-  
+
     btnAdminAccess && btnAdminAccess.addEventListener("click", showLogin);
     btnAdminClose && btnAdminClose.addEventListener("click", showLogin);
-  
+
     adminLoginForm && adminLoginForm.addEventListener("submit", (e) => {
       e.preventDefault();
       loginAdmin();
     });
-  
+
     btnAdminReload && btnAdminReload.addEventListener("click", loadAdminInventory);
     btnAdminReport && btnAdminReport.addEventListener("click", downloadAdminReport);
-  
-    btnApplyFilters && btnApplyFilters.addEventListener("click", loadAdminInventory);
+
+    btnApplyFilters && btnApplyFilters.addEventListener("click", renderAdminInventory);
+
     btnClearFilters && btnClearFilters.addEventListener("click", () => {
       if (filterHospital) filterHospital.value = "";
       if (filterCategoria) filterCategoria.value = "";
-      loadAdminInventory();
+      renderAdminInventory();
     });
-  
+
+    filterHospital && filterHospital.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        renderAdminInventory();
+      }
+    });
+
+    filterCategoria && filterCategoria.addEventListener("change", renderAdminInventory);
+
     btnAdminLogout && btnAdminLogout.addEventListener("click", () => {
       localStorage.removeItem("adminToken");
       adminToken = "";
+      adminRows = [];
       showLogin();
     });
-  
-    if (filterHospital) filterHospital.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") loadAdminInventory();
-    });
-    if (filterCategoria) filterCategoria.addEventListener("change", loadAdminInventory);
-  
+
     if (adminToken) {
-      showPanel();
-      loadAdminInventory();
+      localStorage.removeItem("adminToken");
+      adminToken = "";
+      showLogin();
     } else {
       showLogin();
     }
   </script>
-   
 </body>
 </html>
