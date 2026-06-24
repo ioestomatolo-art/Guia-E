@@ -80,9 +80,10 @@
     const SERVER_BASE = "https://servidor-4wu6.onrender.com";
     const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
     const ADMIN_INVENTORY_URL = `${SERVER_BASE}/admin/inventory`;
-    const ADMIN_REPORT_URL = `${SERVER_BASE}/admin/inventory?format=csv`;
+    const ADMIN_REPORT_URL = `${SERVER_BASE}/report?format=csv`;
+  
     let adminToken = localStorage.getItem("adminToken") || "";
-
+  
     const btnAdminAccess = document.getElementById("btnAdminAccess");
     const adminLoginView = document.getElementById("adminLoginView");
     const adminSection = document.getElementById("adminSection");
@@ -94,7 +95,7 @@
     const btnAdminReport = document.getElementById("btnAdminReport");
     const btnAdminLogout = document.getElementById("btnAdminLogout");
     const adminTableBody = document.querySelector("#adminTable tbody");
-
+  
     function showLogin() {
       adminLoginView.classList.remove("admin-hidden");
       adminSection.classList.add("admin-hidden");
@@ -102,12 +103,12 @@
       adminPass.value = "";
       setTimeout(() => adminPass.focus(), 50);
     }
-
+  
     function showPanel() {
       adminSection.classList.remove("admin-hidden");
       adminLoginView.classList.add("admin-hidden");
     }
-
+  
     function authHeaders(extra = {}) {
       return {
         "Content-Type": "application/json",
@@ -115,14 +116,22 @@
         ...extra
       };
     }
-
+  
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+  
     async function loginAdmin() {
       const password = (adminPass.value || "").trim();
       if (!password) {
         adminMsg.textContent = "Escribe la contraseña.";
         return;
       }
-
+  
       adminMsg.textContent = "Validando...";
       try {
         const res = await fetch(ADMIN_LOGIN_URL, {
@@ -130,80 +139,81 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password })
         });
-        await loadAdminInventory();
+  
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok || !data.token) {
           adminMsg.textContent = "Contraseña incorrecta.";
           return;
         }
-
+  
         adminToken = data.token;
         localStorage.setItem("adminToken", adminToken);
         adminMsg.textContent = "";
         showPanel();
-        await loadAdminSubmissions();
+        await loadAdminInventory();
       } catch (err) {
         console.error("Error login admin:", err);
         adminMsg.textContent = "No fue posible conectar con el servidor.";
       }
     }
-
-    async function loadAdminSubmissions() {
+  
+    async function loadAdminInventory() {
       if (!adminTableBody) return;
       adminTableBody.innerHTML = "";
-
+  
       try {
-        const res = await fetch(ADMIN_SUBMISSIONS_URL, {
+        const res = await fetch(ADMIN_INVENTORY_URL, {
           method: "GET",
           headers: authHeaders()
         });
-
+  
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `HTTP ${res.status}`);
         }
-
+  
         const data = await res.json();
         const list = Array.isArray(data) ? data : [];
-
+  
         if (!list.length) {
-          adminTableBody.innerHTML = `<tr><td colspan="6">Sin registros</td></tr>`;
+          adminTableBody.innerHTML = `<tr><td colspan="10">Sin registros</td></tr>`;
           return;
         }
-
+  
         for (const item of list) {
           const tr = document.createElement("tr");
-          const itemsCount = Array.isArray(item.items) ? item.items.length : 0;
-          const fecha = item.savedAt || item.receivedAt || "";
-
           tr.innerHTML = `
-            <td>${escapeHtml(item.id || "")}</td>
-            <td>${escapeHtml(item.hospitalNombre || "")}</td>
-            <td>${escapeHtml(item.hospitalClave || "")}</td>
+            <td>${escapeHtml(item.hospital_clave || item.hospitalClave || "")}</td>
+            <td>${escapeHtml(item.hospital_nombre || item.hospitalNombre || "")}</td>
             <td>${escapeHtml(item.categoria || "")}</td>
-            <td>${escapeHtml(fecha)}</td>
-            <td>${itemsCount}</td>
+            <td>${escapeHtml(item.clave || "")}</td>
+            <td>${escapeHtml(item.descripcion || "")}</td>
+            <td>${escapeHtml(item.stock ?? "")}</td>
+            <td>${escapeHtml(item.minimo ?? "")}</td>
+            <td>${escapeHtml(item.fecha || "")}</td>
+            <td>${escapeHtml(item.dias_restantes ?? item.dias ?? "")}</td>
+            <td>${escapeHtml(item.observaciones || "")}</td>
           `;
           adminTableBody.appendChild(tr);
         }
       } catch (err) {
-        console.error("Error cargando admin submissions:", err);
-        adminTableBody.innerHTML = `<tr><td colspan="6">Error al cargar registros</td></tr>`;
+        console.error("Error cargando inventario admin:", err);
+        adminTableBody.innerHTML = `<tr><td colspan="10">Error al cargar registros</td></tr>`;
       }
     }
-
+  
     async function downloadAdminReport() {
       try {
         const res = await fetch(ADMIN_REPORT_URL, {
           method: "GET",
           headers: authHeaders()
         });
-
+  
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `HTTP ${res.status}`);
         }
-
+  
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -218,34 +228,27 @@
         alert("No fue posible descargar el reporte.");
       }
     }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
+  
     btnAdminAccess && btnAdminAccess.addEventListener("click", showLogin);
     btnAdminClose && btnAdminClose.addEventListener("click", showLogin);
+  
     adminLoginForm && adminLoginForm.addEventListener("submit", (e) => {
       e.preventDefault();
       loginAdmin();
     });
-
-    btnAdminReload && btnAdminReload.addEventListener("click", loadAdminSubmissions);
+  
+    btnAdminReload && btnAdminReload.addEventListener("click", loadAdminInventory);
     btnAdminReport && btnAdminReport.addEventListener("click", downloadAdminReport);
-
+  
     btnAdminLogout && btnAdminLogout.addEventListener("click", () => {
       localStorage.removeItem("adminToken");
       adminToken = "";
       showLogin();
     });
-
+  
     if (adminToken) {
       showPanel();
-      loadAdminSubmissions();
+      loadAdminInventory();
     } else {
       showLogin();
     }
