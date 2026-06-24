@@ -565,12 +565,12 @@ async function loginAdmin() {
   }
 }
 
-async function loadAdminSubmissions() {
+async function loadAdminInventory() {
   if (!adminTableBody) return;
   adminTableBody.innerHTML = "";
 
   try {
-    const res = await fetch(ADMIN_SUBMISSIONS_URL, {
+    const res = await fetch(ADMIN_INVENTORY_URL, {
       method: "GET",
       headers: { "x-admin-token": adminToken }
     });
@@ -584,30 +584,29 @@ async function loadAdminSubmissions() {
     const list = Array.isArray(data) ? data : [];
 
     if (!list.length) {
-      adminTableBody.innerHTML = `<tr><td colspan="6">Sin registros</td></tr>`;
+      adminTableBody.innerHTML = `<tr><td colspan="10">Sin registros</td></tr>`;
       return;
     }
 
     for (const item of list) {
       const tr = document.createElement("tr");
-
-      const itemsCount = Array.isArray(item.items) ? item.items.length : 0;
-      const fecha = item.savedAt || item.receivedAt || "";
-
       tr.innerHTML = `
-        <td>${escapeHtml(item.id || "")}</td>
-        <td>${escapeHtml(item.hospitalNombre || "")}</td>
-        <td>${escapeHtml(item.hospitalClave || "")}</td>
+        <td>${escapeHtml(item.hospital_clave || item.hospitalClave || "")}</td>
+        <td>${escapeHtml(item.hospital_nombre || item.hospitalNombre || "")}</td>
         <td>${escapeHtml(item.categoria || "")}</td>
-        <td>${escapeHtml(fecha)}</td>
-        <td>${itemsCount}</td>
+        <td>${escapeHtml(item.clave || "")}</td>
+        <td>${escapeHtml(item.descripcion || "")}</td>
+        <td>${escapeHtml(item.stock ?? "")}</td>
+        <td>${escapeHtml(item.minimo ?? "")}</td>
+        <td>${escapeHtml(item.fecha || "")}</td>
+        <td>${escapeHtml(item.dias_restantes ?? item.dias ?? "")}</td>
+        <td>${escapeHtml(item.observaciones || "")}</td>
       `;
-
       adminTableBody.appendChild(tr);
     }
   } catch (err) {
-    console.error("Error cargando admin submissions:", err);
-    adminTableBody.innerHTML = `<tr><td colspan="6">Error al cargar registros</td></tr>`;
+    console.error("Error cargando inventario admin:", err);
+    adminTableBody.innerHTML = `<tr><td colspan="10">Error al cargar registros</td></tr>`;
   }
 }
 

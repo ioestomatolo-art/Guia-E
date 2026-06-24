@@ -54,12 +54,21 @@
       <table id="adminTable" class="admin-table" aria-label="Registros de inventario">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Hospital</th>
-            <th>Clave</th>
-            <th>Categoría</th>
-            <th>Fecha</th>
-            <th>Items</th>
+            
+              
+                <th>Clave hospital</th>
+                <th>Hospital</th>
+                <th>Categoría</th>
+                <th>Clave</th>
+                <th>Descripción</th>
+                <th>Stock</th>
+                <th>Mínimo</th>
+                <th>Fecha</th>
+                <th>Días</th>
+                <th>Observaciones</th>
+            
+
+          
           </tr>
         </thead>
         <tbody></tbody>
@@ -70,9 +79,8 @@
   <script>
     const SERVER_BASE = "https://servidor-4wu6.onrender.com";
     const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
-    const ADMIN_SUBMISSIONS_URL = `${SERVER_BASE}/submissions`;
-    const ADMIN_REPORT_URL = `${SERVER_BASE}/report?format=csv`;
-
+    const ADMIN_INVENTORY_URL = `${SERVER_BASE}/admin/inventory`;
+    const ADMIN_REPORT_URL = `${SERVER_BASE}/admin/inventory?format=csv`;
     let adminToken = localStorage.getItem("adminToken") || "";
 
     const btnAdminAccess = document.getElementById("btnAdminAccess");
@@ -122,7 +130,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password })
         });
-
+        await loadAdminInventory();
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok || !data.token) {
           adminMsg.textContent = "Contraseña incorrecta.";
