@@ -1109,35 +1109,38 @@ function cleanCategoryStr(str) {
 }
 
 // ---- INVENTORY: cargar y poblar 
+// ---- INVENTORY: cargar y poblar 
 async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
-    // 1. Obtener los registros del hospital e insumos maestro
-    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
-    const catalogoProductos = await cargarCatalogoProductosDB();
-
     const catTarget = cleanCategoryStr(categoria);
 
-    // 2. Poblar la variable global "catalogo" normalizando la categoría
+    // 1. OBTENER PRIMERO EL CATÁLOGO MAESTRO DE LA DB
+    const catalogoProductos = await cargarCatalogoProductosDB();
+
+    // 2. Poblar la variable global "catalogo" con la categoría filtrada
     catalogo[categoria] = catalogoProductos.filter(p =>
       cleanCategoryStr(p.categoria) === catTarget
     );
 
-    // 3. Filtrar registros previos del hospital
+    // 3. Obtener los registros guardados previamente para el hospital
+    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
+
+    // 4. Filtrar registros previos del hospital por la categoría actual
     const registrosCat = registrosHospital.filter(r =>
       cleanCategoryStr(r.categoria) === catTarget
     );
 
     limpiarTabla();
 
-    // CASO A: Si el hospital no tiene registros previos, mostramos 1 sola fila vacía lista para usar
+    // --- CASO A: Si el hospital NO TIENE registros previos ---
     if (registrosCat.length === 0) {
-      agregarFila();
+      agregarFila(); // Ahora agregarFila() SÍ tendrá el catalogo[categoria] disponible
       return;
     }
 
-    // CASO B: Si tiene registros guardados, los dibujamos
+    // --- CASO B: Si el hospital YA TIENE registros guardados ---
     for (const item of registrosCat) {
       agregarFila();
       const tr = tbody.rows[tbody.rows.length - 1];
@@ -1153,6 +1156,18 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
       const clave = String(item.clave || "").trim();
 
+      // RE-POBLAR EL SELECT SI ESTABA VACÍO
+      if (selectEl && selectEl.options.length <= 1 && catalogo[categoria] && catalogo[categoria].length > 0) {
+        catalogo[categoria].forEach((p, idx) => {
+          const o = document.createElement("option");
+          o.value = `${p.clave}||${idx}`;
+          o.textContent = p.clave;
+          o.dataset.descripcion = p.descripcion || "";
+          o.dataset.idx = String(idx);
+          selectEl.appendChild(o);
+        });
+      }
+
       inputDescEl.value = item.descripcion || "";
       inputStockEl.value = item.stock ?? "";
       inputMinEl.value = item.minimo ?? item.stock_minimo ?? getMinimoValue(clave) ?? "";
@@ -1163,7 +1178,7 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
       if (item.uid) tr.dataset.uid = item.uid;
       if (item.manual) tr.dataset.manual = "true";
 
-      // Asignación correcta al select desplegable
+      // Asignar el valor seleccionado al dropdown
       if (selectEl) {
         let matchedOpt = Array.from(selectEl.options).find(o => {
           const valClave = (o.value || "").split("||")[0].trim();
@@ -1173,7 +1188,6 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
         if (matchedOpt) {
           selectEl.value = matchedOpt.value;
         } else if (clave) {
-          // Si es un producto guardado que no está en la lista actual, agregarlo limpiamente
           const opt = document.createElement("option");
           opt.value = `${clave}||${selectEl.options.length}`;
           opt.textContent = clave;
