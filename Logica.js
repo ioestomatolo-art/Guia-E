@@ -109,6 +109,19 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 }
 
 
+
+
+async function cargarCatalogoProductosDB() {
+  try {
+    const res = await fetch(`${SERVER_BASE}/productos-catalogo`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn("No se pudo cargar el catálogo de productos:", err);
+    return [];
+  }
+}
+
   // ======== Config ========
   let categoriaActiva = null;
   let filaContador = 0;
@@ -1086,7 +1099,7 @@ function cleanCategoryStr(str) {
 }
 
 // ---- INVENTORY: cargar y poblar 
-// ---- INVENTORY: cargar y poblar 
+
 async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
@@ -1101,8 +1114,6 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
       cleanCategoryStr(p.categoria) === catTarget
     );
 
-    // 3. Obtener los registros guardados previamente para el hospital
-    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
 
     // 4. Filtrar registros previos del hospital por la categoría actual
     const registrosCat = registrosHospital.filter(r =>
