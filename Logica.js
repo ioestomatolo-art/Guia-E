@@ -1097,41 +1097,46 @@ if (adminToken) {
 
 
   // ---- INVENTORY: cargar y poblar 
-  // ---- INVENTORY: cargar y poblar 
+// Helper para normalizar cadenas comparando categorías sin importar acentos ni espacios
+function cleanCategoryStr(str) {
+  if (!str) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quita acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ""); // elimina espacios y símbolos (ej: "bienesInformaticos" vs "bienes informáticos" -> "bienesinformaticos")
+}
+
+// ---- INVENTORY: cargar y poblar 
 async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
-    // 1. Obtener los registros específicos ya guardados para el hospital (de inventarios_csv)
+    // 1. Obtener los registros del hospital e insumos maestro
     const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
-    
-    // 2. Obtener el catálogo maestro (de la tabla productos)
     const catalogoProductos = await cargarCatalogoProductosDB();
 
-    const categoriaNorm = String(categoria || "").trim().toLowerCase();
+    const catTarget = cleanCategoryStr(categoria);
 
-    // CLAVE DE LA SOLUCIÓN:
-    // Llenar la variable global "catalogo" para que los <select> de cada fila funcionen correctamente
+    // 2. Poblar la variable global "catalogo" normalizando la categoría
     catalogo[categoria] = catalogoProductos.filter(p =>
-      String(p.categoria || "").trim().toLowerCase() === categoriaNorm
+      cleanCategoryStr(p.categoria) === catTarget
     );
 
-    // Filtramos los registros guardados en inventarios_csv por la categoría activa
+    // 3. Filtrar registros previos del hospital
     const registrosCat = registrosHospital.filter(r =>
-      String(r.categoria || "").trim().toLowerCase() === categoriaNorm
+      cleanCategoryStr(r.categoria) === catTarget
     );
 
     limpiarTabla();
 
-    // --- CASO A: El hospital NO TIENE registros guardados ---
-    // Iniciamos con una sola fila vacía limpia para que el usuario elija del listado
+    // CASO A: Si el hospital no tiene registros previos, mostramos 1 sola fila vacía lista para usar
     if (registrosCat.length === 0) {
       agregarFila();
       return;
     }
 
-    // --- CASO B: El hospital YA TIENE registros guardados ---
-    // Renderizamos únicamente los elementos cargados anteriormente por dicho hospital
+    // CASO B: Si tiene registros guardados, los dibujamos
     for (const item of registrosCat) {
       agregarFila();
       const tr = tbody.rows[tbody.rows.length - 1];
@@ -1150,14 +1155,14 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
       inputDescEl.value = item.descripcion || "";
       inputStockEl.value = item.stock ?? "";
       inputMinEl.value = item.minimo ?? item.stock_minimo ?? getMinimoValue(clave) ?? "";
-      inputFechaEl.value = item.fecha ?? "";
+      inputFechaEl.value = item.fecha || item.caducidad || "";
       inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
       textareaObs.value = item.observaciones ?? "";
 
       if (item.uid) tr.dataset.uid = item.uid;
       if (item.manual) tr.dataset.manual = "true";
 
-      // Asignar clave al select
+      // Asignación correcta al select desplegable
       if (selectEl) {
         let matchedOpt = Array.from(selectEl.options).find(o => {
           const valClave = (o.value || "").split("||")[0].trim();
@@ -1167,10 +1172,10 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
         if (matchedOpt) {
           selectEl.value = matchedOpt.value;
         } else if (clave) {
+          // Si es un producto guardado que no está en la lista actual, agregarlo limpiamente
           const opt = document.createElement("option");
-          opt.value = `${clave}||server`;
+          opt.value = `${clave}||${selectEl.options.length}`;
           opt.textContent = clave;
-          opt.dataset.fromServer = "true";
           selectEl.appendChild(opt);
           selectEl.value = opt.value;
         }
