@@ -1,25 +1,82 @@
-async function cargarInventarioDesdeDB(clave) {
-  try {
-    console.log("Consultando base de datos para el hospital:", clave);
+async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
+  if (!hospitalClaveOrName || !categoria) return;
 
-    const res = await fetch(
-      `${SERVER_BASE}/inventory-base?hospitalClave=${encodeURIComponent(clave)}`,
-      { method: "GET" }
+  try {
+    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
+    const catalogoProductos = await cargarCatalogoProductosDB();
+
+    const categoriaNorm = String(categoria || "").trim().toLowerCase();
+
+    // Actualizar el catálogo global con los datos traídos del servidor
+    catalogo[categoria] = catalogoProductos.filter(p =>
+      String(p.categoria || "").trim().toLowerCase() === categoriaNorm
     );
 
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`HTTP ${res.status} ${txt}`);
+    const registrosCat = registrosHospital.filter(r =>
+      String(r.categoria || "").trim().toLowerCase() === categoriaNorm
+    );
+
+    limpiarTabla();
+
+    const itemsAMostrar = registrosCat.length > 0 ? registrosCat : catalogo[categoria];
+
+    if (!itemsAMostrar.length) {
+      agregarFila();
+      return;
     }
 
-    const registros = await res.json();
-    return Array.isArray(registros) ? registros : [];
-  } catch (error) {
-    console.error("Error al conectar con el servidor:", error);
-    return [];
-  }
-  }
+    for (const item of itemsAMostrar) {
+      agregarFila();
+      const tr = tbody.rows[tbody.rows.length - 1];
+      if (!tr) continue;
 
+      const selectEl = tr.cells[1].querySelector("select");
+      const inputDescEl = tr.cells[2].querySelector("input");
+      const inputStockEl = tr.cells[3].querySelector("input");
+      const inputMinEl = tr.cells[4].querySelector("input");
+      const inputFechaEl = tr.cells[6].querySelector("input");
+      const inputDiasEl = tr.cells[7].querySelector("input");
+      const textareaObs = tr.cells[tr.cells.length - 2].querySelector("textarea");
+
+      const clave = String(item.clave || "").trim();
+
+      inputDescEl.value = item.descripcion || "";
+      inputStockEl.value = item.stock ?? "";
+      inputMinEl.value = item.minimo ?? item.stock_minimo ?? getMinimoValue(clave) ?? "";
+      inputFechaEl.value = item.fecha ?? "";
+      inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
+      textareaObs.value = item.observaciones ?? "";
+
+      if (item.uid) tr.dataset.uid = item.uid;
+      if (item.manual) tr.dataset.manual = "true";
+
+      if (selectEl) {
+        let matchedOpt = Array.from(selectEl.options).find(o => {
+          const valClave = (o.value || "").split("||")[0].trim();
+          return valClave === clave;
+        });
+
+        if (matchedOpt) {
+          selectEl.value = matchedOpt.value;
+        } else if (clave) {
+          const opt = document.createElement("option");
+          opt.value = `${clave}||server`;
+          opt.textContent = clave;
+          opt.dataset.fromServer = "true";
+          selectEl.appendChild(opt);
+          selectEl.value = opt.value;
+        }
+      }
+
+      actualizarFila(tr);
+    }
+
+    sortRowsByCaducidad();
+    refreshDisabledOptions();
+  } catch (err) {
+    console.error("loadInventoryAndPopulate error:", err);
+  }
+}
 
 
 
@@ -57,6 +114,19 @@ async function cargarCatalogoProductosDB() {
   let hospitales = [];
   let selectedHospitalClave = "";
   let rowCreationCounter = 0;
+
+
+
+  let catalogo = {
+    material: [],
+    equipo: [],
+    mobiliario: [],
+    bienesInformaticos: [],
+    instrumental: []
+  };
+
+
+
 
   const SERVER_BASE = "https://servidor-4wu6.onrender.com";
   const HOSPITALES_URL = "https://servidor-4wu6.onrender.com/hospitales";
