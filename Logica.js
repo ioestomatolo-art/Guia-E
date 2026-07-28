@@ -1098,6 +1098,7 @@ if (adminToken) {
 
   // ---- INVENTORY: cargar y poblar 
 // Helper para normalizar cadenas comparando categorías sin importar acentos ni espacios
+// Helper para normalizar cadenas comparando categorías sin importar acentos ni espacios
 function cleanCategoryStr(str) {
   if (!str) return "";
   return String(str)
@@ -1112,25 +1113,31 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
-    // 1. Limpiamos la tabla primero para evitar acumulaciones
-    limpiarTabla();
+    // 1. Obtener los registros del hospital e insumos maestro
+    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
+    const catalogoProductos = await cargarCatalogoProductosDB();
 
-    const registros = await cargarInventarioDesdeDB(hospitalClaveOrName);
-    const categoriaNorm = String(categoria || "").trim().toLowerCase();
+    const catTarget = cleanCategoryStr(categoria);
 
-    // Filtramos los registros por la categoría activa
-    const registrosCat = registros.filter(r =>
-      String(r.categoria || "").trim().toLowerCase() === categoriaNorm
+    // 2. Poblar la variable global "catalogo" normalizando la categoría
+    catalogo[categoria] = catalogoProductos.filter(p =>
+      cleanCategoryStr(p.categoria) === catTarget
     );
 
-    // 2. CASO A: Si el hospital NO tiene registros en esta categoría (o el server devuelve [])
-    if (!registrosCat || registrosCat.length === 0) {
-      console.log(`Sin registros en BD para ${hospitalClaveOrName} en ${categoria}. Se muestra tabla limpia.`);
-      agregarFila(); // Agrega únicamente una sola fila vacía para iniciar captura
-      return; // CORTAMOS AQUÍ para evitar que se ejecute cualquier pintado de catálogo estático
+    // 3. Filtrar registros previos del hospital
+    const registrosCat = registrosHospital.filter(r =>
+      cleanCategoryStr(r.categoria) === catTarget
+    );
+
+    limpiarTabla();
+
+    // CASO A: Si el hospital no tiene registros previos, mostramos 1 sola fila vacía lista para usar
+    if (registrosCat.length === 0) {
+      agregarFila();
+      return;
     }
 
-    // 3. CASO B: Si SÍ existen registros en la base de datos, pintamos únicamente lo guardado
+    // CASO B: Si tiene registros guardados, los dibujamos
     for (const item of registrosCat) {
       agregarFila();
       const tr = tbody.rows[tbody.rows.length - 1];
@@ -1148,29 +1155,31 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
       inputDescEl.value = item.descripcion || "";
       inputStockEl.value = item.stock ?? "";
-      inputMinEl.value = item.minimo ?? getMinimoValue(clave) ?? "";
-      inputFechaEl.value = item.fecha ?? "";
+      inputMinEl.value = item.minimo ?? item.stock_minimo ?? getMinimoValue(clave) ?? "";
+      inputFechaEl.value = item.fecha || item.caducidad || "";
       inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
       textareaObs.value = item.observaciones ?? "";
 
       if (item.uid) tr.dataset.uid = item.uid;
       if (item.manual) tr.dataset.manual = "true";
 
-      // Asignar la clave al select de manera segura
-      let matchedOpt = Array.from(selectEl.options).find(o => {
-        const valClave = (o.value || "").split("||")[0].trim();
-        return valClave === clave;
-      });
+      // Asignación correcta al select desplegable
+      if (selectEl) {
+        let matchedOpt = Array.from(selectEl.options).find(o => {
+          const valClave = (o.value || "").split("||")[0].trim();
+          return valClave === clave;
+        });
 
-      if (matchedOpt) {
-        selectEl.value = matchedOpt.value;
-      } else {
-        const opt = document.createElement("option");
-        opt.value = `${clave}||server`;
-        opt.textContent = clave;
-        opt.dataset.fromServer = "true";
-        selectEl.appendChild(opt);
-        selectEl.value = opt.value;
+        if (matchedOpt) {
+          selectEl.value = matchedOpt.value;
+        } else if (clave) {
+          // Si es un producto guardado que no está en la lista actual, agregarlo limpiamente
+          const opt = document.createElement("option");
+          opt.value = `${clave}||${selectEl.options.length}`;
+          opt.textContent = clave;
+          selectEl.appendChild(opt);
+          selectEl.value = opt.value;
+        }
       }
 
       actualizarFila(tr);
@@ -1178,11 +1187,10 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
     sortRowsByCaducidad();
     refreshDisabledOptions();
-
   } catch (err) {
     console.error("loadInventoryAndPopulate error:", err);
     limpiarTabla();
-    agregarFila(); // En caso de falla de red, dejamos una sola fila vacía por seguridad
+    agregarFila();
   }
 }
 
