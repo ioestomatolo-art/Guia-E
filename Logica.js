@@ -1112,37 +1112,26 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
-    // 1. Cargar registros guardados (inventario_csv) y catálogo maestro (productos)
-    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
-    const catalogoProductos = await cargarCatalogoProductosDB();
-
-    const catTarget = cleanCategoryStr(categoria);
-
-    // 2. Llenar variable global 'catalogo' normalizada
-    catalogo[categoria] = catalogoProductos.filter(p =>
-      cleanCategoryStr(p.categoria) === catTarget
-    );
-
-    // 3. Filtrar registros previos guardados de este hospital en esta categoría
-    const registrosCat = registrosHospital.filter(r =>
-      cleanCategoryStr(r.categoria) === catTarget
-    );
-
+    // 1. Limpiamos la tabla primero para evitar acumulaciones
     limpiarTabla();
 
-    // DETERMINAR QUÉ DATOS MOSTRAR:
-    // Si el hospital YA TIENE registros guardados, muestra sus registros.
-    // Si NO TIENE (registrosCat === 0), carga automáticamente TODOS los productos del catálogo maestro (Captura "Antes")
-    const itemsAMostrar = registrosCat.length > 0 ? registrosCat : catalogo[categoria];
+    const registros = await cargarInventarioDesdeDB(hospitalClaveOrName);
+    const categoriaNorm = String(categoria || "").trim().toLowerCase();
 
-    // Si tampoco hay items en el catálogo maestro, deja 1 fila en blanco por seguridad
-    if (!itemsAMostrar || itemsAMostrar.length === 0) {
-      agregarFila();
-      return;
+    // Filtramos los registros por la categoría activa
+    const registrosCat = registros.filter(r =>
+      String(r.categoria || "").trim().toLowerCase() === categoriaNorm
+    );
+
+    // 2. CASO A: Si el hospital NO tiene registros en esta categoría (o el server devuelve [])
+    if (!registrosCat || registrosCat.length === 0) {
+      console.log(`Sin registros en BD para ${hospitalClaveOrName} en ${categoria}. Se muestra tabla limpia.`);
+      agregarFila(); // Agrega únicamente una sola fila vacía para iniciar captura
+      return; // CORTAMOS AQUÍ para evitar que se ejecute cualquier pintado de catálogo estático
     }
 
-    // 4. Poblar la tabla con los items (sean previos o la lista maestra completa)
-    for (const item of itemsAMostrar) {
+    // 3. CASO B: Si SÍ existen registros en la base de datos, pintamos únicamente lo guardado
+    for (const item of registrosCat) {
       agregarFila();
       const tr = tbody.rows[tbody.rows.length - 1];
       if (!tr) continue;
@@ -1159,30 +1148,29 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
       inputDescEl.value = item.descripcion || "";
       inputStockEl.value = item.stock ?? "";
-      inputMinEl.value = item.minimo ?? item.stock_minimo ?? getMinimoValue(clave) ?? "";
-      inputFechaEl.value = item.fecha || item.caducidad || "";
+      inputMinEl.value = item.minimo ?? getMinimoValue(clave) ?? "";
+      inputFechaEl.value = item.fecha ?? "";
       inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
       textareaObs.value = item.observaciones ?? "";
 
       if (item.uid) tr.dataset.uid = item.uid;
       if (item.manual) tr.dataset.manual = "true";
 
-      // Asignación de la Clave al <select>
-      if (selectEl) {
-        let matchedOpt = Array.from(selectEl.options).find(o => {
-          const valClave = (o.value || "").split("||")[0].trim();
-          return valClave === clave;
-        });
+      // Asignar la clave al select de manera segura
+      let matchedOpt = Array.from(selectEl.options).find(o => {
+        const valClave = (o.value || "").split("||")[0].trim();
+        return valClave === clave;
+      });
 
-        if (matchedOpt) {
-          selectEl.value = matchedOpt.value;
-        } else if (clave) {
-          const opt = document.createElement("option");
-          opt.value = `${clave}||${selectEl.options.length}`;
-          opt.textContent = clave;
-          selectEl.appendChild(opt);
-          selectEl.value = opt.value;
-        }
+      if (matchedOpt) {
+        selectEl.value = matchedOpt.value;
+      } else {
+        const opt = document.createElement("option");
+        opt.value = `${clave}||server`;
+        opt.textContent = clave;
+        opt.dataset.fromServer = "true";
+        selectEl.appendChild(opt);
+        selectEl.value = opt.value;
       }
 
       actualizarFila(tr);
@@ -1190,10 +1178,11 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
     sortRowsByCaducidad();
     refreshDisabledOptions();
+
   } catch (err) {
     console.error("loadInventoryAndPopulate error:", err);
     limpiarTabla();
-    agregarFila();
+    agregarFila(); // En caso de falla de red, dejamos una sola fila vacía por seguridad
   }
 }
 
