@@ -111,6 +111,40 @@ async function cargarCatalogoProductosDB() {
   }
 }
 
+
+
+
+
+
+
+
+
+async function cargarInventarioDesdeDB(hospitalClave, categoria) {
+  if (!hospitalClave || !categoria) return [];
+
+  try {
+    const url = `${INVENTORY_GET_URL}?hospitalClave=${encodeURIComponent(hospitalClave)}&categoria=${encodeURIComponent(categoria)}`;
+    const headers = {};
+    if (CLIENT_API_TOKEN) headers["Authorization"] = "Bearer " + CLIENT_API_TOKEN;
+
+    const res = await fetch(url, { method: "GET", headers });
+    if (!res.ok) {
+      console.warn(`HTTP ${res.status}: No se obtuvieron registros de inventario previo.`);
+      return [];
+    }
+
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.items || []);
+  } catch (err) {
+    console.warn("No se pudo cargar el inventario previo desde el servidor:", err);
+    return [];
+  }
+}
+
+
+
+
+
   // ======== Config ========
   let categoriaActiva = null;
   let filaContador = 0;
