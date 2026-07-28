@@ -2,12 +2,15 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
+    // 1. Obtener los registros guardados previamente para el hospital
     const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
+    
+    // 2. Obtener el catálogo maestro de la base de datos
     const catalogoProductos = await cargarCatalogoProductosDB();
 
     const categoriaNorm = String(categoria || "").trim().toLowerCase();
 
-    // Actualizar el catálogo global con los datos traídos del servidor
+    // Actualizar la variable global catalogo para que agregarFila() y los <select> tengan datos
     catalogo[categoria] = catalogoProductos.filter(p =>
       String(p.categoria || "").trim().toLowerCase() === categoriaNorm
     );
@@ -18,6 +21,7 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
     limpiarTabla();
 
+    // Si existen registros guardados, mostramos esos; de lo contrario, mostramos la plantilla del catálogo
     const itemsAMostrar = registrosCat.length > 0 ? registrosCat : catalogo[categoria];
 
     if (!itemsAMostrar.length) {
@@ -82,6 +86,22 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
 
 
+// Obtiene el inventario previamente guardado de un hospital específico
+async function cargarInventarioDesdeDB(hospitalClave) {
+  if (!hospitalClave) return [];
+  try {
+    const res = await fetch(`${INVENTORY_GET_URL}?hospitalClave=${encodeURIComponent(hospitalClave)}`);
+    if (!res.ok) {
+      if (res.status === 404) return []; // Si no hay registros previos para el hospital
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.items || []);
+  } catch (error) {
+    console.warn("No se pudo obtener el inventario previo del servidor:", error);
+    return [];
+  }
+}
 
 
 
