@@ -1,36 +1,57 @@
+
+// Obtiene el inventario previamente guardado de un hospital específico
+async function cargarInventarioDesdeDB(hospitalClave, categoria) {
+  if (!hospitalClave) return [];
+  try {
+    let url = `${INVENTORY_GET_URL}?hospitalClave=${encodeURIComponent(hospitalClave)}`;
+    if (categoria) {
+      url += `&categoria=${encodeURIComponent(categoria)}`;
+    }
+    const res = await fetch(url);
+    if (!res.ok) {
+      if (res.status === 404) return []; // Si no hay registros previos para el hospital
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.items || []);
+  } catch (error) {
+    console.warn("No se pudo obtener el inventario previo del servidor:", error);
+    return [];
+  }
+}
+
+// ---- INVENTORY: cargar y poblar 
 async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
-    // 1. Obtener los registros guardados previamente para este hospital
-    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
-    
-    // 2. Obtener el catálogo maestro
+    const catTarget = cleanCategoryStr(categoria);
+
+    // 1. Obtener el catálogo maestro de productos primero
     const catalogoProductos = await cargarCatalogoProductosDB();
-
-    const categoriaNorm = String(categoria || "").trim().toLowerCase();
-
-    // Actualizar la variable global catalogo para que el select de cada fila sepa qué opciones mostrar
     catalogo[categoria] = catalogoProductos.filter(p =>
-      String(p.categoria || "").trim().toLowerCase() === categoriaNorm
+      cleanCategoryStr(p.categoria) === catTarget
     );
 
-    // Filtrar sólo los registros guardados de este hospital en la categoría actual
-    const registrosCat = registrosHospital.filter(r =>
-      String(r.categoria || "").trim().toLowerCase() === categoriaNorm
-    );
+    // 2. Consultar registros en BD pasando hospital y categoría
+    const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName, categoria);
+
+    // 3. Filtrado permisivo: si el ítem de la BD no trae explícitamente el campo 'categoria', 
+    // se conserva (asumiendo que la consulta en backend ya los filtró por categoría).
+    const registrosCat = registrosHospital.filter(r => {
+      if (!r.categoria) return true;
+      return cleanCategoryStr(r.categoria) === catTarget;
+    });
 
     limpiarTabla();
 
-    // --- CASO 1: El hospital NO TIENE registros previos ---
-    // Dejamos la tabla limpia con una sola fila vacía como era originalmente
+    // --- CASO A: Si no hay registros guardados en la BD ---
     if (registrosCat.length === 0) {
       agregarFila();
       return;
     }
 
-    // --- CASO 2: El hospital YA TIENE registros guardados ---
-    // Renderizamos cada uno de los ítems capturados por el hospital
+    // --- CASO B: Si hay registros en la BD -> Pintar filas con datos ---
     for (const item of registrosCat) {
       agregarFila();
       const tr = tbody.rows[tbody.rows.length - 1];
@@ -46,16 +67,18 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
 
       const clave = String(item.clave || "").trim();
 
+      // Mapeo seguro de valores del backend
       inputDescEl.value = item.descripcion || "";
       inputStockEl.value = item.stock ?? "";
       inputMinEl.value = item.minimo ?? item.stock_minimo ?? getMinimoValue(clave) ?? "";
-      inputFechaEl.value = item.fecha ?? "";
+      inputFechaEl.value = item.fecha || item.caducidad || "";
       inputDiasEl.value = item.dias_restantes ?? item.dias ?? "";
       textareaObs.value = item.observaciones ?? "";
 
       if (item.uid) tr.dataset.uid = item.uid;
       if (item.manual) tr.dataset.manual = "true";
 
+      // Asignar el valor de la clave en el select desplegable
       if (selectEl) {
         let matchedOpt = Array.from(selectEl.options).find(o => {
           const valClave = (o.value || "").split("||")[0].trim();
@@ -66,15 +89,13 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
           selectEl.value = matchedOpt.value;
         } else if (clave) {
           const opt = document.createElement("option");
-          opt.value = `${clave}||server`;
+          opt.value = `${clave}||${selectEl.options.length}`;
           opt.textContent = clave;
-          opt.dataset.fromServer = "true";
           selectEl.appendChild(opt);
           selectEl.value = opt.value;
         }
       }
 
-      // Calcula semáforo (colores por caducidad/stock) para cada fila cargada
       actualizarFila(tr);
     }
 
@@ -86,50 +107,6 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     agregarFila();
   }
 }
-
-
-
-
-
-// Obtiene el inventario previamente guardado de un hospital específico
-async function cargarInventarioDesdeDB(hospitalClave) {
-  if (!hospitalClave) return [];
-  try {
-    const res = await fetch(`${INVENTORY_GET_URL}?hospitalClave=${encodeURIComponent(hospitalClave)}`);
-    if (!res.ok) {
-      if (res.status === 404) return []; // Si no hay registros previos para el hospital
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    return Array.isArray(data) ? data : (data.items || []);
-  } catch (error) {
-    console.warn("No se pudo obtener el inventario previo del servidor:", error);
-    return [];
-  }
-}
-
-
-
-  // Obtiene la lista completa de productos desde la tabla "productos"
-async function cargarCatalogoProductosDB() {
-  try {
-    const res = await fetch(`${SERVER_BASE}/productos-catalogo`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const productos = await res.json();
-    return Array.isArray(productos) ? productos : [];
-  } catch (error) {
-    console.error("Error al cargar el catálogo de productos:", error);
-    return [];
-  }
-}
-
-
-
-
-
-
-
-
 
 
   // ======== Config ========
