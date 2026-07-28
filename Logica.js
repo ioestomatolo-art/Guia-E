@@ -2,34 +2,36 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
-    // 1. Obtener los registros guardados previamente para el hospital
+    // 1. Obtener los registros guardados previamente para este hospital
     const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
     
-    // 2. Obtener el catálogo maestro de la base de datos
+    // 2. Obtener el catálogo maestro
     const catalogoProductos = await cargarCatalogoProductosDB();
 
     const categoriaNorm = String(categoria || "").trim().toLowerCase();
 
-    // Actualizar la variable global catalogo para que agregarFila() y los <select> tengan datos
+    // Actualizar la variable global catalogo para que el select de cada fila sepa qué opciones mostrar
     catalogo[categoria] = catalogoProductos.filter(p =>
       String(p.categoria || "").trim().toLowerCase() === categoriaNorm
     );
 
+    // Filtrar sólo los registros guardados de este hospital en la categoría actual
     const registrosCat = registrosHospital.filter(r =>
       String(r.categoria || "").trim().toLowerCase() === categoriaNorm
     );
 
     limpiarTabla();
 
-    // Si existen registros guardados, mostramos esos; de lo contrario, mostramos la plantilla del catálogo
-    const itemsAMostrar = registrosCat.length > 0 ? registrosCat : catalogo[categoria];
-
-    if (!itemsAMostrar.length) {
+    // --- CASO 1: El hospital NO TIENE registros previos ---
+    // Dejamos la tabla limpia con una sola fila vacía como era originalmente
+    if (registrosCat.length === 0) {
       agregarFila();
       return;
     }
 
-    for (const item of itemsAMostrar) {
+    // --- CASO 2: El hospital YA TIENE registros guardados ---
+    // Renderizamos cada uno de los ítems capturados por el hospital
+    for (const item of registrosCat) {
       agregarFila();
       const tr = tbody.rows[tbody.rows.length - 1];
       if (!tr) continue;
@@ -72,6 +74,7 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
         }
       }
 
+      // Calcula semáforo (colores por caducidad/stock) para cada fila cargada
       actualizarFila(tr);
     }
 
@@ -79,6 +82,8 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
     refreshDisabledOptions();
   } catch (err) {
     console.error("loadInventoryAndPopulate error:", err);
+    limpiarTabla();
+    agregarFila();
   }
 }
 
