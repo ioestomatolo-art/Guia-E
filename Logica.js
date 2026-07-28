@@ -1112,32 +1112,37 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
   if (!hospitalClaveOrName || !categoria) return;
 
   try {
-    // 1. Obtener los registros del hospital e insumos maestro
+    // 1. Cargar registros guardados (inventario_csv) y catálogo maestro (productos)
     const registrosHospital = await cargarInventarioDesdeDB(hospitalClaveOrName);
     const catalogoProductos = await cargarCatalogoProductosDB();
 
     const catTarget = cleanCategoryStr(categoria);
 
-    // 2. Poblar la variable global "catalogo" normalizando la categoría
+    // 2. Llenar variable global 'catalogo' normalizada
     catalogo[categoria] = catalogoProductos.filter(p =>
       cleanCategoryStr(p.categoria) === catTarget
     );
 
-    // 3. Filtrar registros previos del hospital
+    // 3. Filtrar registros previos guardados de este hospital en esta categoría
     const registrosCat = registrosHospital.filter(r =>
       cleanCategoryStr(r.categoria) === catTarget
     );
 
     limpiarTabla();
 
-    // CASO A: Si el hospital no tiene registros previos, mostramos 1 sola fila vacía lista para usar
-    if (registrosCat.length === 0) {
+    // DETERMINAR QUÉ DATOS MOSTRAR:
+    // Si el hospital YA TIENE registros guardados, muestra sus registros.
+    // Si NO TIENE (registrosCat === 0), carga automáticamente TODOS los productos del catálogo maestro (Captura "Antes")
+    const itemsAMostrar = registrosCat.length > 0 ? registrosCat : catalogo[categoria];
+
+    // Si tampoco hay items en el catálogo maestro, deja 1 fila en blanco por seguridad
+    if (!itemsAMostrar || itemsAMostrar.length === 0) {
       agregarFila();
       return;
     }
 
-    // CASO B: Si tiene registros guardados, los dibujamos
-    for (const item of registrosCat) {
+    // 4. Poblar la tabla con los items (sean previos o la lista maestra completa)
+    for (const item of itemsAMostrar) {
       agregarFila();
       const tr = tbody.rows[tbody.rows.length - 1];
       if (!tr) continue;
@@ -1162,7 +1167,7 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
       if (item.uid) tr.dataset.uid = item.uid;
       if (item.manual) tr.dataset.manual = "true";
 
-      // Asignación correcta al select desplegable
+      // Asignación de la Clave al <select>
       if (selectEl) {
         let matchedOpt = Array.from(selectEl.options).find(o => {
           const valClave = (o.value || "").split("||")[0].trim();
@@ -1172,7 +1177,6 @@ async function loadInventoryAndPopulate(hospitalClaveOrName, categoria) {
         if (matchedOpt) {
           selectEl.value = matchedOpt.value;
         } else if (clave) {
-          // Si es un producto guardado que no está en la lista actual, agregarlo limpiamente
           const opt = document.createElement("option");
           opt.value = `${clave}||${selectEl.options.length}`;
           opt.textContent = clave;
