@@ -155,38 +155,51 @@
       </div>
 
       <!-- PESTAÑA 2: GESTIÓN DE CATÁLOGO DE PRODUCTOS -->
-      <div id="viewCatalog" class="admin-hidden">
-        <h3>Catálogo de Productos</h3>
-        <p>Agrega, modifica o deshabilita productos del catálogo general.</p>
-
-        <!-- Formulario para Agregar / Editar Producto -->
-        <div class="catalog-form-box">
-          <h4 id="catalogFormTitle">Agregar Nuevo Producto</h4>
-          <form id="catalogForm" autocomplete="off">
-            <input type="hidden" id="catId" value="" />
-            
-            <div class="catalog-form-grid">
-              <div>
-                <label for="catCategoria">Categoría:</label>
-                <input id="catCategoria" type="text" placeholder="Ej. Instrumental, Consumibles" required />
-              </div>
-              <div>
-                <label for="catClave">Clave del producto:</label>
-                <input id="catClave" type="text" placeholder="Ej. MAT-001" required />
-              </div>
-              <div>
-                <label for="catDescripcion">Descripción:</label>
-                <input id="catDescripcion" type="text" placeholder="Descripción detallada" required />
-              </div>
+      <!-- Formulario para Agregar / Editar Producto -->
+      <div class="catalog-form-box">
+        <h4 id="catalogFormTitle">Agregar Nuevo Producto</h4>
+        <form id="catalogForm" autocomplete="off">
+          <input type="hidden" id="catId" value="" />
+          
+          <div class="catalog-form-grid">
+            <div>
+              <label for="catCategoria">Categoría:</label>
+              <select id="catCategoria" required>
+                <option value="" disabled selected>Selecciona categoría...</option>
+                <option value="insumos">Insumos</option>
+                <option value="material">Material</option>
+                <option value="equipo">Equipo médico</option>
+                <option value="mobiliario">Mobiliario</option>
+                <option value="bienesInformaticos">Bienes informáticos</option>
+                <option value="instrumental">Instrumental</option>
+              </select>
             </div>
-
-            <div class="admin-actions">
-              <button id="btnSaveProduct" type="submit" style="background-color: #28a745; color: white;">Guardar Producto</button>
-              <button id="btnCancelEditProduct" type="button" class="admin-hidden">Cancelar Edición</button>
+            <div>
+              <label for="catClave">Clave del producto:</label>
+              <input id="catClave" type="text" placeholder="Ej. MAT-001" required />
             </div>
-            <p id="catMsg" class="admin-msg"></p>
-          </form>
-        </div>
+            <div>
+              <label for="catMinimo">Mínimo:</label>
+              <input id="catMinimo" type="number" min="0" value="0" placeholder="0" required />
+            </div>
+            <div>
+              <label for="catDescripcion">Descripción:</label>
+              <input id="catDescripcion" type="text" placeholder="Descripción detallada" required />
+            </div>
+          </div>
+
+          <div class="admin-actions">
+            <button id="btnSaveProduct" type="submit" style="background-color: #28a745; color: white;">Guardar Producto</button>
+            <button id="btnCancelEditProduct" type="button" class="admin-hidden">Cancelar Edición</button>
+          </div>
+          <p id="catMsg" class="admin-msg"></p>
+        </form>
+      </div>
+
+
+
+
+
 
         <!-- Filtro del Catálogo -->
         <div class="admin-filters">
@@ -204,6 +217,7 @@
                 <th>Categoría</th>
                 <th>Clave</th>
                 <th>Descripción</th>
+                <th>Mínimo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -259,6 +273,7 @@
     const catCategoria = document.getElementById("catCategoria");
     const catClave = document.getElementById("catClave");
     const catDescripcion = document.getElementById("catDescripcion");
+    const catMinimo = document.getElementById("catMinimo");
     const btnCancelEditProduct = document.getElementById("btnCancelEditProduct");
     const catMsg = document.getElementById("catMsg");
     const catalogTableBody = document.querySelector("#catalogTable tbody");
@@ -440,6 +455,10 @@
       filterCatalogCat.value = [...filterCatalogCat.options].some(o => o.value === current) ? current : "";
     }
 
+    
+
+
+
     function renderCatalogTable() {
       if (!catalogTableBody) return;
       catalogTableBody.innerHTML = "";
@@ -458,16 +477,18 @@
       });
 
       if (!filtered.length) {
-        catalogTableBody.innerHTML = `<tr><td colspan="4">No hay productos registrados</td></tr>`;
+        catalogTableBody.innerHTML = `<tr><td colspan="5">No hay productos registrados</td></tr>`;
         return;
       }
 
       for (const item of filtered) {
+        const minimoVal = item.stock_minimo !== undefined ? item.stock_minimo : (item.minimo ?? 0);
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${escapeHtml(item.categoria || "")}</td>
           <td>${escapeHtml(item.clave || "")}</td>
           <td>${escapeHtml(item.descripcion || "")}</td>
+          <td>${escapeHtml(minimoVal)}</td>
           <td>
             <button class="btn-action-edit" onclick="editProduct('${escapeHtml(item.id || item.clave)}')">Editar</button>
             <button class="btn-action-delete" onclick="deleteProduct('${escapeHtml(item.id || item.clave)}')">Eliminar</button>
@@ -477,6 +498,10 @@
       }
     }
 
+
+
+
+
     async function saveProduct(e) {
       e.preventDefault();
       catMsg.textContent = "Guardando...";
@@ -485,7 +510,8 @@
       const payload = {
         categoria: catCategoria.value.trim(),
         clave: catClave.value.trim(),
-        descripcion: catDescripcion.value.trim()
+        descripcion: catDescripcion.value.trim(),
+        minimo: parseInt(catMinimo.value, 10) || 0
       };
 
       try {
@@ -517,6 +543,7 @@
       catCategoria.value = prod.categoria || "";
       catClave.value = prod.clave || "";
       catDescripcion.value = prod.descripcion || "";
+      catMinimo.value = prod.stock_minimo !== undefined ? prod.stock_minimo : (prod.minimo ?? 0);
 
       catalogFormTitle.textContent = "Modificar Producto";
       btnCancelEditProduct.classList.remove("admin-hidden");
@@ -524,32 +551,20 @@
       catCategoria.focus();
     };
 
-    window.deleteProduct = async function(identifier) {
-      if (!confirm("¿Deseas eliminar o desactivar este producto del catálogo?")) return;
-
-      try {
-        const res = await fetch(`${ADMIN_PRODUCTS_URL}/${identifier}`, {
-          method: "DELETE",
-          headers: authHeaders()
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        await loadAdminCatalog();
-      } catch (err) {
-        console.error("Error eliminando producto:", err);
-        alert("No se pudo eliminar el producto.");
-      }
-    };
-
     function resetCatalogForm() {
       catId.value = "";
       catCategoria.value = "";
       catClave.value = "";
       catDescripcion.value = "";
+      catMinimo.value = "0";
       catalogFormTitle.textContent = "Agregar Nuevo Producto";
       btnCancelEditProduct.classList.add("admin-hidden");
     }
+
+
+
+
+
 
     // --- EVENTOS Y AUTENTICACIÓN ---
     async function loginAdmin() {
