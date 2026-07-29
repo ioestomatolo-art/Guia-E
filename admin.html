@@ -6,7 +6,69 @@
   <title>Administrador | Estomatología</title>
   <link rel="shortcut icon" href="icono.ico" />
   <link rel="stylesheet" href="Formato.css" />
-
+  <style>
+    /* Estilos para la navegación por pestañas en el Panel Admin */
+    .admin-nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ccc;
+      padding-bottom: 5px;
+    }
+    .admin-tab-btn {
+      padding: 10px 18px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      background: #e0e0e0;
+      color: #333;
+      border-radius: 5px 5px 0 0;
+      transition: background 0.2s, color 0.2s;
+    }
+    .admin-tab-btn.active {
+      background: #0056b3;
+      color: #fff;
+    }
+    .catalog-form-box {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .catalog-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    .catalog-form-grid input,
+    .catalog-form-grid select {
+      width: 100%;
+      padding: 8px 10px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .btn-action-edit {
+      background-color: #ffc107;
+      color: #000;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .btn-action-delete {
+      background-color: #dc3545;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 
 <body>
@@ -21,6 +83,7 @@
   </header>
 
   <main class="admin-page">
+    <!-- Vista de Inicio de Sesión -->
     <section id="adminLoginView" class="admin-panel admin-login-box">
       <h1>Acceso administrador</h1>
       <p>Ingresa la contraseña para entrar al panel.</p>
@@ -43,44 +106,112 @@
       </form>
     </section>
 
+    <!-- Vista Principal del Panel de Admin -->
     <section id="adminSection" class="admin-panel admin-hidden">
       <h2>Panel de administrador</h2>
-      <p>Acceso concedido. Aquí puedes administrar registros.</p>
+      
+      <!-- Menú de Pestañas (Tabs) -->
+      <nav class="admin-nav-tabs">
+        <button id="tabInventory" class="admin-tab-btn active" type="button">Ver Inventarios</button>
+        <button id="tabCatalog" class="admin-tab-btn" type="button">Gestión de Productos</button>
+        <button id="btnAdminLogout" type="button" style="margin-left: auto; background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Salir</button>
+      </nav>
 
-      <div class="admin-actions">
-        <button id="btnAdminReload" type="button">Actualizar registros</button>
-        <button id="btnAdminReport" type="button">Descargar reporte CSV</button>
-        <button id="btnAdminLogout" type="button">Salir</button>
+      <!-- PESTAÑA 1: REPORTE E INVENTARIOS -->
+      <div id="viewInventory">
+        <div class="admin-actions">
+          <button id="btnAdminReload" type="button">Actualizar registros</button>
+          <button id="btnAdminReport" type="button">Descargar reporte CSV</button>
+        </div>
+
+        <div class="admin-filters">
+          <input id="filterHospital" type="text" placeholder="Filtrar por clave o hospital" />
+          <select id="filterCategoria">
+            <option value="">Todas las categorías</option>
+          </select>
+          <button id="btnApplyFilters" type="button">Filtrar</button>
+          <button id="btnClearFilters" type="button">Limpiar</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table id="adminTable" class="admin-table" aria-label="Registros de inventario">
+            <thead>
+              <tr>
+                <th>Clave hospital</th>
+                <th>Hospital</th>
+                <th>Categoría</th>
+                <th>Clave</th>
+                <th>Descripción</th>
+                <th>Stock</th>
+                <th>Mínimo</th>
+                <th>Fecha</th>
+                <th>Días</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="admin-filters">
-        <input id="filterHospital" type="text" placeholder="Filtrar por clave o hospital" />
-        <select id="filterCategoria">
-          <option value="">Todas las categorías</option>
-        </select>
-        <button id="btnApplyFilters" type="button">Filtrar</button>
-        <button id="btnClearFilters" type="button">Limpiar</button>
+      <!-- PESTAÑA 2: GESTIÓN DE CATÁLOGO DE PRODUCTOS -->
+      <div id="viewCatalog" class="admin-hidden">
+        <h3>Catálogo de Productos</h3>
+        <p>Agrega, modifica o deshabilita productos del catálogo general.</p>
+
+        <!-- Formulario para Agregar / Editar Producto -->
+        <div class="catalog-form-box">
+          <h4 id="catalogFormTitle">Agregar Nuevo Producto</h4>
+          <form id="catalogForm" autocomplete="off">
+            <input type="hidden" id="catId" value="" />
+            
+            <div class="catalog-form-grid">
+              <div>
+                <label for="catCategoria">Categoría:</label>
+                <input id="catCategoria" type="text" placeholder="Ej. Instrumental, Consumibles" required />
+              </div>
+              <div>
+                <label for="catClave">Clave del producto:</label>
+                <input id="catClave" type="text" placeholder="Ej. MAT-001" required />
+              </div>
+              <div>
+                <label for="catDescripcion">Descripción:</label>
+                <input id="catDescripcion" type="text" placeholder="Descripción detallada" required />
+              </div>
+            </div>
+
+            <div class="admin-actions">
+              <button id="btnSaveProduct" type="submit" style="background-color: #28a745; color: white;">Guardar Producto</button>
+              <button id="btnCancelEditProduct" type="button" class="admin-hidden">Cancelar Edición</button>
+            </div>
+            <p id="catMsg" class="admin-msg"></p>
+          </form>
+        </div>
+
+        <!-- Filtro del Catálogo -->
+        <div class="admin-filters">
+          <input id="filterCatalogSearch" type="text" placeholder="Buscar por clave o descripción..." />
+          <select id="filterCatalogCat">
+            <option value="">Todas las categorías</option>
+          </select>
+        </div>
+
+        <!-- Tabla del Catálogo -->
+        <div class="admin-table-wrap">
+          <table id="catalogTable" class="admin-table" aria-label="Catálogo de productos">
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>Clave</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="admin-table-wrap">
-        <table id="adminTable" class="admin-table" aria-label="Registros de inventario">
-          <thead>
-            <tr>
-              <th>Clave hospital</th>
-              <th>Hospital</th>
-              <th>Categoría</th>
-              <th>Clave</th>
-              <th>Descripción</th>
-              <th>Stock</th>
-              <th>Mínimo</th>
-              <th>Fecha</th>
-              <th>Días</th>
-              <th>Observaciones</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
     </section>
   </main>
 
@@ -88,12 +219,15 @@
     const SERVER_BASE = "https://servidor-4wu6.onrender.com";
     const ADMIN_LOGIN_URL = `${SERVER_BASE}/admin/login`;
     const ADMIN_INVENTORY_URL = `${SERVER_BASE}/admin/inventory`;
+    const ADMIN_PRODUCTS_URL = `${SERVER_BASE}/admin/products`; // Endpoint para CRUD de productos
 
     let adminToken = "";
     let adminRows = [];
+    let catalogRows = [];
 
     localStorage.removeItem("adminToken");
 
+    // Elementos DOM generales
     const btnAdminAccess = document.getElementById("btnAdminAccess");
     const adminLoginView = document.getElementById("adminLoginView");
     const adminSection = document.getElementById("adminSection");
@@ -101,15 +235,37 @@
     const adminMsg = document.getElementById("adminMsg");
     const adminLoginForm = document.getElementById("adminLoginForm");
     const btnAdminClose = document.getElementById("btnAdminClose");
+    const btnAdminLogout = document.getElementById("btnAdminLogout");
+
+    // Pestañas
+    const tabInventory = document.getElementById("tabInventory");
+    const tabCatalog = document.getElementById("tabCatalog");
+    const viewInventory = document.getElementById("viewInventory");
+    const viewCatalog = document.getElementById("viewCatalog");
+
+    // Vista Inventario
     const btnAdminReload = document.getElementById("btnAdminReload");
     const btnAdminReport = document.getElementById("btnAdminReport");
-    const btnAdminLogout = document.getElementById("btnAdminLogout");
     const adminTableBody = document.querySelector("#adminTable tbody");
     const filterHospital = document.getElementById("filterHospital");
     const filterCategoria = document.getElementById("filterCategoria");
     const btnApplyFilters = document.getElementById("btnApplyFilters");
     const btnClearFilters = document.getElementById("btnClearFilters");
 
+    // Vista Catálogo
+    const catalogForm = document.getElementById("catalogForm");
+    const catalogFormTitle = document.getElementById("catalogFormTitle");
+    const catId = document.getElementById("catId");
+    const catCategoria = document.getElementById("catCategoria");
+    const catClave = document.getElementById("catClave");
+    const catDescripcion = document.getElementById("catDescripcion");
+    const btnCancelEditProduct = document.getElementById("btnCancelEditProduct");
+    const catMsg = document.getElementById("catMsg");
+    const catalogTableBody = document.querySelector("#catalogTable tbody");
+    const filterCatalogSearch = document.getElementById("filterCatalogSearch");
+    const filterCatalogCat = document.getElementById("filterCatalogCat");
+
+    // --- Funciones de Navegación ---
     function showLogin() {
       adminLoginView.classList.remove("admin-hidden");
       adminSection.classList.add("admin-hidden");
@@ -121,6 +277,21 @@
     function showPanel() {
       adminSection.classList.remove("admin-hidden");
       adminLoginView.classList.add("admin-hidden");
+    }
+
+    function switchTab(tabName) {
+      if (tabName === "inventory") {
+        tabInventory.classList.add("active");
+        tabCatalog.classList.remove("active");
+        viewInventory.classList.remove("admin-hidden");
+        viewCatalog.classList.add("admin-hidden");
+      } else {
+        tabCatalog.classList.add("active");
+        tabInventory.classList.remove("active");
+        viewCatalog.classList.remove("admin-hidden");
+        viewInventory.classList.add("admin-hidden");
+        loadAdminCatalog();
+      }
     }
 
     function authHeaders(extra = {}) {
@@ -147,6 +318,7 @@
         .trim();
     }
 
+    // --- LÓGICA DE INVENTARIOS ---
     function getFilters() {
       return {
         q: normalizeText(filterHospital?.value || ""),
@@ -156,16 +328,11 @@
 
     function matchesFilters(row) {
       const { q, categoria } = getFilters();
-
       const hospitalClave = normalizeText(row.hospital_clave || row.hospitalClave || "");
       const hospitalNombre = normalizeText(row.hospital_nombre || row.hospitalNombre || "");
       const rowCat = normalizeText(row.categoria || "");
 
-      if (q) {
-        const hayMatch = hospitalClave.includes(q) || hospitalNombre.includes(q);
-        if (!hayMatch) return false;
-      }
-
+      if (q && !(hospitalClave.includes(q) || hospitalNombre.includes(q))) return false;
       if (categoria && rowCat !== categoria) return false;
 
       return true;
@@ -177,11 +344,8 @@
 
     function populateCategoryOptions(rows) {
       if (!filterCategoria) return;
-
       const current = filterCategoria.value;
-      const cats = [...new Set((rows || [])
-        .map(r => String(r.categoria || "").trim())
-        .filter(Boolean))]
+      const cats = [...new Set((rows || []).map(r => String(r.categoria || "").trim()).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, "es"));
 
       filterCategoria.innerHTML = `<option value="">Todas las categorías</option>`;
@@ -191,18 +355,12 @@
         opt.textContent = c;
         filterCategoria.appendChild(opt);
       }
-
-      if ([...filterCategoria.options].some(o => o.value === current)) {
-        filterCategoria.value = current;
-      } else {
-        filterCategoria.value = "";
-      }
+      filterCategoria.value = [...filterCategoria.options].some(o => o.value === current) ? current : "";
     }
 
     function renderAdminInventory() {
       if (!adminTableBody) return;
       adminTableBody.innerHTML = "";
-
       const list = getFilteredRows();
 
       if (!list.length) {
@@ -228,6 +386,172 @@
       }
     }
 
+    async function loadAdminInventory() {
+      if (!adminTableBody) return;
+      try {
+        adminTableBody.innerHTML = `<tr><td colspan="10">Cargando...</td></tr>`;
+        const res = await fetch(ADMIN_INVENTORY_URL, { method: "GET", headers: authHeaders() });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        adminRows = Array.isArray(data) ? data : [];
+        populateCategoryOptions(adminRows);
+        renderAdminInventory();
+      } catch (err) {
+        console.error("Error cargando inventario admin:", err);
+        adminRows = [];
+        renderAdminInventory();
+      }
+    }
+
+    // --- LÓGICA DEL CATÁLOGO DE PRODUCTOS (CRUD) ---
+    async function loadAdminCatalog() {
+      if (!catalogTableBody) return;
+      try {
+        catalogTableBody.innerHTML = `<tr><td colspan="4">Cargando productos...</td></tr>`;
+        const res = await fetch(ADMIN_PRODUCTS_URL, { method: "GET", headers: authHeaders() });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        catalogRows = Array.isArray(data) ? data : [];
+
+        populateCatalogCatOptions(catalogRows);
+        renderCatalogTable();
+      } catch (err) {
+        console.error("Error cargando catálogo:", err);
+        catalogRows = [];
+        renderCatalogTable();
+      }
+    }
+
+    function populateCatalogCatOptions(rows) {
+      if (!filterCatalogCat) return;
+      const current = filterCatalogCat.value;
+      const cats = [...new Set((rows || []).map(r => String(r.categoria || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "es"));
+
+      filterCatalogCat.innerHTML = `<option value="">Todas las categorías</option>`;
+      for (const c of cats) {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        filterCatalogCat.appendChild(opt);
+      }
+      filterCatalogCat.value = [...filterCatalogCat.options].some(o => o.value === current) ? current : "";
+    }
+
+    function renderCatalogTable() {
+      if (!catalogTableBody) return;
+      catalogTableBody.innerHTML = "";
+
+      const q = normalizeText(filterCatalogSearch?.value || "");
+      const cat = normalizeText(filterCatalogCat?.value || "");
+
+      const filtered = catalogRows.filter(item => {
+        const itemCat = normalizeText(item.categoria || "");
+        const itemClave = normalizeText(item.clave || "");
+        const itemDesc = normalizeText(item.descripcion || "");
+
+        if (cat && itemCat !== cat) return false;
+        if (q && !(itemClave.includes(q) || itemDesc.includes(q) || itemCat.includes(q))) return false;
+        return true;
+      });
+
+      if (!filtered.length) {
+        catalogTableBody.innerHTML = `<tr><td colspan="4">No hay productos registrados</td></tr>`;
+        return;
+      }
+
+      for (const item of filtered) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escapeHtml(item.categoria || "")}</td>
+          <td>${escapeHtml(item.clave || "")}</td>
+          <td>${escapeHtml(item.descripcion || "")}</td>
+          <td>
+            <button class="btn-action-edit" onclick="editProduct('${escapeHtml(item.id || item.clave)}')">Editar</button>
+            <button class="btn-action-delete" onclick="deleteProduct('${escapeHtml(item.id || item.clave)}')">Eliminar</button>
+          </td>
+        `;
+        catalogTableBody.appendChild(tr);
+      }
+    }
+
+    async function saveProduct(e) {
+      e.preventDefault();
+      catMsg.textContent = "Guardando...";
+
+      const id = catId.value;
+      const payload = {
+        categoria: catCategoria.value.trim(),
+        clave: catClave.value.trim(),
+        descripcion: catDescripcion.value.trim()
+      };
+
+      try {
+        const method = id ? "PUT" : "POST";
+        const url = id ? `${ADMIN_PRODUCTS_URL}/${id}` : ADMIN_PRODUCTS_URL;
+
+        const res = await fetch(url, {
+          method: method,
+          headers: authHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        catMsg.textContent = id ? "Producto actualizado con éxito." : "Producto agregado con éxito.";
+        resetCatalogForm();
+        await loadAdminCatalog();
+      } catch (err) {
+        console.error("Error guardando producto:", err);
+        catMsg.textContent = "Error al guardar el producto en el servidor.";
+      }
+    }
+
+    window.editProduct = function(identifier) {
+      const prod = catalogRows.find(r => (r.id == identifier || r.clave == identifier));
+      if (!prod) return;
+
+      catId.value = prod.id || prod.clave;
+      catCategoria.value = prod.categoria || "";
+      catClave.value = prod.clave || "";
+      catDescripcion.value = prod.descripcion || "";
+
+      catalogFormTitle.textContent = "Modificar Producto";
+      btnCancelEditProduct.classList.remove("admin-hidden");
+      catMsg.textContent = "";
+      catCategoria.focus();
+    };
+
+    window.deleteProduct = async function(identifier) {
+      if (!confirm("¿Deseas eliminar o desactivar este producto del catálogo?")) return;
+
+      try {
+        const res = await fetch(`${ADMIN_PRODUCTS_URL}/${identifier}`, {
+          method: "DELETE",
+          headers: authHeaders()
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        await loadAdminCatalog();
+      } catch (err) {
+        console.error("Error eliminando producto:", err);
+        alert("No se pudo eliminar el producto.");
+      }
+    };
+
+    function resetCatalogForm() {
+      catId.value = "";
+      catCategoria.value = "";
+      catClave.value = "";
+      catDescripcion.value = "";
+      catalogFormTitle.textContent = "Agregar Nuevo Producto";
+      btnCancelEditProduct.classList.add("admin-hidden");
+    }
+
+    // --- EVENTOS Y AUTENTICACIÓN ---
     async function loginAdmin() {
       const password = (adminPass.value || "").trim();
       if (!password) {
@@ -253,38 +577,11 @@
         localStorage.setItem("adminToken", adminToken);
         adminMsg.textContent = "";
         showPanel();
+        switchTab("inventory");
         await loadAdminInventory();
       } catch (err) {
         console.error("Error login admin:", err);
         adminMsg.textContent = "No fue posible conectar con el servidor.";
-      }
-    }
-
-    async function loadAdminInventory() {
-      if (!adminTableBody) return;
-
-      try {
-        adminTableBody.innerHTML = `<tr><td colspan="10">Cargando...</td></tr>`;
-
-        const res = await fetch(ADMIN_INVENTORY_URL, {
-          method: "GET",
-          headers: authHeaders()
-        });
-
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        adminRows = Array.isArray(data) ? data : [];
-
-        populateCategoryOptions(adminRows);
-        renderAdminInventory();
-      } catch (err) {
-        console.error("Error cargando inventario admin:", err);
-        adminRows = [];
-        renderAdminInventory();
       }
     }
 
@@ -297,28 +594,14 @@
     async function downloadAdminReport() {
       try {
         const rows = getFilteredRows();
-
-        const header = [
-          "hospital_clave",
-          "hospital_nombre",
-          "categoria",
-          "clave",
-          "descripcion",
-          "stock",
-          "minimo",
-          "fecha",
-          "dias_restantes",
-          "observaciones"
-        ];
-
+        const header = ["hospital_clave", "hospital_nombre", "categoria", "clave", "descripcion", "stock", "minimo", "fecha", "dias_restantes", "observaciones"];
         const lines = [header.join(",")];
 
         for (const r of rows) {
           lines.push(header.map(k => csvEscape(
             k === "hospital_clave" ? (r.hospital_clave || r.hospitalClave || "") :
             k === "hospital_nombre" ? (r.hospital_nombre || r.hospitalNombre || "") :
-            k === "dias_restantes" ? (r.dias_restantes ?? r.dias ?? "") :
-            (r[k] ?? "")
+            k === "dias_restantes" ? (r.dias_restantes ?? r.dias ?? "") : (r[k] ?? "")
           )).join(","));
         }
 
@@ -338,48 +621,41 @@
       }
     }
 
+    // Event Listeners
     btnAdminAccess && btnAdminAccess.addEventListener("click", showLogin);
     btnAdminClose && btnAdminClose.addEventListener("click", showLogin);
+    adminLoginForm && adminLoginForm.addEventListener("submit", (e) => { e.preventDefault(); loginAdmin(); });
 
-    adminLoginForm && adminLoginForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      loginAdmin();
-    });
+    tabInventory && tabInventory.addEventListener("click", () => switchTab("inventory"));
+    tabCatalog && tabCatalog.addEventListener("click", () => switchTab("catalog"));
 
     btnAdminReload && btnAdminReload.addEventListener("click", loadAdminInventory);
     btnAdminReport && btnAdminReport.addEventListener("click", downloadAdminReport);
-
     btnApplyFilters && btnApplyFilters.addEventListener("click", renderAdminInventory);
-
     btnClearFilters && btnClearFilters.addEventListener("click", () => {
       if (filterHospital) filterHospital.value = "";
       if (filterCategoria) filterCategoria.value = "";
       renderAdminInventory();
     });
 
-    filterHospital && filterHospital.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        renderAdminInventory();
-      }
-    });
-
+    filterHospital && filterHospital.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); renderAdminInventory(); } });
     filterCategoria && filterCategoria.addEventListener("change", renderAdminInventory);
+
+    // Formulario de productos
+    catalogForm && catalogForm.addEventListener("submit", saveProduct);
+    btnCancelEditProduct && btnCancelEditProduct.addEventListener("click", resetCatalogForm);
+    filterCatalogSearch && filterCatalogSearch.addEventListener("input", renderCatalogTable);
+    filterCatalogCat && filterCatalogCat.addEventListener("change", renderCatalogTable);
 
     btnAdminLogout && btnAdminLogout.addEventListener("click", () => {
       localStorage.removeItem("adminToken");
       adminToken = "";
       adminRows = [];
+      catalogRows = [];
       showLogin();
     });
 
-    if (adminToken) {
-      localStorage.removeItem("adminToken");
-      adminToken = "";
-      showLogin();
-    } else {
-      showLogin();
-    }
+    showLogin();
   </script>
 </body>
 </html>
