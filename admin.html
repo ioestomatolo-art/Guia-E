@@ -124,14 +124,36 @@
           <button id="btnAdminReport" type="button">Descargar reporte CSV</button>
         </div>
 
+
+
+
+
+
         <div class="admin-filters">
           <input id="filterHospital" type="text" placeholder="Filtrar por clave o hospital" />
           <select id="filterCategoria">
             <option value="">Todas las categorías</option>
           </select>
+        
+          <!-- Filtro de ordenamiento -->
+          <select id="filterOrden">
+            <option value="desc">Más nuevos a más antiguos</option>
+            <option value="asc">Más antiguos a más nuevos</option>
+          </select>
+        
           <button id="btnApplyFilters" type="button">Filtrar</button>
           <button id="btnClearFilters" type="button">Limpiar</button>
+        
+          <!-- Botón vaciar hospital -->
+          <button id="btnClearHospital" type="button" style="background-color: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-left: auto;">
+            Vaciar hospital
+          </button>
         </div>
+
+
+
+
+
 
         <div class="admin-table-wrap">
           <table id="adminTable" class="admin-table" aria-label="Registros de inventario">
@@ -354,9 +376,79 @@
       return true;
     }
 
-    function getFilteredRows() {
-      return Array.isArray(adminRows) ? adminRows.filter(matchesFilters) : [];
+
+
+
+
+
+
+    const filterOrden = document.getElementById("filterOrden");
+const btnClearHospital = document.getElementById("btnClearHospital");
+
+// Actualización de getFilteredRows con ordenamiento por fecha
+function getFilteredRows() {
+  let list = Array.isArray(adminRows) ? adminRows.filter(matchesFilters) : [];
+  const order = filterOrden?.value || "desc";
+
+  list.sort((a, b) => {
+    const timeA = a.fecha ? new Date(a.fecha).getTime() : 0;
+    const timeB = b.fecha ? new Date(b.fecha).getTime() : 0;
+
+    if (isNaN(timeA)) return 1;
+    if (isNaN(timeB)) return -1;
+
+    return order === "asc" ? timeA - timeB : timeB - timeA;
+  });
+
+  return list;
+}
+
+// Función para solicitar borrado del hospital
+async function clearHospitalInventory() {
+  const hospitalVal = (filterHospital?.value || "").trim();
+  if (!hospitalVal) {
+    alert("Por favor escribe la clave o nombre del hospital en el campo de filtro antes de vaciar.");
+    return;
+  }
+
+  const confirmacion = confirm(`¿Estás SEGURO de que deseas eliminar TODOS los registros del hospital "${hospitalVal}"?\n\nEsta acción eliminará todos los insumos registrados para este hospital y no se puede deshacer.`);
+  if (!confirmacion) return;
+
+  try {
+    const res = await fetch(`${SERVER_BASE}/admin/inventory/hospital`, {
+      method: "DELETE",
+      headers: authHeaders(),
+      body: JSON.stringify({ hospitalClave: hospitalVal })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
     }
+
+    alert(`Se han eliminado con éxito los registros del hospital (${data.deleted || 0} registros/archivos eliminados).`);
+    await loadAdminInventory();
+  } catch (err) {
+    console.error("Error vaciando hospital:", err);
+    alert("No se pudo vaciar el inventario del hospital.");
+  }
+}
+
+// Event Listeners
+filterOrden && filterOrden.addEventListener("change", renderAdminInventory);
+btnClearHospital && btnClearHospital.addEventListener("click", clearHospitalInventory);
+    
+
+
+
+
+
+
+
+
+
+
+
 
     function populateCategoryOptions(rows) {
       if (!filterCategoria) return;
