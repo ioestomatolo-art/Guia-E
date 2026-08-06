@@ -137,8 +137,13 @@
         
           <!-- Filtro de ordenamiento -->
           <select id="filterOrden">
-            <option value="desc">Más nuevos a más antiguos</option>
-            <option value="asc">Más antiguos a más nuevos</option>
+              <option value="id_desc">Ingreso: Más reciente a más antiguo</option>
+              <option value="id_asc">Ingreso: Más antiguo a más reciente</option>
+              <option value="fecha_desc">Fecha: Más nueva a más antigua</option>
+              <option value="fecha_asc">Fecha: Más antigua a más nueva</option>
+              <option value="nombre_asc">Hospital / Insumo: A - Z</option>
+              <option value="nombre_desc">Hospital / Insumo: Z - A</option>
+            </select>
           </select>
         
           <button id="btnApplyFilters" type="button">Filtrar</button>
@@ -385,23 +390,62 @@
     const filterOrden = document.getElementById("filterOrden");
 const btnClearHospital = document.getElementById("btnClearHospital");
 
+
+
+
+
+
+
 // Actualización de getFilteredRows con ordenamiento por fecha
 function getFilteredRows() {
   let list = Array.isArray(adminRows) ? adminRows.filter(matchesFilters) : [];
-  const order = filterOrden?.value || "desc";
+  const order = filterOrden?.value || "id_desc";
 
   list.sort((a, b) => {
-    const timeA = a.fecha ? new Date(a.fecha).getTime() : 0;
-    const timeB = b.fecha ? new Date(b.fecha).getTime() : 0;
+    switch (order) {
+      // Orden por inserción en la base de datos (ID / índice)
+      case "id_desc":
+        return (Number(b.id) || 0) - (Number(a.id) || 0);
+      case "id_asc":
+        return (Number(a.id) || 0) - (Number(b.id) || 0);
 
-    if (isNaN(timeA)) return 1;
-    if (isNaN(timeB)) return -1;
+      // Orden por fecha del registro
+      case "fecha_desc": {
+        const timeA = a.fecha ? new Date(a.fecha).getTime() : 0;
+        const timeB = b.fecha ? new Date(b.fecha).getTime() : 0;
+        return timeB - timeA;
+      }
+      case "fecha_asc": {
+        const timeA = a.fecha ? new Date(a.fecha).getTime() : 0;
+        const timeB = b.fecha ? new Date(b.fecha).getTime() : 0;
+        return timeA - timeB;
+      }
 
-    return order === "asc" ? timeA - timeB : timeB - timeA;
+      // Orden alfabético por Hospital o Insumo
+      case "nombre_asc": {
+        const nameA = String(a.hospitalNombre || a.hospital_nombre || a.nombre || "").toLowerCase();
+        const nameB = String(b.hospitalNombre || b.hospital_nombre || b.nombre || "").toLowerCase();
+        return nameA.localeCompare(nameB, "es");
+      }
+      case "nombre_desc": {
+        const nameA = String(a.hospitalNombre || a.hospital_nombre || a.nombre || "").toLowerCase();
+        const nameB = String(b.hospitalNombre || b.hospital_nombre || b.nombre || "").toLowerCase();
+        return nameB.localeCompare(nameA, "es");
+      }
+
+      default:
+        return 0;
+    }
   });
 
   return list;
 }
+
+
+
+
+
+
 
 // Función para solicitar borrado del hospital
 async function clearHospitalInventory() {
